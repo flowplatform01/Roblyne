@@ -70,8 +70,10 @@ function QrScannerView({ onScan, onError }: QrScannerProps) {
           (decodedText) => {
             if (mounted) onScan(decodedText.trim());
           },
-          (errorMessage) => {
-            // Ignore per-frame errors (camera scanning is noisy)
+          (rawError) => {
+            // Html5QrcodeScanner may pass an object or string — normalise first
+            const errorMessage = typeof rawError === "string" ? rawError : String(rawError ?? "");
+            // Ignore per-frame "no QR code found" noise
             if (errorMessage.includes("NotFoundException")) return;
             if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("denied")) {
               setPermissionDenied(true);
