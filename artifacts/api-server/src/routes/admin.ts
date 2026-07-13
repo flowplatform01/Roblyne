@@ -2,11 +2,39 @@ import { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { sql, eq } from "drizzle-orm";
-import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 
 const router: IRouter = Router();
 
-// All admin routes require platform admin
+/**
+ * POST /api/admin/bootstrap
+ * Grants the authenticated user platform-admin status — ONLY if no platform admin
+ * currently exists. Self-sealing: once one admin exists this endpoint returns 409.
+ */
+router.post("/admin/bootstrap", async (req, res): Promise<void> => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  // Check whether any platform admin already exists
+  const [existing] = await db.execute(
+    sql`SELECT id FROM users WHERE is_platform_admin = true LIMIT 1`
+  );
+  if (existing) {
+    res.status(409).json({ error: "A platform administrator already exists" });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ isPlatformAdmin: true })
+    .where(eq(usersTable.id, req.session.userId))
+    .returning({ id: usersTable.id, name: usersTable.name, email: usersTable.email });
+
+  res.json({ message: "You are now the platform administrator", user });
+});
+
+// All subsequent routes require platform admin
 router.use(requirePlatformAdmin);
 
 // GET /api/admin/stats — platform overview numbers
