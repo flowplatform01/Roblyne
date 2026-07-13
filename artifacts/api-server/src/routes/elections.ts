@@ -284,16 +284,18 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   const existing = await db.select().from(votesTable)
     .where(and(eq(votesTable.electionId, electionId), eq(votesTable.voterIdentifier, voterIdentifier))).limit(1);
   if (existing.length > 0) {
-    res.status(403).json({ error: "Already voted" });
+    res.status(403).json({ error: "You have already cast a ballot in this election" });
     return;
   }
 
-  const [vote] = await db.insert(votesTable).values({ electionId, voterIdentifier }).returning();
-  for (const selection of bodyParsed.data.selections) {
-    for (const candidateId of selection.candidateIds) {
-      await db.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
+  await db.transaction(async (tx) => {
+    const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier }).returning();
+    for (const selection of bodyParsed.data.selections) {
+      for (const candidateId of selection.candidateIds) {
+        await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
+      }
     }
-  }
+  });
 
   res.json({ message: "Vote recorded" });
 });

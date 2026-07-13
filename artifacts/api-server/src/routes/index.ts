@@ -6,6 +6,7 @@ import electionsRouter from "./elections";
 import eventsRouter from "./events";
 import campaignsRouter from "./campaigns";
 import discoverRouter from "./discover";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(electionsRouter);
 router.use(eventsRouter);
 router.use(campaignsRouter);
 router.use(discoverRouter);
+router.use(adminRouter);
 
 export default router;

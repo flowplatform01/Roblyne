@@ -24,6 +24,7 @@ export interface AuthUser {
   /** @nullable */
   avatarUrl?: string | null;
   createdAt: string;
+  isPlatformAdmin?: boolean;
 }
 
 export interface RegisterInput {

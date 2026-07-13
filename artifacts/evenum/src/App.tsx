@@ -28,6 +28,7 @@ import CampaignDetail from '@/pages/CampaignDetail';
 import CampaignParticipate from '@/pages/CampaignParticipate';
 
 import Settings from '@/pages/Settings';
+import AdminDashboard from '@/pages/AdminDashboard';
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,9 @@ function Router() {
 
       {/* Settings */}
       <Route path="/settings" component={Settings} />
+
+      {/* Platform Admin */}
+      <Route path="/admin" component={AdminDashboard} />
 
       <Route component={NotFound} />
     </Switch>

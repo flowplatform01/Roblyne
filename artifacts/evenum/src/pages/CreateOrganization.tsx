@@ -28,7 +28,7 @@ const orgSchema = z.object({
   name: z.string().min(2, "Organization name must be at least 2 characters"),
   description: z.string().optional(),
   website: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  logoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  logoUrl: z.string().optional(), // accepts base64 data URLs from ImageUpload
 });
 
 export default function CreateOrganization() {

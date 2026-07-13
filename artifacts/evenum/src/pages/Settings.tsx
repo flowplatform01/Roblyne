@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, User, Lock, Bell, Globe, Save } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, User, Lock, Bell, Globe, Save, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,11 +19,13 @@ export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("profile");
   
   // Profile Form
   const [displayName, setDisplayName] = useState("");
+  const [avatarValue, setAvatarValue] = useState<string | undefined>(undefined);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Password Form
@@ -36,35 +40,42 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
-      setDisplayName(user.name);
+      setDisplayName(user.name || "");
+      setAvatarValue(user.avatarUrl || undefined);
     }
     const savedEmailNotifs = localStorage.getItem('settings_emailNotifs');
     const savedActivityDigest = localStorage.getItem('settings_activityDigest');
-    
     if (savedEmailNotifs !== null) setEmailNotifs(savedEmailNotifs === 'true');
     if (savedActivityDigest !== null) setActivityDigest(savedActivityDigest === 'true');
   }, [user]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!displayName.trim()) return;
     setIsSavingProfile(true);
     
     try {
-      // Mock API call to update profile
+      const body: Record<string, unknown> = { name: displayName.trim() };
+      if (avatarValue !== user?.avatarUrl) {
+        body.avatarUrl = avatarValue ?? null;
+      }
+
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: displayName })
+        credentials: 'include',
+        body: JSON.stringify(body),
       });
       
-      if (res.ok || res.status === 404 || res.status === 405) {
+      if (res.ok) {
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
       } else {
-        throw new Error("Failed to save profile");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to save profile");
       }
-    } catch (error) {
-      // Provide optimistic success since we don't actually have a PATCH endpoint
-      toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Update failed", description: error?.message || "Could not save profile. Please try again." });
     } finally {
       setIsSavingProfile(false);
     }
@@ -73,21 +84,35 @@ export default function Settings() {
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ title: "Passwords don't match", description: "Please ensure your new passwords match.", variant: "destructive" });
+      toast({ variant: "destructive", title: "Passwords don't match", description: "Please ensure your new passwords match." });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({ variant: "destructive", title: "Password too short", description: "New password must be at least 8 characters." });
       return;
     }
 
     setIsSavingPassword(true);
     
     try {
-      // Mock API call to change password
-      await new Promise(r => setTimeout(r, 1000));
-      toast({ title: "Password changed", description: "Your password has been updated successfully." });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error) {
-      toast({ title: "Update failed", description: "Could not change password.", variant: "destructive" });
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (res.ok) {
+        toast({ title: "Password changed", description: "Your password has been updated successfully." });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to change password");
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Update failed", description: error?.message || "Could not change password. Please try again." });
     } finally {
       setIsSavingPassword(false);
     }
@@ -110,6 +135,8 @@ export default function Settings() {
     toast({ title: "Language updated", description: `Language changed to ${value === 'en' ? 'English' : 'Français'}.` });
   };
 
+  const profileChanged = displayName.trim() !== (user?.name || "") || avatarValue !== (user?.avatarUrl || undefined);
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -121,7 +148,7 @@ export default function Settings() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col md:flex-row gap-8">
-          <TabsList className="flex flex-col w-full md:w-64 h-auto bg-transparent items-start space-y-1 p-0">
+          <TabsList className="flex flex-col w-full md:w-64 h-auto bg-transparent items-start space-y-1 p-0 shrink-0">
             <TabsTrigger 
               value="profile" 
               className="w-full justify-start px-4 py-3 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:border"
@@ -148,7 +175,7 @@ export default function Settings() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <TabsContent value="profile" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
@@ -156,45 +183,48 @@ export default function Settings() {
                   <CardDescription>This information will be displayed to other users in your organizations.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-6 mb-8">
-                    <Avatar className="h-24 w-24 border">
-                      <AvatarImage src={user?.avatarUrl || undefined} />
-                      <AvatarFallback className="text-3xl bg-primary/10 text-primary">
-                        {user?.name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-lg">Profile Picture</h3>
-                      <p className="text-sm text-muted-foreground">We currently use your initials for your avatar.</p>
-                    </div>
-                  </div>
-
-                  <form id="profile-form" onSubmit={handleProfileSave} className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="displayName">Display Name</Label>
-                      <Input 
-                        id="displayName" 
-                        value={displayName} 
-                        onChange={(e) => setDisplayName(e.target.value)} 
-                        required
-                        className="max-w-md"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input 
-                        id="email" 
-                        value={user?.email || ""} 
-                        readOnly 
-                        disabled
-                        className="max-w-md bg-muted"
-                      />
-                      <p className="text-xs text-muted-foreground">Email addresses cannot be changed directly at this time.</p>
+                  <form id="profile-form" onSubmit={handleProfileSave} className="space-y-6">
+                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                      <div className="shrink-0">
+                        <Label className="text-sm font-medium mb-2 block">Profile Picture</Label>
+                        <ImageUpload
+                          value={avatarValue}
+                          onChange={(val) => setAvatarValue(val)}
+                          label=""
+                          aspectRatio="square"
+                          className="w-32"
+                          placeholder="Upload photo"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1 text-center">PNG, JPG up to 2MB</p>
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="displayName">Display Name</Label>
+                          <Input 
+                            id="displayName" 
+                            value={displayName} 
+                            onChange={(e) => setDisplayName(e.target.value)} 
+                            required
+                            placeholder="Your full name"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="email">Email Address</Label>
+                          <Input 
+                            id="email" 
+                            value={user?.email || ""} 
+                            readOnly 
+                            disabled
+                            className="bg-muted"
+                          />
+                          <p className="text-xs text-muted-foreground">Email addresses cannot be changed at this time.</p>
+                        </div>
+                      </div>
                     </div>
                   </form>
                 </CardContent>
                 <CardFooter className="bg-muted/30 border-t px-6 py-4">
-                  <Button type="submit" form="profile-form" disabled={isSavingProfile || !displayName.trim()}>
+                  <Button type="submit" form="profile-form" disabled={isSavingProfile || !displayName.trim() || !profileChanged}>
                     {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Save Changes
                   </Button>
@@ -218,6 +248,7 @@ export default function Settings() {
                         required
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Your current password"
                       />
                     </div>
                     <div className="grid gap-2 pt-2">
@@ -229,6 +260,7 @@ export default function Settings() {
                         minLength={8}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="At least 8 characters"
                       />
                     </div>
                     <div className="grid gap-2">
@@ -240,12 +272,22 @@ export default function Settings() {
                         minLength={8}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Repeat your new password"
                       />
+                      {confirmPassword && newPassword !== confirmPassword && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> Passwords do not match
+                        </p>
+                      )}
                     </div>
                   </form>
                 </CardContent>
                 <CardFooter className="bg-muted/30 border-t px-6 py-4">
-                  <Button type="submit" form="password-form" disabled={isSavingPassword || !currentPassword || !newPassword || !confirmPassword}>
+                  <Button 
+                    type="submit" 
+                    form="password-form" 
+                    disabled={isSavingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                  >
                     {isSavingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
                     Update Password
                   </Button>

@@ -25,11 +25,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, CalendarDays } from "lucide-react";
 import { Link } from "wouter";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 const eventSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
   title: z.string().min(3, "Event title must be at least 3 characters"),
   description: z.string().optional(),
+  coverImageUrl: z.string().optional(), // accepts base64 data URLs from ImageUpload
   location: z.string().optional(),
   isOnline: z.boolean().default(false),
   onlineUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
@@ -55,6 +57,7 @@ export default function CreateEvent() {
       orgId: initialOrgId,
       title: "",
       description: "",
+      coverImageUrl: "",
       location: "",
       isOnline: false,
       onlineUrl: "",
@@ -74,6 +77,7 @@ export default function CreateEvent() {
           orgId: parseInt(values.orgId, 10),
           title: values.title,
           description: values.description || undefined,
+          coverImageUrl: values.coverImageUrl || undefined,
           location: values.location || undefined,
           isOnline: values.isOnline,
           onlineUrl: values.onlineUrl || undefined,
@@ -184,6 +188,26 @@ export default function CreateEvent() {
                           placeholder="Provide details about the event agenda, speakers, etc..." 
                           className="min-h-[120px] resize-none"
                           {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="coverImageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cover Image (Optional)</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value || undefined}
+                          onChange={(val) => field.onChange(val || "")}
+                          aspectRatio="banner"
+                          label=""
+                          placeholder="Upload an event cover image"
                         />
                       </FormControl>
                       <FormMessage />

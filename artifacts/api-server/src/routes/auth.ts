@@ -88,7 +88,83 @@ router.get("/auth/me", async (req, res): Promise<void> => {
     name: user.name,
     avatarUrl: user.avatarUrl ?? null,
     createdAt: user.createdAt,
+    isPlatformAdmin: user.isPlatformAdmin ?? false,
   });
+});
+
+router.patch("/auth/me", async (req, res): Promise<void> => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { name, avatarUrl } = req.body as { name?: unknown; avatarUrl?: unknown };
+  if (name !== undefined && (typeof name !== "string" || name.trim().length === 0 || name.length > 100)) {
+    res.status(400).json({ error: "Name must be between 1 and 100 characters" });
+    return;
+  }
+  if (avatarUrl !== undefined && avatarUrl !== null && typeof avatarUrl !== "string") {
+    res.status(400).json({ error: "Invalid avatarUrl" });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = (name as string).trim();
+  if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+
+  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, req.session.userId)).returning();
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  res.json({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl ?? null,
+    createdAt: user.createdAt,
+    isPlatformAdmin: user.isPlatformAdmin ?? false,
+  });
+});
+
+router.post("/auth/change-password", async (req, res): Promise<void> => {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const { currentPassword, newPassword } = req.body as { currentPassword?: unknown; newPassword?: unknown };
+  if (typeof currentPassword !== "string" || currentPassword.length === 0) {
+    res.status(400).json({ error: "Current password is required" });
+    return;
+  }
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    res.status(400).json({ error: "New password must be at least 8 characters" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 12);
+  await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, req.session.userId));
+
+  res.json({ message: "Password updated successfully" });
 });
 
 export default router;

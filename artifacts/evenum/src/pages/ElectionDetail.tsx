@@ -31,6 +31,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,7 +41,7 @@ const candidateSchema = z.object({
   name: z.string().min(1, "Candidate name is required"),
   bio: z.string().optional(),
   platform: z.string().optional(),
-  photoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  photoUrl: z.string().optional(), // accepts base64 data URLs from ImageUpload
 });
 
 const positionSchema = z.object({
@@ -710,8 +711,16 @@ export default function ElectionDetail() {
                 name="photoUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Photo URL (Optional)</FormLabel>
-                    <FormControl><Input placeholder="https://example.com/photo.jpg" {...field} /></FormControl>
+                    <FormLabel>Photo (Optional)</FormLabel>
+                    <FormControl>
+                      <ImageUpload
+                        value={field.value}
+                        onChange={field.onChange}
+                        aspectRatio="square"
+                        label=""
+                        placeholder="Upload candidate photo"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

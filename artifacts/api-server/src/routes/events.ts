@@ -162,15 +162,26 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     }
   }
 
+  // Verify ticket type belongs to this event and check availability
+  const [tt] = await db.select().from(ticketTypesTable)
+    .where(and(eq(ticketTypesTable.id, ticketTypeId), eq(ticketTypesTable.eventId, paramParsed.data.eventId))).limit(1);
+  if (!tt) { res.status(404).json({ error: "Ticket type not found for this event" }); return; }
+  if (tt.quantity !== null && tt.sold >= tt.quantity) {
+    res.status(409).json({ error: "This ticket type is sold out" });
+    return;
+  }
+
   const ticketCode = uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase();
-  const [ticket] = await db.insert(ticketsTable).values({
-    eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
-    ticketCode, status: "valid",
-  }).returning();
 
-  await db.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
+  const ticket = await db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(ticketsTable).values({
+      eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
+      ticketCode, status: "valid",
+    }).returning();
+    await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
+    return inserted;
+  });
 
-  const [tt] = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.id, ticketTypeId)).limit(1);
   res.status(201).json({
     ...ticket,
     eventTitle: event.title,

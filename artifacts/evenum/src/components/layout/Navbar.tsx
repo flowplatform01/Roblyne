@@ -14,7 +14,8 @@ import {
   LayoutDashboard,
   LogOut,
   User,
-  Plus
+  Plus,
+  ShieldCheck
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -120,6 +121,17 @@ export function Navbar() {
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
+                {user?.isPlatformAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="cursor-pointer flex items-center w-full text-primary">
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Platform Admin</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />

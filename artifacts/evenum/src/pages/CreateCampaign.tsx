@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowLeft, Megaphone, Plus, Trash2, GripVertical } from "lucide-react";
+import { Loader2, ArrowLeft, Megaphone, Plus, Trash2 } from "lucide-react";
 import { Link } from "wouter";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 const fieldSchema = z.object({
   id: z.string(),
@@ -31,6 +32,7 @@ const campaignSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
   title: z.string().min(3, "Campaign title must be at least 3 characters"),
   description: z.string().optional(),
+  coverImageUrl: z.string().optional(), // accepts base64 data URLs from ImageUpload
   type: z.enum(["registration", "contribution", "donation", "application", "membership", "merchandise", "custom"]),
   visibility: z.enum(["public", "private"]),
   requiresPayment: z.boolean().default(false),
@@ -57,6 +59,7 @@ export default function CreateCampaign() {
       orgId: initialOrgId,
       title: "",
       description: "",
+      coverImageUrl: "",
       type: "custom",
       visibility: "public",
       requiresPayment: false,
@@ -92,6 +95,7 @@ export default function CreateCampaign() {
           orgId: parseInt(values.orgId, 10),
           title: values.title,
           description: values.description || undefined,
+          coverImageUrl: values.coverImageUrl || undefined,
           type: values.type,
           visibility: values.visibility,
           requiresPayment: values.requiresPayment,
@@ -221,6 +225,26 @@ export default function CreateCampaign() {
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea placeholder="Explain what you are collecting..." className="min-h-[100px] resize-none" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="coverImageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cover Image (Optional)</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value || undefined}
+                          onChange={(val) => field.onChange(val || "")}
+                          aspectRatio="banner"
+                          label=""
+                          placeholder="Upload a campaign cover image"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
