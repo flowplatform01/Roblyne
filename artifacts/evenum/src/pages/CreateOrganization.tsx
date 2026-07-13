@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Building2 } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Organization name must be at least 2 characters"),
@@ -155,9 +156,14 @@ export default function CreateOrganization() {
                     name="logoUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Logo URL</FormLabel>
+                        <FormLabel>Logo Image</FormLabel>
                         <FormControl>
-                          <Input placeholder="https://example.org/logo.png" {...field} />
+                          <ImageUpload
+                            value={field.value}
+                            onChange={field.onChange}
+                            aspectRatio="square"
+                            label=""
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

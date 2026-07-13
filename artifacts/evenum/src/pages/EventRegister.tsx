@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function EventRegister() {
   const [match, params] = useRoute("/events/:id/register");
@@ -18,6 +19,7 @@ export default function EventRegister() {
   const [formData, setFormData] = useState({ name: "", email: "" });
   const [isSuccess, setIsSuccess] = useState(false);
   const [ticketCode, setTicketCode] = useState("");
+  const [ticketTypeName, setTicketTypeName] = useState("");
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
@@ -26,6 +28,8 @@ export default function EventRegister() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicketId || !formData.name || !formData.email) return;
+
+    const selectedTicket = ticketTypes?.find(t => t.id === selectedTicketId);
 
     registerMutation.mutate(
       {
@@ -40,8 +44,8 @@ export default function EventRegister() {
       {
         onSuccess: (result) => {
           setIsSuccess(true);
-          // Assuming result has ticketCode, if not, stub it
           setTicketCode(result?.ticketCode || `TKT-${Math.floor(Math.random() * 1000000)}`);
+          setTicketTypeName(selectedTicket?.name || "General Admission");
         }
       }
     );
@@ -83,13 +87,58 @@ export default function EventRegister() {
             We've sent a confirmation email to <strong>{formData.email}</strong>.
           </p>
           
-          <Card className="border-dashed bg-muted/20">
-            <CardContent className="pt-6">
-              <p className="text-sm font-medium text-muted-foreground mb-1">Your Ticket Code</p>
-              <div className="text-3xl font-mono font-bold tracking-widest text-primary mb-4">{ticketCode}</div>
-              <p className="text-sm text-muted-foreground">Show this code at the door for check-in.</p>
-            </CardContent>
-          </Card>
+          {/* Ticket Card with QR Code */}
+          <div className="border-2 border-border rounded-2xl overflow-hidden shadow-lg bg-card text-left">
+            {/* Ticket header */}
+            <div className="bg-primary px-6 py-4">
+              <p className="text-primary-foreground/70 text-xs uppercase tracking-widest font-semibold mb-1">Event Ticket</p>
+              <h2 className="text-primary-foreground text-xl font-serif font-bold leading-tight">{event.title}</h2>
+            </div>
+
+            {/* Divider with notches */}
+            <div className="relative flex items-center px-6">
+              <div className="absolute -left-4 w-8 h-8 rounded-full bg-background border-2 border-border" />
+              <div className="flex-1 border-t-2 border-dashed border-border/50 mx-4" />
+              <div className="absolute -right-4 w-8 h-8 rounded-full bg-background border-2 border-border" />
+            </div>
+
+            {/* Ticket body */}
+            <div className="px-6 py-6 flex flex-col sm:flex-row gap-6 items-center">
+              <div className="flex-1 space-y-3 min-w-0">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Attendee</p>
+                  <p className="font-semibold text-base truncate">{formData.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ticket Type</p>
+                  <p className="font-medium">{ticketTypeName}</p>
+                </div>
+                {event.startsAt && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</p>
+                    <p className="font-medium text-sm">{format(new Date(event.startsAt), 'MMM d, yyyy • h:mm a')}</p>
+                  </div>
+                )}
+                <div className="pt-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Ticket Code</p>
+                  <p className="font-mono text-sm font-bold tracking-widest text-primary">{ticketCode}</p>
+                </div>
+              </div>
+
+              {/* QR Code */}
+              <div className="shrink-0 flex flex-col items-center gap-2">
+                <div className="p-3 bg-white rounded-xl border border-border/60 shadow-sm">
+                  <QRCodeSVG
+                    value={ticketCode}
+                    size={140}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Scan at check-in</p>
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -148,18 +197,18 @@ export default function EventRegister() {
                       <div 
                         key={ticket.id}
                         onClick={() => !isSoldOut && setSelectedTicketId(ticket.id)}
-                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-xl border transition-all ${
+                        className={`flex flex-row items-center justify-between p-4 sm:p-5 rounded-xl border transition-all ${
                           isSoldOut ? 'opacity-50 bg-muted/50 cursor-not-allowed' : 
                           isSelected ? 'border-primary ring-1 ring-primary bg-primary/5 cursor-pointer' : 
                           'bg-card hover:border-primary/50 hover:bg-muted/10 cursor-pointer'
                         }`}
                       >
-                        <div className="mb-4 sm:mb-0">
-                          <h3 className="font-bold text-lg">{ticket.name}</h3>
-                          {ticket.description && <p className="text-sm text-muted-foreground mt-1">{ticket.description}</p>}
+                        <div className="flex-1 min-w-0 pr-4">
+                          <h3 className="font-bold text-base sm:text-lg truncate">{ticket.name}</h3>
+                          {ticket.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{ticket.description}</p>}
                           {isSoldOut && <Badge variant="secondary" className="mt-2 text-xs">Sold Out</Badge>}
                         </div>
-                        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
+                        <div className="flex flex-col items-end gap-2 shrink-0">
                           <span className="text-xl font-bold text-emerald-600">
                             {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
                           </span>

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
 import {
   db, electionsTable, positionsTable, candidatesTable,
-  votesTable, voteSelectionsTable, organizationsTable,
+  votesTable, voteSelectionsTable, organizationsTable, electionEligibleVotersTable,
 } from "@workspace/db";
 import {
   CreateElectionBody, UpdateElectionBody, GetElectionParams, UpdateElectionParams,
@@ -13,10 +14,18 @@ import {
   GetCandidateParams, UpdateCandidateParams, UpdateCandidateBody, DeleteCandidateParams,
   SubmitVoteParams, SubmitVoteBody,
   GetElectionResultsParams, GetElectionAnalyticsParams,
+  ListEligibleVotersParams, AddEligibleVotersParams, AddEligibleVotersBody, RemoveEligibleVoterParams,
+  ExportElectionResultsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { requireResourceOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
+
+function toCsvValue(value: unknown): string {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 // List elections
 router.get("/elections", async (req, res): Promise<void> => {
@@ -58,10 +67,12 @@ router.get("/elections", async (req, res): Promise<void> => {
 router.post("/elections", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateElectionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { orgId, title, description, visibility, requiresAuth: rAuth, startsAt, endsAt } = parsed.data;
+  const { orgId, title, description, visibility, requiresAuth: rAuth, eligibilityMode, startsAt, endsAt } = parsed.data;
+  const inviteCode = visibility === "invite_only" ? uuidv4().replace(/-/g, "").substring(0, 10).toUpperCase() : null;
   const [election] = await db.insert(electionsTable).values({
     orgId, title, description, visibility: visibility ?? "public",
-    requiresAuth: rAuth ?? false, startsAt, endsAt,
+    requiresAuth: rAuth ?? false, eligibilityMode: eligibilityMode ?? "open",
+    inviteCode, startsAt, endsAt,
   }).returning();
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
@@ -235,7 +246,40 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
   const electionId = paramParsed.data.electionId;
-  const voterIdentifier = req.session.userId ? `user:${req.session.userId}` : `session:${req.sessionID}`;
+  const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
+  if (!election) { res.status(404).json({ error: "Election not found" }); return; }
+
+  if (election.status !== "active") {
+    res.status(403).json({ error: "This election is not currently open for voting" });
+    return;
+  }
+
+  if (election.visibility === "invite_only") {
+    if (!bodyParsed.data.inviteCode || bodyParsed.data.inviteCode !== election.inviteCode) {
+      res.status(403).json({ error: "A valid invite code is required to vote in this election" });
+      return;
+    }
+  }
+
+  if (election.eligibilityMode === "allowlist") {
+    const voterEmail = bodyParsed.data.voterEmail?.toLowerCase();
+    if (!voterEmail) {
+      res.status(403).json({ error: "This election is restricted to an approved voter list. Provide your email to verify eligibility." });
+      return;
+    }
+    const [eligible] = await db.select().from(electionEligibleVotersTable)
+      .where(and(eq(electionEligibleVotersTable.electionId, electionId), eq(electionEligibleVotersTable.email, voterEmail))).limit(1);
+    if (!eligible) {
+      res.status(403).json({ error: "This email is not on the approved voter list for this election" });
+      return;
+    }
+  }
+
+  const voterIdentifier = req.session.userId
+    ? `user:${req.session.userId}`
+    : bodyParsed.data.voterEmail
+      ? `email:${bodyParsed.data.voterEmail.toLowerCase()}`
+      : `session:${req.sessionID}`;
 
   const existing = await db.select().from(votesTable)
     .where(and(eq(votesTable.electionId, electionId), eq(votesTable.voterIdentifier, voterIdentifier))).limit(1);
@@ -252,6 +296,70 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
 
   res.json({ message: "Vote recorded" });
+});
+
+// ── ELIGIBLE VOTERS (allowlist) ─────────────────────────────────────────────
+
+router.get("/elections/:electionId/eligible-voters", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
+  const parsed = ListEligibleVotersParams.safeParse({ electionId: parseInt(rawId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const voters = await db.select().from(electionEligibleVotersTable).where(eq(electionEligibleVotersTable.electionId, parsed.data.electionId));
+  res.json(voters);
+});
+
+router.post("/elections/:electionId/eligible-voters", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
+  const paramParsed = AddEligibleVotersParams.safeParse({ electionId: parseInt(rawId, 10) });
+  if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const bodyParsed = AddEligibleVotersBody.safeParse(req.body);
+  if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+
+  const electionId = paramParsed.data.electionId;
+  const inserted: (typeof electionEligibleVotersTable.$inferSelect)[] = [];
+  for (const rawEmail of bodyParsed.data.emails) {
+    const email = rawEmail.toLowerCase().trim();
+    if (!email) continue;
+    const [existing] = await db.select().from(electionEligibleVotersTable)
+      .where(and(eq(electionEligibleVotersTable.electionId, electionId), eq(electionEligibleVotersTable.email, email))).limit(1);
+    if (existing) { inserted.push(existing); continue; }
+    const [row] = await db.insert(electionEligibleVotersTable).values({ electionId, email }).returning();
+    inserted.push(row);
+  }
+  res.status(201).json(inserted);
+});
+
+router.delete("/elections/:electionId/eligible-voters/:voterId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
+  const rawVoterId = Array.isArray(req.params.voterId) ? req.params.voterId[0] : req.params.voterId;
+  const parsed = RemoveEligibleVoterParams.safeParse({ electionId: parseInt(rawElId, 10), voterId: parseInt(rawVoterId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  await db.delete(electionEligibleVotersTable)
+    .where(and(eq(electionEligibleVotersTable.id, parsed.data.voterId), eq(electionEligibleVotersTable.electionId, parsed.data.electionId)));
+  res.json({ message: "Removed" });
+});
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+
+router.get("/elections/:electionId/export", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
+  const parsed = ExportElectionResultsParams.safeParse({ electionId: parseInt(rawId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const electionId = parsed.data.electionId;
+
+  const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
+  const rows = [["Position", "Candidate", "Votes"]];
+  for (const pos of positions) {
+    const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
+    for (const c of candidates) {
+      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, c.id));
+      rows.push([pos.title, c.name, String(count ?? 0)]);
+    }
+  }
+  const csv = rows.map(r => r.map(toCsvValue).join(",")).join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="election-${electionId}-results.csv"`);
+  res.send(csv);
 });
 
 // ── RESULTS ────────────────────────────────────────────────────────────────

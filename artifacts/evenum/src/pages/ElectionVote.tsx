@@ -1,12 +1,14 @@
 import React from 'react';
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout/Layout";
-import { useGetElection, useListPositions, useListCandidates } from "@workspace/api-client-react";
+import { useGetElection, useListPositions, useListCandidates, useSubmitVote } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Vote as VoteIcon, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Vote as VoteIcon, AlertCircle, CheckCircle2, Key, Mail } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 export default function ElectionVote() {
@@ -17,8 +19,12 @@ export default function ElectionVote() {
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
+  const submitVote = useSubmitVote();
 
   const [selections, setSelections] = React.useState<Record<number, number[]>>({});
+  const [inviteCode, setInviteCode] = React.useState("");
+  const [voterEmail, setVoterEmail] = React.useState("");
+  const [isSuccess, setIsSuccess] = React.useState(false);
 
   const toggleSelection = (positionId: number, candidateId: number, maxSelections: number) => {
     setSelections(prev => {
@@ -42,11 +48,43 @@ export default function ElectionVote() {
   };
 
   const submitBallot = () => {
-    toast({
-      title: "Ballot submitted",
-      description: "Thank you for participating! Your vote has been securely recorded.",
-    });
-    // Implementation of real mutation would go here
+    const selectionsPayload = Object.entries(selections).map(([positionId, candidateIds]) => ({
+      positionId: parseInt(positionId, 10),
+      candidateIds,
+    }));
+
+    submitVote.mutate(
+      {
+        electionId,
+        data: {
+          selections: selectionsPayload,
+          inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
+          voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
+        }
+      },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+        },
+        onError: (error: any) => {
+          const status = error?.status;
+          const msg = error?.data?.error;
+          if (status === 403) {
+            toast({
+              variant: "destructive",
+              title: "Vote not accepted",
+              description: msg || "You are not authorized to vote in this election.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Ballot submission failed",
+              description: msg || "There was an error submitting your ballot. Please try again.",
+            });
+          }
+        }
+      }
+    );
   };
 
   if (isElectionLoading || isPositionsLoading || isCandidatesLoading) {
@@ -85,6 +123,25 @@ export default function ElectionVote() {
     );
   }
 
+  if (isSuccess) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-20 text-center max-w-lg">
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
+            <CheckCircle2 className="h-10 w-10" />
+          </div>
+          <h1 className="text-3xl font-serif font-bold mb-4">Ballot Submitted!</h1>
+          <p className="text-lg text-muted-foreground">
+            Thank you for participating! Your vote has been securely recorded.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  const needsInviteCode = election.visibility === 'invite_only';
+  const needsVoterEmail = election.eligibilityMode === 'allowlist';
+
   return (
     <Layout>
       <div className="bg-primary/5 py-12 border-b">
@@ -95,12 +152,54 @@ export default function ElectionVote() {
           <h1 className="text-4xl font-serif font-bold tracking-tight mb-4">{election.title}</h1>
           {election.description && <p className="text-lg text-muted-foreground">{election.description}</p>}
           <div className="mt-6 inline-block bg-background px-4 py-2 rounded-full border shadow-sm text-sm font-medium">
-            Official Official Ballot
+            Official Ballot
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-12 max-w-3xl flex-1">
+        {/* Access fields (invite code / voter email) */}
+        {(needsInviteCode || needsVoterEmail) && (
+          <Card className="mb-8 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/10">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base font-serif">Voter Verification</CardTitle>
+              <CardDescription>This election requires additional information before you can vote.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {needsInviteCode && (
+                <div className="space-y-2">
+                  <Label htmlFor="invite-code" className="flex items-center gap-2">
+                    <Key className="h-4 w-4" /> Invite Code
+                  </Label>
+                  <Input
+                    id="invite-code"
+                    placeholder="Enter your invite code"
+                    value={inviteCode}
+                    onChange={e => setInviteCode(e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">You received this code from the election organizer.</p>
+                </div>
+              )}
+              {needsVoterEmail && (
+                <div className="space-y-2">
+                  <Label htmlFor="voter-email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" /> Your Email Address
+                  </Label>
+                  <Input
+                    id="voter-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={voterEmail}
+                    onChange={e => setVoterEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Must match the email on the voter allowlist.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {(!positions || positions.length === 0) ? (
           <div className="text-center py-12 text-muted-foreground">
             No positions found on this ballot.
@@ -158,9 +257,9 @@ export default function ElectionVote() {
                               )}
                             </div>
                             
-                            <div className="flex-1">
-                              <h3 className={`font-semibold text-lg ${isSelected ? 'text-primary' : ''}`}>{candidate.name}</h3>
-                              {candidate.bio && <p className="text-muted-foreground mt-1 leading-snug">{candidate.bio}</p>}
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-semibold text-lg truncate ${isSelected ? 'text-primary' : ''}`}>{candidate.name}</h3>
+                              {candidate.bio && <p className="text-muted-foreground mt-1 leading-snug break-words">{candidate.bio}</p>}
                             </div>
                           </div>
                         );
@@ -171,14 +270,24 @@ export default function ElectionVote() {
               );
             })}
 
-            <div className="pt-8 border-t">
-              <Card className="bg-muted/30 border-dashed">
+            <div className="pt-8 border-t sticky bottom-0 z-20 pb-6 bg-background">
+              <Card className="bg-muted/30 border-dashed shadow-xl border-primary/20 bg-card">
                 <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div>
                     <h3 className="font-serif font-bold text-lg mb-1">Ready to cast your ballot?</h3>
                     <p className="text-muted-foreground text-sm">Please review your selections before submitting. This action cannot be undone.</p>
                   </div>
-                  <Button size="lg" className="w-full sm:w-auto shrink-0 h-14 px-8" onClick={submitBallot}>
+                  <Button 
+                    size="lg" 
+                    className="w-full sm:w-auto shrink-0 h-14 px-8" 
+                    onClick={submitBallot}
+                    disabled={
+                      submitVote.isPending ||
+                      (needsInviteCode && !inviteCode.trim()) ||
+                      (needsVoterEmail && !voterEmail.trim())
+                    }
+                  >
+                    {submitVote.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     Submit Ballot
                   </Button>
                 </CardContent>

@@ -1,0 +1,1 @@
+- [Evenum production review](evenum-production-review.md) — comprehensive audit and fixes applied; key stubs resolved, terminology cleaned, settings/upload UX added

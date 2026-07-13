@@ -14,6 +14,7 @@ export const eventsTable = pgTable("events", {
   onlineUrl: text("online_url"),
   status: text("status").notNull().default("draft"), // draft | published | cancelled | completed
   visibility: text("visibility").notNull().default("public"), // public | private | invite_only
+  inviteCode: text("invite_code"),
   startsAt: timestamp("starts_at"),
   endsAt: timestamp("ends_at"),
   capacity: integer("capacity"),

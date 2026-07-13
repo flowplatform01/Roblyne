@@ -1,10 +1,21 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db, organizationsTable, electionsTable, eventsTable, campaignsTable } from "@workspace/db";
-import { CreateOrganizationBody, UpdateOrganizationBody, GetOrganizationParams, UpdateOrganizationParams, GetOrganizationStatsParams } from "@workspace/api-zod";
+import { eq, sql, and } from "drizzle-orm";
+import { db, organizationsTable, electionsTable, eventsTable, campaignsTable, organizationMembersTable, usersTable } from "@workspace/db";
+import {
+  CreateOrganizationBody, UpdateOrganizationBody, GetOrganizationParams, UpdateOrganizationParams, GetOrganizationStatsParams,
+  AddOrganizationMemberParams, AddOrganizationMemberBody,
+  UpdateOrganizationMemberParams, UpdateOrganizationMemberBody,
+  RemoveOrganizationMemberParams,
+} from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { requireOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
+
+async function memberRow(member: typeof organizationMembersTable.$inferSelect) {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, member.userId)).limit(1);
+  return { ...member, email: user?.email ?? null, name: user?.name ?? null };
+}
 
 // List organizations for current user
 router.get("/organizations", requireAuth, async (req, res): Promise<void> => {
@@ -86,6 +97,76 @@ router.get("/organizations/:orgId/stats", async (req, res): Promise<void> => {
     upcomingEventsCount: upcomingEvents?.count ?? 0,
     activeCampaignsCount: activeCampaigns?.count ?? 0,
   });
+});
+
+// ── MEMBERS ────────────────────────────────────────────────────────────────
+
+router.get("/organizations/:orgId/members", requireAuth, async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
+  const paramParsed = AddOrganizationMemberParams.pick({ orgId: true }).safeParse({ orgId: parseInt(rawId, 10) });
+  if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const orgId = paramParsed.data.orgId;
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  if (!org) { res.status(404).json({ error: "Not found" }); return; }
+  const [owner] = await db.select().from(usersTable).where(eq(usersTable.id, org.ownerId)).limit(1);
+
+  const members = await db.select().from(organizationMembersTable).where(eq(organizationMembersTable.orgId, orgId));
+  const memberRows = await Promise.all(members.map(memberRow));
+
+  res.json([
+    { id: 0, orgId, userId: org.ownerId, email: owner?.email ?? null, name: owner?.name ?? null, role: "owner", invitedAt: org.createdAt },
+    ...memberRows,
+  ]);
+});
+
+router.post("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
+  const paramParsed = AddOrganizationMemberParams.safeParse({ orgId: parseInt(rawId, 10) });
+  if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const bodyParsed = AddOrganizationMemberBody.safeParse(req.body);
+  if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  const orgId = paramParsed.data.orgId;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, bodyParsed.data.email)).limit(1);
+  if (!user) { res.status(404).json({ error: "No user found with that email" }); return; }
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  if (org?.ownerId === user.id) { res.status(409).json({ error: "User already owns this organization" }); return; }
+
+  const existing = await db.select().from(organizationMembersTable)
+    .where(and(eq(organizationMembersTable.orgId, orgId), eq(organizationMembersTable.userId, user.id))).limit(1);
+  if (existing.length > 0) { res.status(409).json({ error: "Already a member" }); return; }
+
+  const [member] = await db.insert(organizationMembersTable).values({
+    orgId, userId: user.id, role: bodyParsed.data.role ?? "member",
+  }).returning();
+  res.status(201).json(await memberRow(member));
+});
+
+router.patch("/organizations/:orgId/members/:memberId", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawOrgId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
+  const rawMemberId = Array.isArray(req.params.memberId) ? req.params.memberId[0] : req.params.memberId;
+  const paramParsed = UpdateOrganizationMemberParams.safeParse({ orgId: parseInt(rawOrgId, 10), memberId: parseInt(rawMemberId, 10) });
+  if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const bodyParsed = UpdateOrganizationMemberBody.safeParse(req.body);
+  if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+
+  const [member] = await db.update(organizationMembersTable).set({ role: bodyParsed.data.role })
+    .where(and(eq(organizationMembersTable.id, paramParsed.data.memberId), eq(organizationMembersTable.orgId, paramParsed.data.orgId)))
+    .returning();
+  if (!member) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(await memberRow(member));
+});
+
+router.delete("/organizations/:orgId/members/:memberId", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawOrgId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
+  const rawMemberId = Array.isArray(req.params.memberId) ? req.params.memberId[0] : req.params.memberId;
+  const parsed = RemoveOrganizationMemberParams.safeParse({ orgId: parseInt(rawOrgId, 10), memberId: parseInt(rawMemberId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  await db.delete(organizationMembersTable)
+    .where(and(eq(organizationMembersTable.id, parsed.data.memberId), eq(organizationMembersTable.orgId, parsed.data.orgId)));
+  res.json({ message: "Removed" });
 });
 
 export default router;

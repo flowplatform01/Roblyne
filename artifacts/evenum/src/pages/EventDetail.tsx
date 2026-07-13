@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link, useLocation } from "wouter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { 
@@ -11,7 +11,8 @@ import {
   getListTicketTypesQueryKey,
   getGetEventQueryKey,
   useCheckInAttendee,
-  getListAttendeesQueryKey
+  getListAttendeesQueryKey,
+  exportEventAttendees
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode } from "lucide-react";
+import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,80 @@ const ticketTypeSchema = z.object({
   quantity: z.coerce.number().min(1).optional().or(z.literal("")),
 });
 
+// QR Scanner component using html5-qrcode
+interface QrScannerProps {
+  onScan: (code: string) => void;
+  onError?: (err: string) => void;
+}
+
+function QrScannerView({ onScan, onError }: QrScannerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<import("html5-qrcode").Html5QrcodeScanner | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function initScanner() {
+      try {
+        const { Html5QrcodeScanner } = await import("html5-qrcode");
+        if (!mounted || !containerRef.current) return;
+
+        const scanner = new Html5QrcodeScanner(
+          "qr-scanner-region",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+
+        scannerRef.current = scanner;
+
+        scanner.render(
+          (decodedText) => {
+            if (mounted) onScan(decodedText.trim());
+          },
+          (errorMessage) => {
+            // Ignore per-frame errors (camera scanning is noisy)
+            if (errorMessage.includes("NotFoundException")) return;
+            if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("denied")) {
+              setPermissionDenied(true);
+            }
+          }
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("denied")) {
+          setPermissionDenied(true);
+        }
+        onError?.(msg);
+      }
+    }
+
+    initScanner();
+
+    return () => {
+      mounted = false;
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (permissionDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+        <Camera className="h-12 w-12 text-muted-foreground" />
+        <p className="font-medium">Camera permission denied</p>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Please allow camera access in your browser settings and reload the page to use QR scanning.
+        </p>
+      </div>
+    );
+  }
+
+  return <div id="qr-scanner-region" ref={containerRef} className="w-full" />;
+}
+
 export default function EventDetail() {
   const [match, params] = useRoute("/events/:id");
   const eventId = params?.id ? parseInt(params.id, 10) : 0;
@@ -49,6 +124,8 @@ export default function EventDetail() {
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
   const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
   const [checkInCode, setCheckInCode] = useState("");
+  const [checkInMode, setCheckInMode] = useState<"manual" | "scan">("manual");
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
@@ -126,12 +203,10 @@ export default function EventDetail() {
     );
   };
 
-  const handleManualCheckIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!checkInCode) return;
-    
+  const performCheckIn = (code: string) => {
+    if (!code) return;
     checkIn.mutate(
-      { eventId, data: { ticketCode: checkInCode } },
+      { eventId, data: { ticketCode: code } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListAttendeesQueryKey(eventId) });
@@ -143,6 +218,36 @@ export default function EventDetail() {
         }
       }
     );
+  };
+
+  const handleManualCheckIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    performCheckIn(checkInCode);
+  };
+
+  const handleQrScan = (code: string) => {
+    performCheckIn(code);
+  };
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const csvText = await exportEventAttendees(eventId);
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `event-${eventId}-attendees.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "CSV exported successfully" });
+    } catch {
+      toast({ title: "Failed to export CSV", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const copyRegistrationLink = () => {
@@ -373,36 +478,95 @@ export default function EventDetail() {
             </TabsContent>
 
             <TabsContent value="attendees" className="mt-0 space-y-6">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-serif font-bold">Attendees</h2>
-                <Dialog open={isCheckInDialogOpen} onOpenChange={setIsCheckInDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline"><QrCode className="mr-2 h-4 w-4" /> Manual Check-in</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Manual Check-in</DialogTitle>
-                      <DialogDescription>Enter the attendee's ticket code to check them in.</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleManualCheckIn} className="space-y-4 pt-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Ticket Code</label>
-                        <Input 
-                          value={checkInCode} 
-                          onChange={(e) => setCheckInCode(e.target.value)} 
-                          placeholder="e.g. TKT-123456" 
-                          autoFocus
-                        />
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit" disabled={!checkInCode || checkIn.isPending}>
-                          {checkIn.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Check In
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleExportCSV}
+                    disabled={isExporting}
+                  >
+                    {isExporting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Export CSV
+                  </Button>
+                  <Dialog open={isCheckInDialogOpen} onOpenChange={(open) => {
+                    setIsCheckInDialogOpen(open);
+                    if (!open) setCheckInMode("manual");
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline"><QrCode className="mr-2 h-4 w-4" /> Check-in</Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Attendee Check-in</DialogTitle>
+                        <DialogDescription>Enter a ticket code manually or scan a QR code.</DialogDescription>
+                      </DialogHeader>
+
+                      {/* Mode toggle */}
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant={checkInMode === "manual" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setCheckInMode("manual")}
+                        >
+                          <Keyboard className="mr-2 h-4 w-4" /> Manual Entry
                         </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                        <Button
+                          variant={checkInMode === "scan" ? "default" : "outline"}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setCheckInMode("scan")}
+                        >
+                          <Camera className="mr-2 h-4 w-4" /> Scan QR Code
+                        </Button>
+                      </div>
+
+                      {checkInMode === "manual" ? (
+                        <form onSubmit={handleManualCheckIn} className="space-y-4 pt-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Ticket Code</label>
+                            <Input 
+                              value={checkInCode} 
+                              onChange={(e) => setCheckInCode(e.target.value)} 
+                              placeholder="e.g. TKT-123456" 
+                              autoFocus
+                            />
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" disabled={!checkInCode || checkIn.isPending}>
+                              {checkIn.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Check In
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      ) : (
+                        <div className="pt-2 space-y-3">
+                          <p className="text-sm text-muted-foreground">
+                            Point camera at the attendee's QR code. Check-in happens automatically on scan.
+                          </p>
+                          <QrScannerView
+                            onScan={(code) => {
+                              handleQrScan(code);
+                            }}
+                            onError={(err) => {
+                              toast({ title: `Scanner error: ${err}`, variant: "destructive" });
+                            }}
+                          />
+                          {checkIn.isPending && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
+                              <Loader2 className="h-4 w-4 animate-spin" /> Checking in…
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
 
               {isAttendeesLoading ? (

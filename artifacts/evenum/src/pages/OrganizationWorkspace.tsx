@@ -6,27 +6,36 @@ import {
   useGetOrganizationStats,
   useListElections,
   useListEvents,
-  useListCampaigns
+  useListCampaigns,
+  useListOrganizationMembers,
+  useAddOrganizationMember,
+  useUpdateOrganizationMember,
+  useRemoveOrganizationMember,
+  getListOrganizationMembersQueryKey,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function OrganizationWorkspace() {
   const [match, params] = useRoute("/organizations/:id");
   const orgId = params?.id ? parseInt(params.id, 10) : 0;
   
-  // Get tab from URL hash/search if possible, otherwise default to overview
   const [activeTab, setActiveTab] = useState("overview");
   
-  // Sync tab with URL search params manually since wouter doesn't have useSearchParams hook
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const tab = searchParams.get('tab');
-    if (tab && ['overview', 'elections', 'events', 'campaigns'].includes(tab)) {
+    if (tab && ['overview', 'elections', 'events', 'campaigns', 'team'].includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
@@ -41,7 +50,6 @@ export default function OrganizationWorkspace() {
   const { data: org, isLoading: isOrgLoading } = useGetOrganization(orgId);
   const { data: stats, isLoading: isStatsLoading } = useGetOrganizationStats(orgId);
   
-  // Data for tabs
   const { data: elections, isLoading: isElectionsLoading } = useListElections({ orgId });
   const { data: events, isLoading: isEventsLoading } = useListEvents({ orgId });
   const { data: campaigns, isLoading: isCampaignsLoading } = useListCampaigns({ orgId });
@@ -92,15 +100,16 @@ export default function OrganizationWorkspace() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-8 bg-muted/50 p-1 w-full justify-start h-auto border">
-          <TabsTrigger value="overview" className="px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-          <TabsTrigger value="elections" className="px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">Elections</TabsTrigger>
-          <TabsTrigger value="events" className="px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">Events</TabsTrigger>
-          <TabsTrigger value="campaigns" className="px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">Campaigns</TabsTrigger>
+        <TabsList className="mb-8 bg-muted/50 p-1 w-full justify-start h-auto border flex-wrap">
+          <TabsTrigger value="overview" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Overview</TabsTrigger>
+          <TabsTrigger value="elections" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Elections</TabsTrigger>
+          <TabsTrigger value="events" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Events</TabsTrigger>
+          <TabsTrigger value="campaigns" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Campaigns</TabsTrigger>
+          <TabsTrigger value="team" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Team</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <StatsCard 
               title="Total Participants" 
               value={stats?.totalParticipants || 0} 
@@ -158,7 +167,6 @@ export default function OrganizationWorkspace() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Aggregate and sort recent items here. For now, simple stubs. */}
                 <div className="space-y-4">
                   {!elections?.length && !events?.length && !campaigns?.length ? (
                     <div className="text-center py-8 text-muted-foreground">
@@ -224,8 +232,234 @@ export default function OrganizationWorkspace() {
             orgId={orgId}
           />
         </TabsContent>
+
+        <TabsContent value="team" className="mt-0 focus-visible:outline-none">
+          <TeamSection orgId={orgId} />
+        </TabsContent>
       </Tabs>
     </DashboardLayout>
+  );
+}
+
+function TeamSection({ orgId }: { orgId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: members, isLoading } = useListOrganizationMembers(orgId);
+  const addMember = useAddOrganizationMember();
+  const updateMember = useUpdateOrganizationMember();
+  const removeMember = useRemoveOrganizationMember();
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+
+  // Determine current user's role in this org
+  const currentMember = members?.find(m => m.userId === user?.id);
+  const canManage = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+
+  const handleInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    addMember.mutate(
+      { orgId, data: { email: inviteEmail.trim(), role: inviteRole } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListOrganizationMembersQueryKey(orgId) });
+          setInviteEmail("");
+          setInviteRole("member");
+          toast({ title: "Member invited", description: `Invitation sent to ${inviteEmail.trim()}` });
+        },
+        onError: (error: any) => {
+          const status = error?.status;
+          const msg = error?.data?.error;
+          if (status === 409) {
+            toast({ variant: "destructive", title: "Already a member", description: msg || "This user is already a member of the organization." });
+          } else if (status === 403) {
+            toast({ variant: "destructive", title: "Permission denied", description: msg || "You don't have permission to invite members." });
+          } else if (status === 404) {
+            toast({ variant: "destructive", title: "User not found", description: msg || "No account found for that email address." });
+          } else {
+            toast({ variant: "destructive", title: "Invite failed", description: msg || "Could not invite member. Please try again." });
+          }
+        },
+      }
+    );
+  };
+
+  const handleRoleChange = (memberId: number, newRole: "admin" | "member") => {
+    updateMember.mutate(
+      { orgId, memberId, data: { role: newRole } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListOrganizationMembersQueryKey(orgId) });
+          toast({ title: "Role updated" });
+        },
+        onError: (error: any) => {
+          const msg = error?.data?.error;
+          toast({ variant: "destructive", title: "Update failed", description: msg || "Could not update role. Please try again." });
+        },
+      }
+    );
+  };
+
+  const handleRemove = (memberId: number, memberName: string | null | undefined) => {
+    removeMember.mutate(
+      { orgId, memberId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListOrganizationMembersQueryKey(orgId) });
+          toast({ title: "Member removed", description: `${memberName || "Member"} has been removed from the organization.` });
+        },
+        onError: (error: any) => {
+          const status = error?.status;
+          const msg = error?.data?.error;
+          if (status === 403) {
+            toast({ variant: "destructive", title: "Permission denied", description: msg || "You don't have permission to remove this member." });
+          } else if (status === 404) {
+            toast({ variant: "destructive", title: "Not found", description: msg || "Member not found." });
+          } else {
+            toast({ variant: "destructive", title: "Remove failed", description: msg || "Could not remove member. Please try again." });
+          }
+        },
+      }
+    );
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 capitalize">{role}</Badge>;
+      case 'admin':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 capitalize">{role}</Badge>;
+      default:
+        return <Badge variant="outline" className="capitalize">{role}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+          <Users className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-serif font-bold">Team Members</h2>
+          <p className="text-sm text-muted-foreground">Manage who has access to this organization</p>
+        </div>
+      </div>
+
+      {canManage && (
+        <Card className="border-border/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-serif flex items-center gap-2">
+              <UserCheck className="h-4 w-4" /> Invite a Member
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="invite-email">Email address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="colleague@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  required
+                  disabled={addMember.isPending}
+                  className="h-10"
+                />
+              </div>
+              <div className="sm:w-36 space-y-1">
+                <Label htmlFor="invite-role">Role</Label>
+                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "admin" | "member")}>
+                  <SelectTrigger id="invite-role" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Member</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button type="submit" disabled={addMember.isPending || !inviteEmail.trim()} className="h-10">
+                  {addMember.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Invite
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
+          <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+        </div>
+      ) : !members || members.length === 0 ? (
+        <div className="border border-dashed rounded-xl p-12 text-center bg-card">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-1">No members yet</h3>
+          <p className="text-muted-foreground">Invite team members to collaborate on this organization.</p>
+        </div>
+      ) : (
+        <Card className="border-border/50">
+          <div className="divide-y divide-border/50">
+            {members.map(member => {
+              const isOwner = member.role === 'owner';
+              const isSelf = member.userId === user?.id;
+              const canModify = canManage && !isOwner && !isSelf;
+              return (
+                <div key={member.id} className="flex items-center gap-4 p-4 hover:bg-muted/20 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-serif font-bold">
+                    {(member.name || member.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{member.name || <span className="text-muted-foreground italic">No name</span>}</div>
+                    <div className="text-sm text-muted-foreground truncate">{member.email}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {canModify ? (
+                      <Select
+                        value={member.role}
+                        onValueChange={(v) => handleRoleChange(member.id, v as "admin" | "member")}
+                        disabled={updateMember.isPending}
+                      >
+                        <SelectTrigger className="h-8 w-28 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      getRoleBadge(member.role)
+                    )}
+                    {canModify && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRemove(member.id, member.name)}
+                        disabled={removeMember.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {isSelf && !isOwner && (
+                      <Badge variant="outline" className="text-xs">You</Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -323,7 +557,7 @@ function EngineList({
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href={createLink}>
             <Plus className="mr-2 h-4 w-4" /> {createLabel}
           </Link>

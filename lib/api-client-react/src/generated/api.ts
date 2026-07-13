@@ -39,6 +39,8 @@ import type {
   ElectionInput,
   ElectionResults,
   ElectionUpdate,
+  EligibleVoter,
+  EligibleVotersInput,
   ErrorResponse,
   Event,
   EventAnalytics,
@@ -53,6 +55,9 @@ import type {
   MessageResponse,
   Organization,
   OrganizationInput,
+  OrganizationMember,
+  OrganizationMemberInput,
+  OrganizationMemberUpdate,
   OrganizationStats,
   OrganizationUpdate,
   Position,
@@ -836,6 +841,302 @@ export function useGetOrganizationStats<TData = Awaited<ReturnType<typeof getOrg
 
 
 
+
+export const getListOrganizationMembersUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/members`
+}
+
+/**
+ * @summary List members of an organization (owner + invited team members)
+ */
+export const listOrganizationMembers = async (orgId: number, options?: RequestInit): Promise<OrganizationMember[]> => {
+
+  return customFetch<OrganizationMember[]>(getListOrganizationMembersUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrganizationMembersQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/members`
+    ] as const;
+    }
+
+
+export const getListOrganizationMembersQueryOptions = <TData = Awaited<ReturnType<typeof listOrganizationMembers>>, TError = ErrorType<unknown>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrganizationMembersQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrganizationMembers>>> = ({ signal }) => listOrganizationMembers(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrganizationMembers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrganizationMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listOrganizationMembers>>>
+export type ListOrganizationMembersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List members of an organization (owner + invited team members)
+ */
+
+export function useListOrganizationMembers<TData = Awaited<ReturnType<typeof listOrganizationMembers>>, TError = ErrorType<unknown>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrganizationMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrganizationMembersQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddOrganizationMemberUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/members`
+}
+
+/**
+ * @summary Invite/add a member to an organization by email
+ */
+export const addOrganizationMember = async (orgId: number,
+    organizationMemberInput: OrganizationMemberInput, options?: RequestInit): Promise<OrganizationMember> => {
+
+  return customFetch<OrganizationMember>(getAddOrganizationMemberUrl(orgId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(organizationMemberInput)
+  }
+);}
+
+
+
+
+
+export const getAddOrganizationMemberMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addOrganizationMember>>, TError,{orgId: number;data: BodyType<OrganizationMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addOrganizationMember>>, TError,{orgId: number;data: BodyType<OrganizationMemberInput>}, TContext> => {
+
+const mutationKey = ['addOrganizationMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addOrganizationMember>>, {orgId: number;data: BodyType<OrganizationMemberInput>}> = (props) => {
+          const {orgId,data} = props ?? {};
+
+          return  addOrganizationMember(orgId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddOrganizationMemberMutationResult = NonNullable<Awaited<ReturnType<typeof addOrganizationMember>>>
+    export type AddOrganizationMemberMutationBody = BodyType<OrganizationMemberInput>
+    export type AddOrganizationMemberMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Invite/add a member to an organization by email
+ */
+export const useAddOrganizationMember = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addOrganizationMember>>, TError,{orgId: number;data: BodyType<OrganizationMemberInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addOrganizationMember>>,
+        TError,
+        {orgId: number;data: BodyType<OrganizationMemberInput>},
+        TContext
+      > => {
+      return useMutation(getAddOrganizationMemberMutationOptions(options));
+    }
+
+export const getUpdateOrganizationMemberUrl = (orgId: number,
+    memberId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/members/${memberId}`
+}
+
+/**
+ * @summary Update a member's role
+ */
+export const updateOrganizationMember = async (orgId: number,
+    memberId: number,
+    organizationMemberUpdate: OrganizationMemberUpdate, options?: RequestInit): Promise<OrganizationMember> => {
+
+  return customFetch<OrganizationMember>(getUpdateOrganizationMemberUrl(orgId,memberId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(organizationMemberUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrganizationMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationMember>>, TError,{orgId: number;memberId: number;data: BodyType<OrganizationMemberUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationMember>>, TError,{orgId: number;memberId: number;data: BodyType<OrganizationMemberUpdate>}, TContext> => {
+
+const mutationKey = ['updateOrganizationMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrganizationMember>>, {orgId: number;memberId: number;data: BodyType<OrganizationMemberUpdate>}> = (props) => {
+          const {orgId,memberId,data} = props ?? {};
+
+          return  updateOrganizationMember(orgId,memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrganizationMemberMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrganizationMember>>>
+    export type UpdateOrganizationMemberMutationBody = BodyType<OrganizationMemberUpdate>
+    export type UpdateOrganizationMemberMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a member's role
+ */
+export const useUpdateOrganizationMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrganizationMember>>, TError,{orgId: number;memberId: number;data: BodyType<OrganizationMemberUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrganizationMember>>,
+        TError,
+        {orgId: number;memberId: number;data: BodyType<OrganizationMemberUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOrganizationMemberMutationOptions(options));
+    }
+
+export const getRemoveOrganizationMemberUrl = (orgId: number,
+    memberId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/members/${memberId}`
+}
+
+/**
+ * @summary Remove a member from an organization
+ */
+export const removeOrganizationMember = async (orgId: number,
+    memberId: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getRemoveOrganizationMemberUrl(orgId,memberId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveOrganizationMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeOrganizationMember>>, TError,{orgId: number;memberId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeOrganizationMember>>, TError,{orgId: number;memberId: number}, TContext> => {
+
+const mutationKey = ['removeOrganizationMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeOrganizationMember>>, {orgId: number;memberId: number}> = (props) => {
+          const {orgId,memberId} = props ?? {};
+
+          return  removeOrganizationMember(orgId,memberId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveOrganizationMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeOrganizationMember>>>
+
+    export type RemoveOrganizationMemberMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a member from an organization
+ */
+export const useRemoveOrganizationMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeOrganizationMember>>, TError,{orgId: number;memberId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeOrganizationMember>>,
+        TError,
+        {orgId: number;memberId: number},
+        TContext
+      > => {
+      return useMutation(getRemoveOrganizationMemberMutationOptions(options));
+    }
 
 export const getListElectionsUrl = (params?: ListElectionsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1970,6 +2271,305 @@ export const useSubmitVote = <TError = ErrorType<ErrorResponse>,
       return useMutation(getSubmitVoteMutationOptions(options));
     }
 
+export const getListEligibleVotersUrl = (electionId: number,) => {
+
+
+
+
+  return `/api/elections/${electionId}/eligible-voters`
+}
+
+/**
+ * @summary List the voter allowlist for an election
+ */
+export const listEligibleVoters = async (electionId: number, options?: RequestInit): Promise<EligibleVoter[]> => {
+
+  return customFetch<EligibleVoter[]>(getListEligibleVotersUrl(electionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEligibleVotersQueryKey = (electionId: number,) => {
+    return [
+    `/api/elections/${electionId}/eligible-voters`
+    ] as const;
+    }
+
+
+export const getListEligibleVotersQueryOptions = <TData = Awaited<ReturnType<typeof listEligibleVoters>>, TError = ErrorType<unknown>>(electionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEligibleVoters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEligibleVotersQueryKey(electionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEligibleVoters>>> = ({ signal }) => listEligibleVoters(electionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: electionId !== null && electionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEligibleVoters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEligibleVotersQueryResult = NonNullable<Awaited<ReturnType<typeof listEligibleVoters>>>
+export type ListEligibleVotersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the voter allowlist for an election
+ */
+
+export function useListEligibleVoters<TData = Awaited<ReturnType<typeof listEligibleVoters>>, TError = ErrorType<unknown>>(
+ electionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEligibleVoters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEligibleVotersQueryOptions(electionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddEligibleVotersUrl = (electionId: number,) => {
+
+
+
+
+  return `/api/elections/${electionId}/eligible-voters`
+}
+
+/**
+ * @summary Add one or more emails to the voter allowlist
+ */
+export const addEligibleVoters = async (electionId: number,
+    eligibleVotersInput: EligibleVotersInput, options?: RequestInit): Promise<EligibleVoter[]> => {
+
+  return customFetch<EligibleVoter[]>(getAddEligibleVotersUrl(electionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eligibleVotersInput)
+  }
+);}
+
+
+
+
+
+export const getAddEligibleVotersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEligibleVoters>>, TError,{electionId: number;data: BodyType<EligibleVotersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addEligibleVoters>>, TError,{electionId: number;data: BodyType<EligibleVotersInput>}, TContext> => {
+
+const mutationKey = ['addEligibleVoters'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addEligibleVoters>>, {electionId: number;data: BodyType<EligibleVotersInput>}> = (props) => {
+          const {electionId,data} = props ?? {};
+
+          return  addEligibleVoters(electionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddEligibleVotersMutationResult = NonNullable<Awaited<ReturnType<typeof addEligibleVoters>>>
+    export type AddEligibleVotersMutationBody = BodyType<EligibleVotersInput>
+    export type AddEligibleVotersMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add one or more emails to the voter allowlist
+ */
+export const useAddEligibleVoters = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEligibleVoters>>, TError,{electionId: number;data: BodyType<EligibleVotersInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addEligibleVoters>>,
+        TError,
+        {electionId: number;data: BodyType<EligibleVotersInput>},
+        TContext
+      > => {
+      return useMutation(getAddEligibleVotersMutationOptions(options));
+    }
+
+export const getRemoveEligibleVoterUrl = (electionId: number,
+    voterId: number,) => {
+
+
+
+
+  return `/api/elections/${electionId}/eligible-voters/${voterId}`
+}
+
+/**
+ * @summary Remove an email from the voter allowlist
+ */
+export const removeEligibleVoter = async (electionId: number,
+    voterId: number, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getRemoveEligibleVoterUrl(electionId,voterId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveEligibleVoterMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEligibleVoter>>, TError,{electionId: number;voterId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeEligibleVoter>>, TError,{electionId: number;voterId: number}, TContext> => {
+
+const mutationKey = ['removeEligibleVoter'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeEligibleVoter>>, {electionId: number;voterId: number}> = (props) => {
+          const {electionId,voterId} = props ?? {};
+
+          return  removeEligibleVoter(electionId,voterId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveEligibleVoterMutationResult = NonNullable<Awaited<ReturnType<typeof removeEligibleVoter>>>
+
+    export type RemoveEligibleVoterMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove an email from the voter allowlist
+ */
+export const useRemoveEligibleVoter = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEligibleVoter>>, TError,{electionId: number;voterId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeEligibleVoter>>,
+        TError,
+        {electionId: number;voterId: number},
+        TContext
+      > => {
+      return useMutation(getRemoveEligibleVoterMutationOptions(options));
+    }
+
+export const getExportElectionResultsUrl = (electionId: number,) => {
+
+
+
+
+  return `/api/elections/${electionId}/export`
+}
+
+/**
+ * @summary Export election results as CSV (organizer only)
+ */
+export const exportElectionResults = async (electionId: number, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportElectionResultsUrl(electionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportElectionResultsQueryKey = (electionId: number,) => {
+    return [
+    `/api/elections/${electionId}/export`
+    ] as const;
+    }
+
+
+export const getExportElectionResultsQueryOptions = <TData = Awaited<ReturnType<typeof exportElectionResults>>, TError = ErrorType<unknown>>(electionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportElectionResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportElectionResultsQueryKey(electionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportElectionResults>>> = ({ signal }) => exportElectionResults(electionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: electionId !== null && electionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportElectionResults>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportElectionResultsQueryResult = NonNullable<Awaited<ReturnType<typeof exportElectionResults>>>
+export type ExportElectionResultsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export election results as CSV (organizer only)
+ */
+
+export function useExportElectionResults<TData = Awaited<ReturnType<typeof exportElectionResults>>, TError = ErrorType<unknown>>(
+ electionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportElectionResults>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportElectionResultsQueryOptions(electionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetElectionResultsUrl = (electionId: number,) => {
 
 
@@ -3093,6 +3693,83 @@ export function useGetEventAnalytics<TData = Awaited<ReturnType<typeof getEventA
 
 
 
+export const getExportEventAttendeesUrl = (eventId: number,) => {
+
+
+
+
+  return `/api/events/${eventId}/export`
+}
+
+/**
+ * @summary Export attendee list as CSV (organizer only)
+ */
+export const exportEventAttendees = async (eventId: number, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportEventAttendeesUrl(eventId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportEventAttendeesQueryKey = (eventId: number,) => {
+    return [
+    `/api/events/${eventId}/export`
+    ] as const;
+    }
+
+
+export const getExportEventAttendeesQueryOptions = <TData = Awaited<ReturnType<typeof exportEventAttendees>>, TError = ErrorType<unknown>>(eventId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportEventAttendees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportEventAttendeesQueryKey(eventId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportEventAttendees>>> = ({ signal }) => exportEventAttendees(eventId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: eventId !== null && eventId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportEventAttendees>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportEventAttendeesQueryResult = NonNullable<Awaited<ReturnType<typeof exportEventAttendees>>>
+export type ExportEventAttendeesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export attendee list as CSV (organizer only)
+ */
+
+export function useExportEventAttendees<TData = Awaited<ReturnType<typeof exportEventAttendees>>, TError = ErrorType<unknown>>(
+ eventId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportEventAttendees>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportEventAttendeesQueryOptions(eventId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListCampaignsUrl = (params?: ListCampaignsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -3682,6 +4359,83 @@ export function useGetCampaignAnalytics<TData = Awaited<ReturnType<typeof getCam
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCampaignAnalyticsQueryOptions(campaignId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportCampaignSubmissionsUrl = (campaignId: number,) => {
+
+
+
+
+  return `/api/campaigns/${campaignId}/export`
+}
+
+/**
+ * @summary Export submissions as CSV (organizer only)
+ */
+export const exportCampaignSubmissions = async (campaignId: number, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportCampaignSubmissionsUrl(campaignId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportCampaignSubmissionsQueryKey = (campaignId: number,) => {
+    return [
+    `/api/campaigns/${campaignId}/export`
+    ] as const;
+    }
+
+
+export const getExportCampaignSubmissionsQueryOptions = <TData = Awaited<ReturnType<typeof exportCampaignSubmissions>>, TError = ErrorType<unknown>>(campaignId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportCampaignSubmissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportCampaignSubmissionsQueryKey(campaignId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportCampaignSubmissions>>> = ({ signal }) => exportCampaignSubmissions(campaignId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: campaignId !== null && campaignId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportCampaignSubmissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportCampaignSubmissionsQueryResult = NonNullable<Awaited<ReturnType<typeof exportCampaignSubmissions>>>
+export type ExportCampaignSubmissionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export submissions as CSV (organizer only)
+ */
+
+export function useExportCampaignSubmissions<TData = Awaited<ReturnType<typeof exportCampaignSubmissions>>, TError = ErrorType<unknown>>(
+ campaignId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportCampaignSubmissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportCampaignSubmissionsQueryOptions(campaignId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

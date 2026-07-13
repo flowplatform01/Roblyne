@@ -1,0 +1,298 @@
+Evenum — Production Review, Refinement & Completion Prompt
+IMPORTANT
+Before doing anything else, the file: Pasted-Evenum-Master-Build-Prompt-You-are-acting-as-a-senior-s_1783945450345.txt
+is  the original master build prompt as a separate file.
+That prompt remains the primary product specification and source of truth.
+Read it completely.
+Understand it.
+Follow it.
+Do not replace it.
+Do not reinterpret its philosophy.
+This prompt exists only to review the implementation against that specification, identify weaknesses, complete unfinished work, improve quality, and bring the application to a truly production-ready state.
+Your responsibility is not simply to generate code.
+Your responsibility is to critically inspect the entire project like a senior engineering team performing a production readiness review.
+Treat the existing implementation as an excellent starting point—not a finished product.
+Review every module.
+Review every workflow.
+Review every screen.
+Review every interaction.
+Review every architectural decision.
+If something can be improved while remaining aligned with the original vision, improve it.
+Never settle for "good enough."
+
+Primary Objective
+Transform the existing Evenum implementation into a polished, production-ready platform.
+Do not leave unfinished implementations.
+Do not leave placeholder experiences.
+Do not leave inconsistent interfaces.
+Do not leave broken workflows.
+Do not leave generic implementations where better solutions exist.
+The goal is excellence.
+
+Respect the Original Vision
+The attached master prompt defines:
+Product philosophy
+Architecture philosophy
+Product vision
+Platform principles
+Shared foundation
+Voting
+Events
+Campaigns
+Engineering standards
+Those remain authoritative.
+Do not remove or weaken any of them.
+Instead, improve the implementation wherever necessary.
+
+Perform a Complete Product Audit
+Do not assume the implementation is correct simply because it works.
+Audit every feature.
+Ask:
+Does this implementation truly represent the vision?
+Could it be cleaner?
+Could it be more intuitive?
+Could it be more professional?
+Could it be more maintainable?
+Could it scale better?
+If the answer is yes, improve it.
+
+Mobile Experience Must Become First-Class
+The application currently feels desktop-oriented.
+This is unacceptable.
+The platform must provide an outstanding experience across:
+Phones
+Tablets
+Laptops
+Desktop computers
+Every page.
+Every dialog.
+Every interaction.
+Every navigation pattern.
+Every card.
+Every table.
+Every form.
+Every public page.
+Everything must be fully responsive.
+Never simply shrink desktop layouts.
+Design responsive experiences intentionally.
+Mobile users should never feel like they are using a compressed desktop application.
+
+Eliminate URL-Based Image Inputs
+This is mandatory.
+Any feature that represents uploaded media must use proper file upload components.
+Never require users to paste image URLs.
+Replace URL image inputs with professional upload experiences.
+Examples include but are not limited to:
+Organization logos
+Profile photos
+Candidate photos
+Campaign covers
+Event banners
+Event galleries
+Voting banners
+Images throughout the application
+Provide intuitive upload interfaces.
+Support preview.
+Support replacement.
+Support removal.
+Support drag-and-drop where appropriate.
+Support mobile image selection.
+The experience must feel modern and professional.
+Only retain URL fields where URLs are genuinely part of the business data itself, such as:
+Meeting links
+External websites
+Social links
+Reference URLs
+Never use URLs as substitutes for media uploads.
+
+Eliminate Placeholder or Orphaned Content
+Inspect the seeded data.
+Ensure every event has meaningful content.
+Ensure every campaign has meaningful content.
+Ensure every voting activity has meaningful content.
+Ensure every organization has coherent data.
+Ensure images exist where appropriate.
+Avoid incomplete examples.
+Avoid orphaned relationships.
+Avoid inconsistent records.
+The demo experience should feel realistic and cohesive.
+
+Review Every User Journey
+Review every important workflow from beginning to end.
+Examples include:
+Organization onboarding
+Voting creation
+Voting participation
+Event creation
+Ticket purchase
+Registration
+Campaign creation
+Campaign participation
+Discovery
+Search
+Sharing
+Reports
+Exports
+Settings
+Authentication
+Profile management
+Deletion workflows
+Everything should feel complete.
+
+Strengthen Public-Facing Experiences
+This is one of the highest priorities.
+The public-facing interfaces are the product's showcase.
+Every public page must feel premium.
+Examples:
+Voting pages
+Candidate pages
+Event pages
+Campaign pages
+Organization pages
+Confirmation pages
+Registration pages
+Participation pages
+Success pages
+Do not create generic CRUD interfaces.
+Create beautiful presentation experiences.
+Excellent spacing.
+Excellent typography.
+Excellent visual hierarchy.
+Excellent responsiveness.
+Excellent accessibility.
+Excellent readability.
+The platform should create confidence immediately.
+
+Improve UI and UX Throughout
+Do not use generic SaaS templates.
+Do not generate repetitive layouts.
+Do not create boring dashboards.
+Design Evenum's own visual identity.
+Every component should feel cohesive.
+Every interaction should feel intentional.
+Every transition should feel natural.
+Every page should communicate professionalism.
+Build a product that people enjoy using.
+
+Remove Internal Terminology From User Interfaces
+The words:
+Engine
+Voting Engine
+Event Engine
+Campaign Engine
+These are architectural concepts.
+They should not appear in user-facing interfaces.
+Use natural product language instead.
+Architecture belongs behind the scenes.
+The user experiences a unified platform.
+
+Platform Administration
+Review platform administration carefully.
+Platform Administration is completely different from Organizations.
+Platform Administration represents Evenum itself.
+Platform Administrators manage:
+Organizations
+Users
+Moderation
+Verification
+Platform settings
+Platform analytics
+Platform health
+Abuse management
+Content oversight
+Support
+System management
+Everything built into Evenum should be manageable by Platform Administration.
+
+Organization Experience
+Organizations are customers.
+They are not platform administrators.
+Organizations manage only their own resources.
+Their own:
+Events
+Campaigns
+Voting
+Members
+Branding
+Reports
+Settings
+Nothing beyond their own workspace.
+Keep these responsibilities clearly separated.
+
+Public Participants
+Public participants represent everyone interacting with Evenum.
+They may:
+Browse
+Search
+Register
+Vote
+Attend
+Participate
+Purchase tickets
+Contribute
+Authenticate only when necessary.
+Never force unnecessary onboarding.
+
+Settings Experience
+Review account settings completely.
+Support a complete account management experience.
+Examples include:
+Profile management
+Password management
+Notification preferences
+Language preferences
+Organization settings
+Privacy settings
+Account deletion
+Data management
+Everything should feel complete.
+
+Reports and Exports
+Review every export.
+Review every report.
+Ensure exported information is useful.
+Ensure exported formats are professional.
+Support appropriate formats including:
+CSV
+Excel
+PDF where appropriate
+Organizations should always retain ownership of their data.
+
+Engineering Review
+Inspect the architecture.
+Inspect component reuse.
+Inspect backend structure.
+Inspect services.
+Inspect validation.
+Inspect security.
+Inspect performance.
+Inspect accessibility.
+Inspect maintainability.
+Inspect scalability.
+Refactor wherever necessary.
+Never keep weak implementations simply because they already exist.
+
+Quality Assurance
+Perform a complete review before considering the application complete.
+Find inconsistencies.
+Find edge cases.
+Find visual issues.
+Find responsiveness issues.
+Find accessibility issues.
+Find performance issues.
+Find unfinished functionality.
+Fix everything.
+Continue reviewing until the application meets production standards.
+
+Final Objective
+The goal is not simply to finish features.
+The goal is to deliver a production-ready Evenum that faithfully represents the original product vision while demonstrating exceptional engineering, thoughtful architecture, elegant design, polished user experience, and complete functionality.
+Approach this work with the mindset of a senior multidisciplinary product team performing the final production readiness review before launching Evenum to real organizations and real users.
+Take ownership of the quality of the product.
+Do not stop at implementation.
+Review.
+Refine.
+Improve.
+Validate.
+Polish.
+Deliver excellence.

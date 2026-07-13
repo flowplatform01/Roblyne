@@ -1,17 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout/Layout";
-import { useGetElection, useGetElectionResults } from "@workspace/api-client-react";
+import { useGetElection, useGetElectionResults, exportElectionResults } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Trophy, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Trophy, BarChart3, Download } from "lucide-react";
+import { useToast } from '@/hooks/use-toast';
 
 export default function ElectionResults() {
   const [match, params] = useRoute("/elections/:id/results");
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
+  const { toast } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: results, isLoading: isResultsLoading } = useGetElectionResults(electionId);
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const csvText = await exportElectionResults(electionId);
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `election-${electionId}-results.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "CSV exported successfully" });
+    } catch {
+      toast({ title: "Failed to export CSV", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isElectionLoading || isResultsLoading) {
     return (
@@ -35,6 +60,21 @@ export default function ElectionResults() {
           <Badge className="bg-white/10 text-white border-none mb-4 hover:bg-white/20">Official Results</Badge>
           <h1 className="text-4xl font-serif font-bold tracking-tight mb-4">{election.title}</h1>
           <p className="text-slate-400 text-lg">Total Votes Cast: <span className="text-white font-bold">{results.totalVotes}</span></p>
+          <div className="mt-6">
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Export Results CSV
+            </Button>
+          </div>
         </div>
       </div>
 

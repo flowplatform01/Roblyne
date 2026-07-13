@@ -30,7 +30,8 @@ const electionSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
   title: z.string().min(3, "Election title must be at least 3 characters"),
   description: z.string().optional(),
-  visibility: z.enum(["public", "private"]),
+  visibility: z.enum(["public", "private", "invite_only"]),
+  eligibilityMode: z.enum(["open", "allowlist"]),
   requiresAuth: z.boolean().default(false),
   startsAt: z.string().optional().or(z.literal("")),
   endsAt: z.string().optional().or(z.literal("")),
@@ -53,6 +54,7 @@ export default function CreateElection() {
       title: "",
       description: "",
       visibility: "public",
+      eligibilityMode: "open",
       requiresAuth: false,
       startsAt: "",
       endsAt: "",
@@ -67,6 +69,7 @@ export default function CreateElection() {
           title: values.title,
           description: values.description || undefined,
           visibility: values.visibility,
+          eligibilityMode: values.eligibilityMode,
           requiresAuth: values.requiresAuth,
           startsAt: values.startsAt ? new Date(values.startsAt).toISOString() : undefined,
           endsAt: values.endsAt ? new Date(values.endsAt).toISOString() : undefined,
@@ -81,11 +84,11 @@ export default function CreateElection() {
           });
           setLocation(`/elections/${election.id}`);
         },
-        onError: () => {
+        onError: (error: any) => {
           toast({
             variant: "destructive",
             title: "Creation failed",
-            description: "There was a problem creating the election. Please try again.",
+            description: error.data?.error || "There was a problem creating the election. Please try again.",
           });
         },
       }
@@ -218,19 +221,51 @@ export default function CreateElection() {
                       control={form.control}
                       name="visibility"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between space-y-0">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Public Visibility</FormLabel>
-                            <FormDescription>
-                              Allow this election to appear in discovery feeds
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value === "public"}
-                              onCheckedChange={(checked) => field.onChange(checked ? "public" : "private")}
-                            />
-                          </FormControl>
+                        <FormItem>
+                          <FormLabel>Election Visibility</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Select visibility" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="public">Public (Visible in discovery)</SelectItem>
+                              <SelectItem value="private">Private (Only accessible via link)</SelectItem>
+                              <SelectItem value="invite_only">Invite Only (Requires invite code)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Invite-only elections generate a secret code you share with allowed participants.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="border-t border-border/50" />
+
+                    <FormField
+                      control={form.control}
+                      name="eligibilityMode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Voter Eligibility</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Select eligibility mode" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="open">Open (Anyone can vote)</SelectItem>
+                              <SelectItem value="allowlist">Allowlist (Only approved emails can vote)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            With allowlist mode, you manage a list of approved voter emails after creating the election.
+                          </FormDescription>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />

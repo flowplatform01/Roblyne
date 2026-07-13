@@ -7,26 +7,41 @@ import {
   useCreatePosition,
   useUpdateElection,
   useListCandidates,
+  useCreateCandidate,
+  useDeleteCandidate,
   useGetElectionAnalytics,
+  useListEligibleVoters,
+  useAddEligibleVoters,
+  useRemoveEligibleVoter,
   getListPositionsQueryKey,
-  getGetElectionQueryKey
+  getGetElectionQueryKey,
+  getListEligibleVotersQueryKey,
+  getListCandidatesQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy } from "lucide-react";
+import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+const candidateSchema = z.object({
+  name: z.string().min(1, "Candidate name is required"),
+  bio: z.string().optional(),
+  platform: z.string().optional(),
+  photoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+});
 
 const positionSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -34,6 +49,7 @@ const positionSchema = z.object({
   maxSelections: z.coerce.number().min(1).default(1),
   sortOrder: z.coerce.number().default(0),
 });
+
 
 export default function ElectionDetail() {
   const [match, params] = useRoute("/elections/:id");
@@ -44,14 +60,25 @@ export default function ElectionDetail() {
 
   const [activeTab, setActiveTab] = useState("positions");
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
+  const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
+  const [candidatePositionId, setCandidatePositionId] = useState<number | null>(null);
+  const [voterEmailsInput, setVoterEmailsInput] = useState("");
 
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
   const { data: analytics, isLoading: isAnalyticsLoading } = useGetElectionAnalytics(electionId);
+  const { data: eligibleVoters, isLoading: isEligibleVotersLoading } = useListEligibleVoters(
+    electionId,
+    { query: { enabled: !!election && election.eligibilityMode === 'allowlist' } }
+  );
   
   const updateElection = useUpdateElection();
   const createPosition = useCreatePosition();
+  const createCandidate = useCreateCandidate();
+  const deleteCandidate = useDeleteCandidate();
+  const addEligibleVoters = useAddEligibleVoters();
+  const removeEligibleVoter = useRemoveEligibleVoter();
 
   const form = useForm<z.infer<typeof positionSchema>>({
     resolver: zodResolver(positionSchema),
@@ -60,6 +87,16 @@ export default function ElectionDetail() {
       description: "",
       maxSelections: 1,
       sortOrder: 0,
+    },
+  });
+
+  const candidateForm = useForm<z.infer<typeof candidateSchema>>({
+    resolver: zodResolver(candidateSchema),
+    defaultValues: {
+      name: "",
+      bio: "",
+      platform: "",
+      photoUrl: "",
     },
   });
 
@@ -96,6 +133,55 @@ export default function ElectionDetail() {
     );
   };
 
+  const handleCreateCandidate = (values: z.infer<typeof candidateSchema>) => {
+    if (!candidatePositionId) return;
+    createCandidate.mutate(
+      {
+        electionId,
+        data: {
+          positionId: candidatePositionId,
+          name: values.name,
+          bio: values.bio || undefined,
+          platform: values.platform || undefined,
+          photoUrl: values.photoUrl || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
+          setIsCandidateDialogOpen(false);
+          setCandidatePositionId(null);
+          candidateForm.reset();
+          toast({ title: "Candidate added" });
+        },
+        onError: (error: any) => {
+          toast({ variant: "destructive", title: "Failed to add candidate", description: error?.data?.error || "Please try again." });
+        },
+      }
+    );
+  };
+
+  const handleDeleteCandidate = (candidateId: number, candidateName: string) => {
+    deleteCandidate.mutate(
+      { electionId, candidateId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
+          toast({ title: "Candidate removed", description: `${candidateName} has been removed.` });
+        },
+        onError: (error: any) => {
+          toast({ variant: "destructive", title: "Failed to remove candidate", description: error?.data?.error || "Please try again." });
+        },
+      }
+    );
+  };
+
+  const openCandidateDialog = (positionId: number) => {
+    setCandidatePositionId(positionId);
+    candidateForm.reset();
+    setIsCandidateDialogOpen(true);
+  };
+
   const handleCreatePosition = (values: z.infer<typeof positionSchema>) => {
     createPosition.mutate(
       { electionId, data: values },
@@ -110,10 +196,55 @@ export default function ElectionDetail() {
     );
   };
 
+  const handleAddVoters = (e: React.FormEvent) => {
+    e.preventDefault();
+    const emails = voterEmailsInput
+      .split(/[\n,]+/)
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+    if (emails.length === 0) return;
+
+    addEligibleVoters.mutate(
+      { electionId, data: { emails } },
+      {
+        onSuccess: (added) => {
+          queryClient.invalidateQueries({ queryKey: getListEligibleVotersQueryKey(electionId) });
+          setVoterEmailsInput("");
+          toast({ title: `${added.length} voter(s) added to allowlist` });
+        },
+        onError: (error: any) => {
+          toast({ variant: "destructive", title: "Failed to add voters", description: error?.data?.error || "Please try again." });
+        }
+      }
+    );
+  };
+
+  const handleRemoveVoter = (voterId: number, email: string) => {
+    removeEligibleVoter.mutate(
+      { electionId, voterId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListEligibleVotersQueryKey(electionId) });
+          toast({ title: "Voter removed", description: `${email} has been removed from the allowlist.` });
+        },
+        onError: (error: any) => {
+          toast({ variant: "destructive", title: "Failed to remove voter", description: error?.data?.error || "Please try again." });
+        }
+      }
+    );
+  };
+
   const copyVotingLink = () => {
     const url = `${window.location.origin}/elections/${election.id}/vote`;
     navigator.clipboard.writeText(url);
     toast({ title: "Link copied to clipboard" });
+  };
+
+  const copyInviteCode = () => {
+    if (election.inviteCode) {
+      navigator.clipboard.writeText(election.inviteCode);
+      toast({ title: "Invite code copied to clipboard" });
+    }
   };
 
   const getStatusBadge = () => {
@@ -146,11 +277,28 @@ export default function ElectionDetail() {
             </div>
             {election.description && <p className="text-muted-foreground max-w-3xl mt-2">{election.description}</p>}
             
-            <div className="flex gap-4 mt-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Badge variant="outline">{election.visibility}</Badge></span>
+            <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><Badge variant="outline">{election.visibility.replace('_', ' ')}</Badge></span>
+              {election.eligibilityMode === 'allowlist' && (
+                <span className="flex items-center gap-1.5"><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><Shield className="h-3 w-3 mr-1" />Allowlist</Badge></span>
+              )}
               {election.requiresAuth && <span className="flex items-center gap-1.5"><Badge variant="outline">Requires Auth</Badge></span>}
               {election.startsAt && <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {format(new Date(election.startsAt), 'MMM d, yyyy h:mm a')}</span>}
             </div>
+
+            {/* Invite Code Banner */}
+            {election.visibility === 'invite_only' && election.inviteCode && (
+              <div className="mt-4 flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 max-w-md">
+                <Key className="h-5 w-5 text-amber-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-0.5">Invite Code (share with voters)</div>
+                  <div className="font-mono text-sm font-bold text-amber-900 dark:text-amber-200 truncate">{election.inviteCode}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={copyInviteCode} className="shrink-0 border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-800">
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Copy
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -204,6 +352,14 @@ export default function ElectionDetail() {
               >
                 Positions & Candidates
               </TabsTrigger>
+              {election.eligibilityMode === 'allowlist' && (
+                <TabsTrigger 
+                  value="voters" 
+                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                >
+                  Voter Allowlist
+                </TabsTrigger>
+              )}
               <TabsTrigger 
                 value="analytics" 
                 className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
@@ -308,7 +464,7 @@ export default function ElectionDetail() {
                           ) : (
                             <div className="divide-y">
                               {posCandidates.map(candidate => (
-                                <div key={candidate.id} className="p-4 flex items-center gap-4 hover:bg-muted/10 transition-colors">
+                                <div key={candidate.id} className="p-4 flex items-center gap-4 hover:bg-muted/10 transition-colors group">
                                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden">
                                     {candidate.photoUrl ? (
                                       <img src={candidate.photoUrl} alt={candidate.name} className="w-full h-full object-cover" />
@@ -316,21 +472,47 @@ export default function ElectionDetail() {
                                       <span className="font-serif font-bold text-lg">{candidate.name.charAt(0)}</span>
                                     )}
                                   </div>
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <h4 className="font-medium text-base">{candidate.name}</h4>
                                     {candidate.bio && <p className="text-sm text-muted-foreground line-clamp-1">{candidate.bio}</p>}
+                                    {candidate.platform && <p className="text-xs text-muted-foreground/70 line-clamp-1 italic mt-0.5">{candidate.platform}</p>}
                                   </div>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-all shrink-0"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove Candidate</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to remove {candidate.name} from this position? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          onClick={() => handleDeleteCandidate(candidate.id, candidate.name)}
+                                        >
+                                          Remove
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               ))}
                             </div>
                           )}
                         </CardContent>
                         <CardFooter className="bg-muted/10 p-3 border-t">
-                          <Button variant="ghost" size="sm" className="w-full" onClick={() => {
-                            // Basic interaction stub for adding candidate
-                            toast({ title: "Adding candidates coming soon" });
-                          }}>
-                            <Plus className="mr-2 h-4 w-4" /> Add Candidate
+                          <Button variant="ghost" size="sm" className="w-full" onClick={() => openCandidateDialog(position.id)}>
+                            <UserPlus className="mr-2 h-4 w-4" /> Add Candidate
                           </Button>
                         </CardFooter>
                       </Card>
@@ -339,6 +521,73 @@ export default function ElectionDetail() {
                 </div>
               )}
             </TabsContent>
+
+            {election.eligibilityMode === 'allowlist' && (
+              <TabsContent value="voters" className="mt-0 space-y-6">
+                <div>
+                  <h2 className="text-xl font-serif font-bold mb-1">Voter Allowlist</h2>
+                  <p className="text-sm text-muted-foreground">Only voters whose email is on this list will be permitted to cast a ballot.</p>
+                </div>
+
+                <Card className="border-border/50">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-base font-serif">Add Voters</CardTitle>
+                    <CardDescription>Enter email addresses separated by commas or new lines.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleAddVoters} className="space-y-3">
+                      <Textarea
+                        placeholder={"alice@example.com\nbob@example.com, carol@example.com"}
+                        className="min-h-[100px] font-mono text-sm"
+                        value={voterEmailsInput}
+                        onChange={e => setVoterEmailsInput(e.target.value)}
+                        disabled={addEligibleVoters.isPending}
+                      />
+                      <div className="flex justify-end">
+                        <Button type="submit" disabled={addEligibleVoters.isPending || !voterEmailsInput.trim()}>
+                          {addEligibleVoters.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          <Plus className="mr-2 h-4 w-4" /> Add to Allowlist
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {isEligibleVotersLoading ? (
+                  <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                ) : !eligibleVoters || eligibleVoters.length === 0 ? (
+                  <Card className="border-dashed bg-muted/20">
+                    <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                      <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium">No voters on the allowlist</h3>
+                      <p className="text-muted-foreground">Add voter emails above to grant them access to this election.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-border/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base font-serif">{eligibleVoters.length} Approved Voter{eligibleVoters.length !== 1 ? 's' : ''}</CardTitle>
+                    </CardHeader>
+                    <div className="divide-y divide-border/50">
+                      {eligibleVoters.map(voter => (
+                        <div key={voter.id} className="flex items-center justify-between px-6 py-3 hover:bg-muted/20 transition-colors">
+                          <span className="text-sm font-mono">{voter.email}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRemoveVoter(voter.id, voter.email)}
+                            disabled={removeEligibleVoter.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="analytics" className="mt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -398,10 +647,86 @@ export default function ElectionDetail() {
                 <span className="text-muted-foreground text-sm">Total Votes</span>
                 <span className="font-medium">{election.totalVotes || 0}</span>
               </div>
+              {election.eligibilityMode === 'allowlist' && (
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-muted-foreground text-sm">Allowlisted Voters</span>
+                  <span className="font-medium">{eligibleVoters?.length ?? '—'}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Add Candidate Dialog */}
+      <Dialog open={isCandidateDialogOpen} onOpenChange={(open) => {
+        setIsCandidateDialogOpen(open);
+        if (!open) { setCandidatePositionId(null); candidateForm.reset(); }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Candidate</DialogTitle>
+            <DialogDescription>
+              Add a candidate to this position. Provide their name and optional profile details.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...candidateForm}>
+            <form onSubmit={candidateForm.handleSubmit(handleCreateCandidate)} className="space-y-4">
+              <FormField
+                control={candidateForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Candidate Name</FormLabel>
+                    <FormControl><Input placeholder="e.g. Jane Smith" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={candidateForm.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Biography (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Brief background or experience..." className="resize-none" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={candidateForm.control}
+                name="platform"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Platform Statement (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Key goals and policy positions..." className="resize-none" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={candidateForm.control}
+                name="photoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Photo URL (Optional)</FormLabel>
+                    <FormControl><Input placeholder="https://example.com/photo.jpg" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsCandidateDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={createCandidate.isPending}>
+                  {createCandidate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Add Candidate
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

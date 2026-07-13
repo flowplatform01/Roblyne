@@ -189,7 +189,7 @@ export default function CampaignParticipate() {
             <CardTitle className="font-serif">Submit Information</CardTitle>
             <CardDescription>Please complete the form below.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 px-4 sm:px-6">
             <form id="campaign-form" onSubmit={handleSubmit} className="space-y-6">
               
               <div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-dashed">
@@ -221,7 +221,7 @@ export default function CampaignParticipate() {
                   {campaign.fields.map(field => (
                     <div key={field.id} className="space-y-2">
                       {field.type !== 'checkbox' && (
-                        <Label htmlFor={field.id} className="text-base">
+                        <Label htmlFor={field.id} className="text-base break-words">
                           {field.label} {field.required && <span className="text-destructive">*</span>}
                         </Label>
                       )}
@@ -232,7 +232,7 @@ export default function CampaignParticipate() {
               )}
             </form>
           </CardContent>
-          <CardFooter className="flex-col pt-2 pb-6 px-6 bg-muted/5 border-t gap-4">
+          <CardFooter className="flex-col pt-2 pb-6 px-4 sm:px-6 bg-muted/5 border-t gap-4">
             {campaign.requiresPayment && (
               <div className="w-full flex items-center justify-between p-4 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50 mb-2">
                 <div className="flex items-center gap-2">

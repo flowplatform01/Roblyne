@@ -1,14 +1,28 @@
+import { useState, useCallback } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDiscover, DiscoveryItemType } from "@workspace/api-client-react";
-import { Loader2, ArrowRight, Vote, CalendarDays, Megaphone, Search } from "lucide-react";
+import { useDiscover, useSearch, DiscoveryItemType } from "@workspace/api-client-react";
+import { Loader2, ArrowRight, Vote, CalendarDays, Megaphone, Search, X } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    const timer = setTimeout(() => setDebouncedQuery(value), 350);
+    return () => clearTimeout(timer);
+  }, []);
+
   const { data: discoverData, isLoading } = useDiscover();
+  const { data: searchData, isLoading: isSearchLoading } = useSearch(
+    { q: debouncedQuery },
+    { query: { enabled: debouncedQuery.length >= 2 } }
+  );
 
   return (
     <Layout>
@@ -56,14 +70,48 @@ export default function Home() {
               <div className="relative max-w-md w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input 
-                  type="text" 
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => handleSearchChange(e.target.value)}
                   placeholder="Search by organization or keyword..." 
-                  className="w-full pl-10 pr-4 py-3 rounded-md border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  className="w-full pl-10 pr-10 py-3 rounded-md border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setDebouncedQuery(""); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
 
-            {isLoading ? (
+            {debouncedQuery.length >= 2 ? (
+              /* Search Results Mode */
+              isSearchLoading ? (
+                <div className="flex items-center justify-center py-32">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary/50" />
+                </div>
+              ) : !searchData || searchData.items.length === 0 ? (
+                <div className="text-center py-24 bg-muted/30 rounded-xl border border-dashed">
+                  <Search className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-medium mb-2">No results for "{debouncedQuery}"</h3>
+                  <p className="text-muted-foreground">Try different keywords or browse all items below.</p>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-xl font-serif font-bold mb-6 text-muted-foreground">
+                    {searchData.total} result{searchData.total !== 1 ? 's' : ''} for "{debouncedQuery}"
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {searchData.items.map((item: any) => (
+                      <DiscoveryCard key={`${item.type}-${item.id}`} item={item} />
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : isLoading ? (
               <div className="flex items-center justify-center py-32">
                 <Loader2 className="h-12 w-12 animate-spin text-primary/50" />
               </div>
@@ -123,14 +171,15 @@ export default function Home() {
         </section>
         
         {/* Engines Showcase */}
-        <section className="py-24 bg-card border-y">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-3xl mx-auto mb-16">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Three Engines. One Platform.</h2>
-              <p className="text-muted-foreground text-lg">
-                Evenum unifies the tools organizations need to engage their members, manage attendance, and drive participation.
-              </p>
-            </div>
+        {!debouncedQuery && (
+          <section className="py-24 bg-card border-y">
+            <div className="container mx-auto px-4">
+              <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Built for Every Organization</h2>
+                <p className="text-muted-foreground text-lg">
+                  Evenum unifies the tools organizations need to engage their members, manage attendance, and drive participation.
+                </p>
+              </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-background rounded-xl p-8 shadow-sm border group hover:border-primary/50 transition-colors">
@@ -174,6 +223,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        )}
       </div>
     </Layout>
   );

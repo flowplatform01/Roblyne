@@ -183,12 +183,92 @@ export const GetOrganizationStatsResponse = zod.object({
 
 
 /**
+ * @summary List members of an organization (owner + invited team members)
+ */
+export const ListOrganizationMembersParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const ListOrganizationMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "userId": zod.number(),
+  "email": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "role": zod.enum(['owner', 'admin', 'member']),
+  "invitedAt": zod.coerce.date()
+})
+export const ListOrganizationMembersResponse = zod.array(ListOrganizationMembersResponseItem)
+
+
+/**
+ * @summary Invite/add a member to an organization by email
+ */
+export const AddOrganizationMemberParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const addOrganizationMemberBodyRoleDefault = `member`;
+
+export const AddOrganizationMemberBody = zod.object({
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'member']).default(addOrganizationMemberBodyRoleDefault)
+})
+
+export const AddOrganizationMemberResponse = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "userId": zod.number(),
+  "email": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "role": zod.enum(['owner', 'admin', 'member']),
+  "invitedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a member's role
+ */
+export const UpdateOrganizationMemberParams = zod.object({
+  "orgId": zod.coerce.number(),
+  "memberId": zod.coerce.number()
+})
+
+export const UpdateOrganizationMemberBody = zod.object({
+  "role": zod.enum(['admin', 'member'])
+})
+
+export const UpdateOrganizationMemberResponse = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "userId": zod.number(),
+  "email": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "role": zod.enum(['owner', 'admin', 'member']),
+  "invitedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a member from an organization
+ */
+export const RemoveOrganizationMemberParams = zod.object({
+  "orgId": zod.coerce.number(),
+  "memberId": zod.coerce.number()
+})
+
+export const RemoveOrganizationMemberResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary List elections (optionally filtered by org)
  */
 export const ListElectionsQueryParams = zod.object({
   "orgId": zod.coerce.number().optional(),
   "status": zod.enum(['draft', 'active', 'ended']).optional(),
-  "visibility": zod.enum(['public', 'private']).optional()
+  "visibility": zod.enum(['public', 'private', 'invite_only']).optional()
 })
 
 export const ListElectionsResponseItem = zod.object({
@@ -198,8 +278,10 @@ export const ListElectionsResponseItem = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'active', 'ended']),
-  "visibility": zod.enum(['public', 'private']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "totalVotes": zod.number().optional(),
@@ -216,13 +298,15 @@ export const ListElectionsResponse = zod.array(ListElectionsResponseItem)
 
 export const createElectionBodyVisibilityDefault = `public`;
 export const createElectionBodyRequiresAuthDefault = false;
+export const createElectionBodyEligibilityModeDefault = `open`;
 
 export const CreateElectionBody = zod.object({
   "orgId": zod.number(),
   "title": zod.string().min(1),
   "description": zod.string().optional(),
-  "visibility": zod.enum(['public', 'private']).default(createElectionBodyVisibilityDefault),
+  "visibility": zod.enum(['public', 'private', 'invite_only']).default(createElectionBodyVisibilityDefault),
   "requiresAuth": zod.boolean().default(createElectionBodyRequiresAuthDefault),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).default(createElectionBodyEligibilityModeDefault),
   "startsAt": zod.coerce.date().optional(),
   "endsAt": zod.coerce.date().optional()
 })
@@ -234,8 +318,10 @@ export const CreateElectionResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'active', 'ended']),
-  "visibility": zod.enum(['public', 'private']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "totalVotes": zod.number().optional(),
@@ -259,8 +345,10 @@ export const GetElectionResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'active', 'ended']),
-  "visibility": zod.enum(['public', 'private']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "totalVotes": zod.number().optional(),
@@ -284,8 +372,9 @@ export const UpdateElectionBody = zod.object({
   "title": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "status": zod.enum(['draft', 'active', 'ended']).optional(),
-  "visibility": zod.enum(['public', 'private']).optional(),
+  "visibility": zod.enum(['public', 'private', 'invite_only']).optional(),
   "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
   "startsAt": zod.coerce.date().optional(),
   "endsAt": zod.coerce.date().optional()
 })
@@ -297,8 +386,10 @@ export const UpdateElectionResponse = zod.object({
   "title": zod.string(),
   "description": zod.string().nullish(),
   "status": zod.enum(['draft', 'active', 'ended']),
-  "visibility": zod.enum(['public', 'private']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "totalVotes": zod.number().optional(),
@@ -535,6 +626,8 @@ export const SubmitVoteParams = zod.object({
 })
 
 export const SubmitVoteBody = zod.object({
+  "voterEmail": zod.string().optional().describe('Required when the election uses allowlist eligibility and the voter is not authenticated'),
+  "inviteCode": zod.string().optional().describe('Required when the election visibility is invite_only'),
   "selections": zod.array(zod.object({
   "positionId": zod.number(),
   "candidateIds": zod.array(zod.number())
@@ -544,6 +637,66 @@ export const SubmitVoteBody = zod.object({
 export const SubmitVoteResponse = zod.object({
   "message": zod.string()
 })
+
+
+/**
+ * @summary List the voter allowlist for an election
+ */
+export const ListEligibleVotersParams = zod.object({
+  "electionId": zod.coerce.number()
+})
+
+export const ListEligibleVotersResponseItem = zod.object({
+  "id": zod.number(),
+  "electionId": zod.number(),
+  "email": zod.string()
+})
+export const ListEligibleVotersResponse = zod.array(ListEligibleVotersResponseItem)
+
+
+/**
+ * @summary Add one or more emails to the voter allowlist
+ */
+export const AddEligibleVotersParams = zod.object({
+  "electionId": zod.coerce.number()
+})
+
+
+
+
+export const AddEligibleVotersBody = zod.object({
+  "emails": zod.array(zod.string()).min(1)
+})
+
+export const AddEligibleVotersResponseItem = zod.object({
+  "id": zod.number(),
+  "electionId": zod.number(),
+  "email": zod.string()
+})
+export const AddEligibleVotersResponse = zod.array(AddEligibleVotersResponseItem)
+
+
+/**
+ * @summary Remove an email from the voter allowlist
+ */
+export const RemoveEligibleVoterParams = zod.object({
+  "electionId": zod.coerce.number(),
+  "voterId": zod.coerce.number()
+})
+
+export const RemoveEligibleVoterResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Export election results as CSV (organizer only)
+ */
+export const ExportElectionResultsParams = zod.object({
+  "electionId": zod.coerce.number()
+})
+
+export const ExportElectionResultsResponse = zod.unknown()
 
 
 /**
@@ -614,6 +767,7 @@ export const ListEventsResponseItem = zod.object({
   "onlineUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'published', 'cancelled', 'completed']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "capacity": zod.number().nullish(),
@@ -657,6 +811,7 @@ export const CreateEventResponse = zod.object({
   "onlineUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'published', 'cancelled', 'completed']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "capacity": zod.number().nullish(),
@@ -685,6 +840,7 @@ export const GetEventResponse = zod.object({
   "onlineUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'published', 'cancelled', 'completed']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "capacity": zod.number().nullish(),
@@ -730,6 +886,7 @@ export const UpdateEventResponse = zod.object({
   "onlineUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'published', 'cancelled', 'completed']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
   "capacity": zod.number().nullish(),
@@ -881,6 +1038,7 @@ export const RegisterForEventBody = zod.object({
   "ticketTypeId": zod.number(),
   "attendeeName": zod.string().min(1),
   "attendeeEmail": zod.string(),
+  "inviteCode": zod.string().optional().describe('Required when the event visibility is invite_only'),
   "quantity": zod.number().min(1).default(registerForEventBodyQuantityDefault)
 })
 
@@ -970,6 +1128,16 @@ export const GetEventAnalyticsResponse = zod.object({
   "count": zod.number()
 }))
 })
+
+
+/**
+ * @summary Export attendee list as CSV (organizer only)
+ */
+export const ExportEventAttendeesParams = zod.object({
+  "eventId": zod.coerce.number()
+})
+
+export const ExportEventAttendeesResponse = zod.unknown()
 
 
 /**
@@ -1253,13 +1421,25 @@ export const GetCampaignAnalyticsResponse = zod.object({
 
 
 /**
+ * @summary Export submissions as CSV (organizer only)
+ */
+export const ExportCampaignSubmissionsParams = zod.object({
+  "campaignId": zod.coerce.number()
+})
+
+export const ExportCampaignSubmissionsResponse = zod.unknown()
+
+
+/**
  * @summary Discover public content across all engines
  */
 export const discoverQueryLimitDefault = 24;
+export const discoverQuerySortDefault = `newest`;
 
 export const DiscoverQueryParams = zod.object({
   "type": zod.enum(['all', 'elections', 'events', 'campaigns']).optional(),
-  "limit": zod.coerce.number().default(discoverQueryLimitDefault)
+  "limit": zod.coerce.number().default(discoverQueryLimitDefault),
+  "sort": zod.enum(['newest', 'trending', 'popular']).default(discoverQuerySortDefault)
 })
 
 export const DiscoverResponse = zod.object({

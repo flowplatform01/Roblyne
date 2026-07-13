@@ -27,6 +27,8 @@ import CreateCampaign from '@/pages/CreateCampaign';
 import CampaignDetail from '@/pages/CampaignDetail';
 import CampaignParticipate from '@/pages/CampaignParticipate';
 
+import Settings from '@/pages/Settings';
+
 const queryClient = new QueryClient();
 
 function Router() {
@@ -57,6 +59,9 @@ function Router() {
       <Route path="/campaigns/new" component={CreateCampaign} />
       <Route path="/campaigns/:id" component={CampaignDetail} />
       <Route path="/campaigns/:id/participate" component={CampaignParticipate} />
+
+      {/* Settings */}
+      <Route path="/settings" component={Settings} />
 
       <Route component={NotFound} />
     </Switch>

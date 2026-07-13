@@ -25,6 +25,7 @@ router.get("/discover", async (req, res): Promise<void> => {
   const queryParsed = DiscoverQueryParams.safeParse(req.query);
   const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
   const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
+  const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
 
   const items: any[] = [];
 
@@ -58,8 +59,19 @@ router.get("/discover", async (req, res): Promise<void> => {
     }
   }
 
-  // Sort by createdAt descending
-  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  if (sort === "trending" || sort === "popular") {
+    // "Trending" weighs recency alongside participation; "popular" is pure participant count.
+    items.sort((a, b) => {
+      if (sort === "popular") return b.participantsCount - a.participantsCount;
+      const score = (i: typeof a) => {
+        const ageHours = Math.max(1, (Date.now() - new Date(i.createdAt).getTime()) / 3_600_000);
+        return i.participantsCount / Math.pow(ageHours, 0.5);
+      };
+      return score(b) - score(a);
+    });
+  } else {
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
 
   const featured = items.filter(i => i.status === "active" || i.status === "published").slice(0, 4);
   const trending = [...items].sort((a, b) => b.participantsCount - a.participantsCount).slice(0, 4);

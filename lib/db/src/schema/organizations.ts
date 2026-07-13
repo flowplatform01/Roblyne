@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -14,6 +14,22 @@ export const organizationsTable = pgTable("organizations", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Team membership: every org automatically has its owner as an implicit "owner" member.
+// Additional members are explicit rows here with a role granting scoped permissions.
+export const organizationMembersTable = pgTable("organization_members", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("member"), // admin | member (owner is tracked via organizations.ownerId)
+  invitedAt: timestamp("invited_at").notNull().defaultNow(),
+}, (table) => ({
+  orgUserUnique: uniqueIndex("org_members_org_user_unique").on(table.orgId, table.userId),
+}));
+
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true });
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Organization = typeof organizationsTable.$inferSelect;
+
+export const insertOrganizationMemberSchema = createInsertSchema(organizationMembersTable).omit({ id: true, invitedAt: true });
+export type InsertOrganizationMember = z.infer<typeof insertOrganizationMemberSchema>;
+export type OrganizationMember = typeof organizationMembersTable.$inferSelect;

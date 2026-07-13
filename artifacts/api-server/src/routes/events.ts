@@ -8,12 +8,18 @@ import {
   RegisterForEventParams, RegisterForEventBody,
   ListAttendeesParams,
   CheckInAttendeeParams, CheckInAttendeeBody,
-  GetEventAnalyticsParams,
+  GetEventAnalyticsParams, ExportEventAttendeesParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
 
 const router: IRouter = Router();
+
+function toCsvValue(value: unknown): string {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 // List events
 router.get("/events", async (req, res): Promise<void> => {
@@ -44,10 +50,11 @@ router.post("/events", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, location, isOnline, onlineUrl, visibility, startsAt, endsAt, capacity } = parsed.data;
+  const inviteCode = visibility === "invite_only" ? uuidv4().replace(/-/g, "").substring(0, 10).toUpperCase() : null;
   const [event] = await db.insert(eventsTable).values({
     orgId, title, description, coverImageUrl, location,
     isOnline: isOnline ?? false, onlineUrl, visibility: visibility ?? "public",
-    startsAt, endsAt, capacity,
+    inviteCode, startsAt, endsAt, capacity,
   }).returning();
   res.status(201).json({ ...event, organizationName: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
@@ -144,9 +151,16 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   const bodyParsed = RegisterForEventBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
-  const { ticketTypeId, attendeeName, attendeeEmail } = bodyParsed.data;
+  const { ticketTypeId, attendeeName, attendeeEmail, inviteCode } = bodyParsed.data;
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+
+  if (event.visibility === "invite_only") {
+    if (!inviteCode || inviteCode !== event.inviteCode) {
+      res.status(403).json({ error: "A valid invite code is required to register for this event" });
+      return;
+    }
+  }
 
   const ticketCode = uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase();
   const [ticket] = await db.insert(ticketsTable).values({
@@ -234,6 +248,33 @@ router.get("/events/:eventId/analytics", requireAuth, async (req, res): Promise<
     ticketsByType,
     registrationsByDay: (regByDay.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });
+});
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+
+router.get("/events/:eventId/export", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+  const parsed = ExportEventAttendeesParams.safeParse({ eventId: parseInt(rawId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const attendees = await db
+    .select({ ticket: ticketsTable, ticketTypeName: ticketTypesTable.name })
+    .from(ticketsTable)
+    .leftJoin(ticketTypesTable, eq(ticketsTable.ticketTypeId, ticketTypesTable.id))
+    .where(eq(ticketsTable.eventId, parsed.data.eventId));
+
+  const rows = [["Name", "Email", "Ticket Type", "Ticket Code", "Status", "Checked In At", "Issued At"]];
+  for (const { ticket, ticketTypeName } of attendees) {
+    rows.push([
+      ticket.attendeeName, ticket.attendeeEmail, ticketTypeName ?? "", ticket.ticketCode,
+      ticket.status, ticket.checkedInAt ? new Date(ticket.checkedInAt).toISOString() : "",
+      new Date(ticket.issuedAt).toISOString(),
+    ]);
+  }
+  const csv = rows.map(r => r.map(toCsvValue).join(",")).join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="event-${parsed.data.eventId}-attendees.csv"`);
+  res.send(csv);
 });
 
 export default router;

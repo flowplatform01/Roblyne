@@ -16,7 +16,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-serif font-bold tracking-tight">Your Organizations</h1>
-            <p className="text-muted-foreground">Manage your workspaces and access their engines.</p>
+            <p className="text-muted-foreground">Manage your workspaces and activities.</p>
           </div>
           <Button asChild>
             <Link href="/organizations/new">

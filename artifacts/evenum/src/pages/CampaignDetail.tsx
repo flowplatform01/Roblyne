@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRoute, Link } from "wouter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { 
@@ -6,13 +6,15 @@ import {
   useUpdateCampaign,
   useListCampaignSubmissions,
   useGetCampaignAnalytics,
-  getGetCampaignQueryKey
+  getGetCampaignQueryKey,
+  exportCampaignSubmissions
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +27,8 @@ export default function CampaignDetail() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("submissions");
+  const [isExporting, setIsExporting] = useState(false);
+  const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const { data: submissions, isLoading: isSubmissionsLoading } = useListCampaignSubmissions(campaignId);
@@ -63,6 +67,27 @@ export default function CampaignDetail() {
         }
       }
     );
+  };
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const csvText = await exportCampaignSubmissions(campaignId);
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `campaign-${campaignId}-submissions.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "CSV exported successfully" });
+    } catch {
+      toast({ title: "Failed to export CSV", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const copyFormLink = () => {
@@ -208,7 +233,9 @@ export default function CampaignDetail() {
                               </td>
                             )}
                             <td className="px-4 py-3 text-right">
-                              <Button variant="ghost" size="sm">View Data</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setViewingSubmission(sub)}>
+                                <Eye className="mr-1.5 h-3.5 w-3.5" /> View
+                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -326,6 +353,59 @@ export default function CampaignDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Submission Data Viewer */}
+      <Dialog open={!!viewingSubmission} onOpenChange={(open) => { if (!open) setViewingSubmission(null); }}>
+        <DialogContent className="sm:max-w-[560px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submission Details</DialogTitle>
+          </DialogHeader>
+          {viewingSubmission && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Name</p>
+                  <p className="font-medium">{viewingSubmission.submitterName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Email</p>
+                  <p className="font-medium text-sm">{viewingSubmission.submitterEmail || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Submitted</p>
+                  <p className="font-medium text-sm">{viewingSubmission.submittedAt ? format(new Date(viewingSubmission.submittedAt), 'PPP p') : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+                  <Badge variant={viewingSubmission.status === 'confirmed' ? 'default' : 'secondary'}>
+                    {viewingSubmission.status || 'pending'}
+                  </Badge>
+                </div>
+              </div>
+
+              {viewingSubmission.data && Object.keys(viewingSubmission.data).length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-semibold mb-3">Form Responses</h4>
+                  <div className="space-y-3">
+                    {Object.entries(viewingSubmission.data).map(([key, value]) => (
+                      <div key={key} className="border rounded-md p-3">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{key.replace(/_/g, ' ')}</p>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {Array.isArray(value) ? value.join(', ') : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value) || '—'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No form response data on this submission.
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

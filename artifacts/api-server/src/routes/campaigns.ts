@@ -5,11 +5,17 @@ import {
   CreateCampaignBody, UpdateCampaignBody, GetCampaignParams, UpdateCampaignParams, DeleteCampaignParams, ListCampaignsQueryParams,
   SubmitCampaignResponseParams, SubmitCampaignResponseBody,
   ListCampaignSubmissionsParams,
-  GetCampaignAnalyticsParams,
+  GetCampaignAnalyticsParams, ExportCampaignSubmissionsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
+import { requireResourceOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
+
+function toCsvValue(value: unknown): string {
+  const s = String(value ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 function campaignRow(campaign: any, orgName: string | null, submissionsCount: number) {
   return {
@@ -158,6 +164,33 @@ router.get("/campaigns/:campaignId/analytics", requireAuth, async (req, res): Pr
     goalProgress: goalAmount && goalAmount > 0 ? Math.round((currentAmount / goalAmount) * 1000) / 10 : null,
     submissionsByDay: (byDay.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });
+});
+
+// ── EXPORT ─────────────────────────────────────────────────────────────────
+
+router.get("/campaigns/:campaignId/export", requireAuth, requireResourceOrgRole(campaignsTable, "campaignId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
+  const parsed = ExportCampaignSubmissionsParams.safeParse({ campaignId: parseInt(rawId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1);
+  const submissions = await db.select().from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId));
+
+  const fieldIds = (campaign?.fields as { id: string; label: string }[] | null) ?? [];
+  const header = ["Name", "Email", "Amount Paid", "Status", "Submitted At", ...fieldIds.map(f => f.label)];
+  const rows = [header];
+  for (const s of submissions) {
+    const data = (s.data as Record<string, unknown>) ?? {};
+    rows.push([
+      s.submitterName, s.submitterEmail, s.amountPaid ? String(parseFloat(s.amountPaid)) : "",
+      s.status, new Date(s.submittedAt).toISOString(),
+      ...fieldIds.map(f => String(data[f.id] ?? "")),
+    ]);
+  }
+  const csv = rows.map(r => r.map(toCsvValue).join(",")).join("\n");
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="campaign-${parsed.data.campaignId}-submissions.csv"`);
+  res.send(csv);
 });
 
 export default router;

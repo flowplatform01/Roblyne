@@ -1,11 +1,23 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import session from "express-session";
 import pinoHttp from "pino-http";
+import { apiLimiter, authLimiter, writeLimiter } from "./middlewares/rateLimit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// Trust reverse proxy headers (Replit routes traffic through a proxy)
+app.set("trust proxy", 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // frontend served separately behind Vite/its own CSP
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 
 app.use(
   pinoHttp({
@@ -47,6 +59,9 @@ app.use(
   }),
 );
 
+app.use("/api", apiLimiter);
+app.use("/api/auth", authLimiter);
+app.use("/api", writeLimiter);
 app.use("/api", router);
 
 export default app;

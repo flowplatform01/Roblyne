@@ -222,6 +222,116 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrganizationStats"
 
+  /organizations/{orgId}/members:
+    get:
+      operationId: listOrganizationMembers
+      tags: [organizations]
+      summary: List members of an organization (owner + invited team members)
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Members list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrganizationMember"
+
+    post:
+      operationId: addOrganizationMember
+      tags: [organizations]
+      summary: Invite/add a member to an organization by email
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationMemberInput"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationMember"
+        "404":
+          description: No user with that email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /organizations/{orgId}/members/{memberId}:
+    patch:
+      operationId: updateOrganizationMember
+      tags: [organizations]
+      summary: Update a member's role
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationMemberUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationMember"
+
+    delete:
+      operationId: removeOrganizationMember
+      tags: [organizations]
+      summary: Remove a member from an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   # ── ELECTIONS ──────────────────────────────────────────────────────────────
   /elections:
     get:
@@ -242,7 +352,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [public, private]
+            enum: [public, private, invite_only]
       responses:
         "200":
           description: Elections list
@@ -591,6 +701,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /elections/{electionId}/eligible-voters:
+    get:
+      operationId: listEligibleVoters
+      tags: [elections]
+      summary: List the voter allowlist for an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Eligible voters list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EligibleVoter"
+
+    post:
+      operationId: addEligibleVoters
+      tags: [elections]
+      summary: Add one or more emails to the voter allowlist
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibleVotersInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EligibleVoter"
+
+  /elections/{electionId}/eligible-voters/{voterId}:
+    delete:
+      operationId: removeEligibleVoter
+      tags: [elections]
+      summary: Remove an email from the voter allowlist
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: voterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /elections/{electionId}/export:
+    get:
+      operationId: exportElectionResults
+      tags: [elections]
+      summary: Export election results as CSV (organizer only)
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
 
   /elections/{electionId}/results:
     get:
@@ -946,6 +1146,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventAnalytics"
 
+  /events/{eventId}/export:
+    get:
+      operationId: exportEventAttendees
+      tags: [events]
+      summary: Export attendee list as CSV (organizer only)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
   # ── CAMPAIGNS ─────────────────────────────────────────────────────────────
   /campaigns:
     get:
@@ -1132,6 +1351,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/CampaignAnalytics"
 
+  /campaigns/{campaignId}/export:
+    get:
+      operationId: exportCampaignSubmissions
+      tags: [campaigns]
+      summary: Export submissions as CSV (organizer only)
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
   # ── DISCOVERY ─────────────────────────────────────────────────────────────
   /discover:
     get:
@@ -1149,6 +1387,12 @@ paths:
           schema:
             type: integer
             default: 24
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, trending, popular]
+            default: newest
       responses:
         "200":
           description: Discovery feed
@@ -1334,9 +1578,14 @@ components:
           enum: [draft, active, ended]
         visibility:
           type: string
-          enum: [public, private]
+          enum: [public, private, invite_only]
         requiresAuth:
           type: boolean
+        eligibilityMode:
+          type: string
+          enum: [open, allowlist]
+        inviteCode:
+          type: ["string", "null"]
         startsAt:
           type: ["string", "null"]
           format: date-time
@@ -1366,11 +1615,15 @@ components:
           type: string
         visibility:
           type: string
-          enum: [public, private]
+          enum: [public, private, invite_only]
           default: public
         requiresAuth:
           type: boolean
           default: false
+        eligibilityMode:
+          type: string
+          enum: [open, allowlist]
+          default: open
         startsAt:
           type: string
           format: date-time
@@ -1391,15 +1644,79 @@ components:
           enum: [draft, active, ended]
         visibility:
           type: string
-          enum: [public, private]
+          enum: [public, private, invite_only]
         requiresAuth:
           type: boolean
+        eligibilityMode:
+          type: string
+          enum: [open, allowlist]
         startsAt:
           type: string
           format: date-time
         endsAt:
           type: string
           format: date-time
+
+    EligibleVoter:
+      type: object
+      required: [id, electionId, email]
+      properties:
+        id:
+          type: integer
+        electionId:
+          type: integer
+        email:
+          type: string
+
+    EligibleVotersInput:
+      type: object
+      required: [emails]
+      properties:
+        emails:
+          type: array
+          items:
+            type: string
+          minItems: 1
+
+    OrganizationMember:
+      type: object
+      required: [id, orgId, userId, role, invitedAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        userId:
+          type: integer
+        email:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [owner, admin, member]
+        invitedAt:
+          type: string
+          format: date-time
+
+    OrganizationMemberInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, member]
+          default: member
+
+    OrganizationMemberUpdate:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [admin, member]
 
     Position:
       type: object
@@ -1502,6 +1819,12 @@ components:
       type: object
       required: [selections]
       properties:
+        voterEmail:
+          type: string
+          description: Required when the election uses allowlist eligibility and the voter is not authenticated
+        inviteCode:
+          type: string
+          description: Required when the election visibility is invite_only
         selections:
           type: array
           items:
@@ -1612,6 +1935,8 @@ components:
         visibility:
           type: string
           enum: [public, private, invite_only]
+        inviteCode:
+          type: ["string", "null"]
         startsAt:
           type: ["string", "null"]
           format: date-time
@@ -1779,6 +2104,9 @@ components:
           minLength: 1
         attendeeEmail:
           type: string
+        inviteCode:
+          type: string
+          description: Required when the event visibility is invite_only
 
         quantity:
           type: integer

@@ -94,6 +94,15 @@ export type ElectionVisibility = typeof ElectionVisibility[keyof typeof Election
 export const ElectionVisibility = {
   public: 'public',
   private: 'private',
+  invite_only: 'invite_only',
+} as const;
+
+export type ElectionEligibilityMode = typeof ElectionEligibilityMode[keyof typeof ElectionEligibilityMode];
+
+
+export const ElectionEligibilityMode = {
+  open: 'open',
+  allowlist: 'allowlist',
 } as const;
 
 export interface Election {
@@ -107,6 +116,9 @@ export interface Election {
   status: ElectionStatus;
   visibility: ElectionVisibility;
   requiresAuth?: boolean;
+  eligibilityMode?: ElectionEligibilityMode;
+  /** @nullable */
+  inviteCode?: string | null;
   /** @nullable */
   startsAt?: string | null;
   /** @nullable */
@@ -123,6 +135,15 @@ export type ElectionInputVisibility = typeof ElectionInputVisibility[keyof typeo
 export const ElectionInputVisibility = {
   public: 'public',
   private: 'private',
+  invite_only: 'invite_only',
+} as const;
+
+export type ElectionInputEligibilityMode = typeof ElectionInputEligibilityMode[keyof typeof ElectionInputEligibilityMode];
+
+
+export const ElectionInputEligibilityMode = {
+  open: 'open',
+  allowlist: 'allowlist',
 } as const;
 
 export interface ElectionInput {
@@ -132,6 +153,7 @@ export interface ElectionInput {
   description?: string;
   visibility?: ElectionInputVisibility;
   requiresAuth?: boolean;
+  eligibilityMode?: ElectionInputEligibilityMode;
   startsAt?: string;
   endsAt?: string;
 }
@@ -151,6 +173,15 @@ export type ElectionUpdateVisibility = typeof ElectionUpdateVisibility[keyof typ
 export const ElectionUpdateVisibility = {
   public: 'public',
   private: 'private',
+  invite_only: 'invite_only',
+} as const;
+
+export type ElectionUpdateEligibilityMode = typeof ElectionUpdateEligibilityMode[keyof typeof ElectionUpdateEligibilityMode];
+
+
+export const ElectionUpdateEligibilityMode = {
+  open: 'open',
+  allowlist: 'allowlist',
 } as const;
 
 export interface ElectionUpdate {
@@ -160,8 +191,66 @@ export interface ElectionUpdate {
   status?: ElectionUpdateStatus;
   visibility?: ElectionUpdateVisibility;
   requiresAuth?: boolean;
+  eligibilityMode?: ElectionUpdateEligibilityMode;
   startsAt?: string;
   endsAt?: string;
+}
+
+export interface EligibleVoter {
+  id: number;
+  electionId: number;
+  email: string;
+}
+
+export interface EligibleVotersInput {
+  /** @minItems 1 */
+  emails: string[];
+}
+
+export type OrganizationMemberRole = typeof OrganizationMemberRole[keyof typeof OrganizationMemberRole];
+
+
+export const OrganizationMemberRole = {
+  owner: 'owner',
+  admin: 'admin',
+  member: 'member',
+} as const;
+
+export interface OrganizationMember {
+  id: number;
+  orgId: number;
+  userId: number;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  name?: string | null;
+  role: OrganizationMemberRole;
+  invitedAt: string;
+}
+
+export type OrganizationMemberInputRole = typeof OrganizationMemberInputRole[keyof typeof OrganizationMemberInputRole];
+
+
+export const OrganizationMemberInputRole = {
+  admin: 'admin',
+  member: 'member',
+} as const;
+
+export interface OrganizationMemberInput {
+  email: string;
+  role?: OrganizationMemberInputRole;
+}
+
+export type OrganizationMemberUpdateRole = typeof OrganizationMemberUpdateRole[keyof typeof OrganizationMemberUpdateRole];
+
+
+export const OrganizationMemberUpdateRole = {
+  admin: 'admin',
+  member: 'member',
+} as const;
+
+export interface OrganizationMemberUpdate {
+  role: OrganizationMemberUpdateRole;
 }
 
 export interface Position {
@@ -230,6 +319,10 @@ export type VoteInputSelectionsItem = {
 };
 
 export interface VoteInput {
+  /** Required when the election uses allowlist eligibility and the voter is not authenticated */
+  voterEmail?: string;
+  /** Required when the election visibility is invite_only */
+  inviteCode?: string;
   selections: VoteInputSelectionsItem[];
 }
 
@@ -309,6 +402,8 @@ export interface Event {
   onlineUrl?: string | null;
   status: EventStatus;
   visibility: EventVisibility;
+  /** @nullable */
+  inviteCode?: string | null;
   /** @nullable */
   startsAt?: string | null;
   /** @nullable */
@@ -428,6 +523,8 @@ export interface RegistrationInput {
   /** @minLength 1 */
   attendeeName: string;
   attendeeEmail: string;
+  /** Required when the event visibility is invite_only */
+  inviteCode?: string;
   /** @minimum 1 */
   quantity?: number;
 }
@@ -771,6 +868,7 @@ export type ListElectionsVisibility = typeof ListElectionsVisibility[keyof typeo
 export const ListElectionsVisibility = {
   public: 'public',
   private: 'private',
+  invite_only: 'invite_only',
 } as const;
 
 export type ListCandidatesParams = {
@@ -842,6 +940,7 @@ export const ListCampaignsVisibility = {
 export type DiscoverParams = {
 type?: DiscoverType;
 limit?: number;
+sort?: DiscoverSort;
 };
 
 export type DiscoverType = typeof DiscoverType[keyof typeof DiscoverType];
@@ -852,6 +951,15 @@ export const DiscoverType = {
   elections: 'elections',
   events: 'events',
   campaigns: 'campaigns',
+} as const;
+
+export type DiscoverSort = typeof DiscoverSort[keyof typeof DiscoverSort];
+
+
+export const DiscoverSort = {
+  newest: 'newest',
+  trending: 'trending',
+  popular: 'popular',
 } as const;
 
 export type SearchParams = {
