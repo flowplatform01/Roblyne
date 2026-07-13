@@ -1,0 +1,255 @@
+Evenum — Master Build Prompt
+You are acting as a senior software architect, senior product designer, senior UI/UX designer, senior frontend engineer, senior backend engineer, database architect, DevOps engineer, QA engineer, and security engineer.
+You are not building a prototype, proof of concept, or MVP.
+You are building Evenum, a production-ready, scalable, secure, maintainable, world-class software platform.
+Every decision you make must prioritize long-term maintainability, extensibility, performance, consistency, security, accessibility, and exceptional user experience.
+Never intentionally choose shortcuts simply because they are faster.
+Always prefer professional engineering decisions.
+
+Product Vision
+Evenum is a professional participation platform.
+Its mission is to help organizations professionally organize participation.
+Participation happens through three specialized engines:
+Professional Voting
+Professional Events & Ticketing
+Professional Campaigns
+Each engine must be capable of standing on its own as an industry-quality product while sharing one unified platform foundation.
+Evenum should never feel like three different applications.
+It should feel like one beautifully designed platform with three specialized capabilities.
+
+Product Philosophy
+The platform must follow these principles.
+Generic by Design
+Never build the platform around schools, churches, NGOs, businesses, governments, or any specific industry.
+The platform must feel native to every organization.
+Schools are examples.
+Churches are examples.
+Companies are examples.
+Nothing should ever be hardcoded around one industry.
+The organizer defines their own workflows.
+
+Professional First
+Every experience must feel premium.
+Avoid hobby-project design.
+Avoid toy interfaces.
+Avoid unnecessary animations.
+Avoid visual clutter.
+Everything should communicate trust, confidence, clarity and professionalism.
+
+Simplicity First
+Power should come from thoughtful design.
+Not from exposing hundreds of settings.
+The platform should feel intuitive for first-time users while remaining powerful for advanced organizations.
+
+Configuration over Assumptions
+Authentication should never be forced.
+Eligibility should never be forced.
+Payments should never be forced.
+Visibility should never be forced.
+Registration should never be forced.
+Instead, organizers configure the behavior that matches their use case.
+
+Professional by Default, Flexible by Choice
+Every workflow should work beautifully using sensible defaults.
+Organizations should also be able to customize behavior whenever necessary.
+
+Domain First, Platform Second
+Every participation engine must remain excellent in its own domain.
+Never merge features in ways that weaken their identity.
+Voting remains voting.
+Events remain events.
+Campaigns remain campaigns.
+The platform unifies them without diluting them.
+
+Empower Organizations
+The platform should never trap users.
+Organizations must be able to export their data whenever appropriate.
+Attendees should be able to download tickets.
+Administrators should be able to export reports.
+The platform adds value without creating unnecessary dependency.
+
+Platform Foundation
+The three engines share common capabilities including:
+Organizations
+Organization Profiles
+Discovery
+Search
+Public & Private visibility
+Shareable pages
+Notifications
+Reports
+Analytics
+Exports
+Flow Pay integration
+English and French interface
+Consistent navigation
+Consistent design system
+Consistent architecture
+These shared capabilities must be implemented once and reused.
+Do not duplicate logic across engines.
+
+Engine One — Professional Voting
+Build a complete election management platform.
+Support:
+Election creation
+Candidate management
+Position management
+Election visibility
+Public elections
+Private elections
+Optional authentication
+Optional eligibility rules
+Candidate profiles
+Shareable candidate pages
+Shareable election pages
+Election discovery
+Election search
+Voting lifecycle
+Secure vote submission
+Professional results
+Election reports
+Election exports
+Election analytics
+The system must support both public voting and restricted voting without changing the overall user experience.
+
+Engine Two — Professional Events & Ticketing
+Build a professional event management system.
+Support:
+Event creation
+Event discovery
+Event search
+Public events
+Private events
+Invite-only events
+Event pages
+Professional ticketing
+Multiple ticket types
+Free events
+Paid events
+Registration
+Digital tickets
+QR tickets
+Ticket downloads
+Ticket exports
+Check-in management
+QR validation
+Offline-friendly workflows through exports
+Organizer dashboards
+Reports
+Analytics
+Flow Pay integration
+Attendees must not be forced to use the application after purchasing tickets.
+Allow downloadable tickets.
+Allow printable tickets.
+Allow organizer exports.
+
+Engine Three — Professional Campaigns
+Build a flexible campaign platform.
+Campaigns are structured participation initiatives.
+Support:
+Registration campaigns
+Contribution campaigns
+Fee collection
+Donation campaigns
+Application campaigns
+Membership campaigns
+Merchandise campaigns
+Custom campaigns
+Every campaign should support configurable forms.
+Organizations define their own fields.
+Payments are optional.
+Goals are optional.
+Discovery should work exactly like the other engines.
+Campaigns have dedicated public pages.
+Reports and exports must be supported.
+Flow Pay handles payments.
+
+Organization Experience
+Organizations own workspaces.
+Within their workspace they manage their own participation activities.
+Avoid unnecessarily complex permission systems.
+Keep organization management intuitive.
+Platform administration remains separate from organization administration.
+
+Discovery Experience
+Public content should be discoverable.
+Users should naturally browse:
+Public Voting
+Public Events
+Public Campaigns
+Support:
+Search
+Filtering
+Categories
+Trending
+Newest
+Popular
+Shareable URLs
+Every organization.
+Every voting activity.
+Every event.
+Every campaign.
+Every candidate.
+Should have beautiful dedicated pages.
+
+User Experience
+The application must not look like a template.
+Do not generate generic dashboards.
+Do not copy common SaaS layouts.
+Do not generate generic CRUD screens.
+Design a premium experience from first principles.
+Every screen should have purpose.
+Every interaction should feel intentional.
+The design language should become Evenum's own identity.
+Navigation should feel effortless.
+Hierarchy should be clear.
+Typography should create confidence.
+Spacing should be deliberate.
+Interactions should be predictable.
+The application should feel modern for many years without relying on trendy UI effects.
+
+Visual Design
+Do not imitate existing products.
+Do not generate generic Material Design clones.
+Do not generate Bootstrap-looking interfaces.
+Do not produce template-based layouts.
+Design a complete design language unique to Evenum.
+Every component should feel cohesive.
+Everything should belong to one ecosystem.
+Consistency is more important than decoration.
+
+Engineering Standards
+Write production-quality code.
+Maintain clean architecture.
+Separate concerns properly.
+Avoid duplicated logic.
+Design reusable components.
+Design reusable services.
+Write maintainable code.
+Write readable code.
+Write scalable code.
+Handle edge cases.
+Handle failures gracefully.
+Protect user data.
+Validate every input.
+Optimize database queries.
+Optimize frontend rendering.
+Optimize network requests.
+Keep the application responsive.
+
+Quality Assurance
+Do not stop after generating code.
+Review every module.
+Inspect every workflow.
+Test critical functionality.
+Fix discovered issues.
+Refactor weak implementations.
+Ensure consistency across the entire platform.
+Continue improving until the platform meets production quality.
+
+Final Objective
+Do not build a demo.
+Do not build an MVP.
+Do not build placeholder experiences.
+Build Evenum as a complete, cohesive, production-ready professional participation platform whose architecture can support long-term growth while remaining elegant, intuitive, scalable, and maintainable.
+Whenever multiple implementation options exist, choose the solution that best aligns with the product philosophy described above rather than the easiest solution.

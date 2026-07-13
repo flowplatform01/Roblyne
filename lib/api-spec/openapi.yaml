@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Evenum — Professional Participation Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: organizations
+    description: Organization management
+  - name: elections
+    description: Voting engine
+  - name: events
+    description: Events & ticketing engine
+  - name: campaigns
+    description: Campaigns engine
+  - name: discover
+    description: Public discovery & search
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +36,2127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── AUTH ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── ORGANIZATIONS ──────────────────────────────────────────────────────────
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: List organizations for the current user
+      responses:
+        "200":
+          description: Organizations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Create a new organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  /organizations/{orgId}:
+    get:
+      operationId: getOrganization
+      tags: [organizations]
+      summary: Get organization by ID
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateOrganization
+      tags: [organizations]
+      summary: Update an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  /organizations/{orgId}/stats:
+    get:
+      operationId: getOrganizationStats
+      tags: [organizations]
+      summary: Get activity stats for an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organization stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationStats"
+
+  # ── ELECTIONS ──────────────────────────────────────────────────────────────
+  /elections:
+    get:
+      operationId: listElections
+      tags: [elections]
+      summary: List elections (optionally filtered by org)
+      parameters:
+        - name: orgId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, active, ended]
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [public, private]
+      responses:
+        "200":
+          description: Elections list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Election"
+
+    post:
+      operationId: createElection
+      tags: [elections]
+      summary: Create a new election
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Election"
+
+  /elections/{electionId}:
+    get:
+      operationId: getElection
+      tags: [elections]
+      summary: Get election by ID
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Election
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Election"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateElection
+      tags: [elections]
+      summary: Update an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ElectionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Election"
+
+    delete:
+      operationId: deleteElection
+      tags: [elections]
+      summary: Delete an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /elections/{electionId}/positions:
+    get:
+      operationId: listPositions
+      tags: [elections]
+      summary: List positions in an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Positions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Position"
+
+    post:
+      operationId: createPosition
+      tags: [elections]
+      summary: Add a position to an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+
+  /elections/{electionId}/positions/{positionId}:
+    patch:
+      operationId: updatePosition
+      tags: [elections]
+      summary: Update a position
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PositionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Position"
+
+    delete:
+      operationId: deletePosition
+      tags: [elections]
+      summary: Delete a position
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: positionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /elections/{electionId}/candidates:
+    get:
+      operationId: listCandidates
+      tags: [elections]
+      summary: List candidates for an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: positionId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Candidates list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Candidate"
+
+    post:
+      operationId: createCandidate
+      tags: [elections]
+      summary: Add a candidate to an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+  /elections/{electionId}/candidates/{candidateId}:
+    get:
+      operationId: getCandidate
+      tags: [elections]
+      summary: Get a candidate by ID
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+    patch:
+      operationId: updateCandidate
+      tags: [elections]
+      summary: Update a candidate
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidateUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidate"
+
+    delete:
+      operationId: deleteCandidate
+      tags: [elections]
+      summary: Delete a candidate
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: candidateId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /elections/{electionId}/vote:
+    post:
+      operationId: submitVote
+      tags: [elections]
+      summary: Submit a vote in an election
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteInput"
+      responses:
+        "200":
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Not eligible or already voted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /elections/{electionId}/results:
+    get:
+      operationId: getElectionResults
+      tags: [elections]
+      summary: Get election results
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Election results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionResults"
+
+  /elections/{electionId}/analytics:
+    get:
+      operationId: getElectionAnalytics
+      tags: [elections]
+      summary: Get election analytics
+      parameters:
+        - name: electionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElectionAnalytics"
+
+  # ── EVENTS ────────────────────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List events
+      parameters:
+        - name: orgId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, cancelled, completed]
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [public, private, invite_only]
+      responses:
+        "200":
+          description: Events list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create a new event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /events/{eventId}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get event by ID
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateEvent
+      tags: [events]
+      summary: Update an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+    delete:
+      operationId: deleteEvent
+      tags: [events]
+      summary: Delete an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /events/{eventId}/ticket-types:
+    get:
+      operationId: listTicketTypes
+      tags: [events]
+      summary: List ticket types for an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ticket types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TicketType"
+
+    post:
+      operationId: createTicketType
+      tags: [events]
+      summary: Create a ticket type for an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketTypeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketType"
+
+  /events/{eventId}/ticket-types/{ticketTypeId}:
+    patch:
+      operationId: updateTicketType
+      tags: [events]
+      summary: Update a ticket type
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ticketTypeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketTypeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketType"
+
+    delete:
+      operationId: deleteTicketType
+      tags: [events]
+      summary: Delete a ticket type
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: ticketTypeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /events/{eventId}/register:
+    post:
+      operationId: registerForEvent
+      tags: [events]
+      summary: Register for an event (purchase or claim ticket)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+      responses:
+        "201":
+          description: Registration successful, ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
+  /events/{eventId}/attendees:
+    get:
+      operationId: listAttendees
+      tags: [events]
+      summary: List attendees for an event
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendees list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attendee"
+
+  /events/{eventId}/checkin:
+    post:
+      operationId: checkInAttendee
+      tags: [events]
+      summary: Check in an attendee by ticket code
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInInput"
+      responses:
+        "200":
+          description: Checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendee"
+        "404":
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /events/{eventId}/analytics:
+    get:
+      operationId: getEventAnalytics
+      tags: [events]
+      summary: Get event analytics
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventAnalytics"
+
+  # ── CAMPAIGNS ─────────────────────────────────────────────────────────────
+  /campaigns:
+    get:
+      operationId: listCampaigns
+      tags: [campaigns]
+      summary: List campaigns
+      parameters:
+        - name: orgId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [registration, contribution, donation, application, membership, merchandise, custom]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, active, ended]
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [public, private]
+      responses:
+        "200":
+          description: Campaigns list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campaign"
+
+    post:
+      operationId: createCampaign
+      tags: [campaigns]
+      summary: Create a new campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+  /campaigns/{campaignId}:
+    get:
+      operationId: getCampaign
+      tags: [campaigns]
+      summary: Get campaign by ID
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateCampaign
+      tags: [campaigns]
+      summary: Update a campaign
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Campaign"
+
+    delete:
+      operationId: deleteCampaign
+      tags: [campaigns]
+      summary: Delete a campaign
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /campaigns/{campaignId}/submit:
+    post:
+      operationId: submitCampaignResponse
+      tags: [campaigns]
+      summary: Submit a response to a campaign
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignResponseInput"
+      responses:
+        "201":
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignResponse"
+
+  /campaigns/{campaignId}/submissions:
+    get:
+      operationId: listCampaignSubmissions
+      tags: [campaigns]
+      summary: List submissions for a campaign
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Submissions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CampaignResponse"
+
+  /campaigns/{campaignId}/analytics:
+    get:
+      operationId: getCampaignAnalytics
+      tags: [campaigns]
+      summary: Get campaign analytics
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Campaign analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CampaignAnalytics"
+
+  # ── DISCOVERY ─────────────────────────────────────────────────────────────
+  /discover:
+    get:
+      operationId: discover
+      tags: [discover]
+      summary: Discover public content across all engines
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, elections, events, campaigns]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 24
+      responses:
+        "200":
+          description: Discovery feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryFeed"
+
+  /search:
+    get:
+      operationId: search
+      tags: [discover]
+      summary: Search public content
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, elections, events, campaigns, organizations]
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+
 components:
   schemas:
+    # ── SHARED ───────────────────────────────────────────────────────────────
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    # ── AUTH ─────────────────────────────────────────────────────────────────
+    AuthUser:
+      type: object
+      required: [id, email, name, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterInput:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+          minLength: 1
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+
+        password:
+          type: string
+
+    # ── ORGANIZATIONS ────────────────────────────────────────────────────────
+    Organization:
+      type: object
+      required: [id, name, slug, ownerId, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        ownerId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    OrganizationInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        logoUrl:
+          type: string
+        website:
+          type: string
+
+    OrganizationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        logoUrl:
+          type: string
+        website:
+          type: string
+
+    OrganizationStats:
+      type: object
+      required: [electionsCount, eventsCount, campaignsCount, totalParticipants]
+      properties:
+        electionsCount:
+          type: integer
+        eventsCount:
+          type: integer
+        campaignsCount:
+          type: integer
+        totalParticipants:
+          type: integer
+        activeElectionsCount:
+          type: integer
+        upcomingEventsCount:
+          type: integer
+        activeCampaignsCount:
+          type: integer
+
+    # ── ELECTIONS ────────────────────────────────────────────────────────────
+    Election:
+      type: object
+      required: [id, orgId, title, status, visibility, createdAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, active, ended]
+        visibility:
+          type: string
+          enum: [public, private]
+        requiresAuth:
+          type: boolean
+        startsAt:
+          type: ["string", "null"]
+          format: date-time
+        endsAt:
+          type: ["string", "null"]
+          format: date-time
+        totalVotes:
+          type: integer
+        positionsCount:
+          type: integer
+        candidatesCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ElectionInput:
+      type: object
+      required: [orgId, title]
+      properties:
+        orgId:
+          type: integer
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        visibility:
+          type: string
+          enum: [public, private]
+          default: public
+        requiresAuth:
+          type: boolean
+          default: false
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    ElectionUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, ended]
+        visibility:
+          type: string
+          enum: [public, private]
+        requiresAuth:
+          type: boolean
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    Position:
+      type: object
+      required: [id, electionId, title, maxSelections, sortOrder]
+      properties:
+        id:
+          type: integer
+        electionId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        maxSelections:
+          type: integer
+        sortOrder:
+          type: integer
+
+    PositionInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        maxSelections:
+          type: integer
+          default: 1
+        sortOrder:
+          type: integer
+
+    PositionUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        maxSelections:
+          type: integer
+        sortOrder:
+          type: integer
+
+    Candidate:
+      type: object
+      required: [id, electionId, positionId, name]
+      properties:
+        id:
+          type: integer
+        electionId:
+          type: integer
+        positionId:
+          type: integer
+        positionTitle:
+          type: ["string", "null"]
+        name:
+          type: string
+        bio:
+          type: ["string", "null"]
+        photoUrl:
+          type: ["string", "null"]
+        platform:
+          type: ["string", "null"]
+        voteCount:
+          type: ["integer", "null"]
+
+    CandidateInput:
+      type: object
+      required: [positionId, name]
+      properties:
+        positionId:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+        bio:
+          type: string
+        photoUrl:
+          type: string
+        platform:
+          type: string
+
+    CandidateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        bio:
+          type: string
+        photoUrl:
+          type: string
+        platform:
+          type: string
+
+    VoteInput:
+      type: object
+      required: [selections]
+      properties:
+        selections:
+          type: array
+          items:
+            type: object
+            required: [positionId, candidateIds]
+            properties:
+              positionId:
+                type: integer
+              candidateIds:
+                type: array
+                items:
+                  type: integer
+
+    ElectionResults:
+      type: object
+      required: [electionId, totalVotes, positions]
+      properties:
+        electionId:
+          type: integer
+        totalVotes:
+          type: integer
+        positions:
+          type: array
+          items:
+            type: object
+            required: [positionId, title, candidates]
+            properties:
+              positionId:
+                type: integer
+              title:
+                type: string
+              candidates:
+                type: array
+                items:
+                  type: object
+                  required: [candidateId, name, voteCount, percentage]
+                  properties:
+                    candidateId:
+                      type: integer
+                    name:
+                      type: string
+                    photoUrl:
+                      type: ["string", "null"]
+                    voteCount:
+                      type: integer
+                    percentage:
+                      type: number
+
+    ElectionAnalytics:
+      type: object
+      required: [electionId, totalVotes, turnoutRate, votesByHour]
+      properties:
+        electionId:
+          type: integer
+        totalVotes:
+          type: integer
+        turnoutRate:
+          type: number
+        votesByHour:
+          type: array
+          items:
+            type: object
+            required: [hour, count]
+            properties:
+              hour:
+                type: string
+              count:
+                type: integer
+        topPositions:
+          type: array
+          items:
+            type: object
+            required: [positionId, title, voteCount]
+            properties:
+              positionId:
+                type: integer
+              title:
+                type: string
+              voteCount:
+                type: integer
+
+    # ── EVENTS ───────────────────────────────────────────────────────────────
+    Event:
+      type: object
+      required: [id, orgId, title, status, visibility, createdAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        isOnline:
+          type: boolean
+        onlineUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, published, cancelled, completed]
+        visibility:
+          type: string
+          enum: [public, private, invite_only]
+        startsAt:
+          type: ["string", "null"]
+          format: date-time
+        endsAt:
+          type: ["string", "null"]
+          format: date-time
+        capacity:
+          type: ["integer", "null"]
+        attendeesCount:
+          type: integer
+        ticketTypesCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    EventInput:
+      type: object
+      required: [orgId, title]
+      properties:
+        orgId:
+          type: integer
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        coverImageUrl:
+          type: string
+        location:
+          type: string
+        isOnline:
+          type: boolean
+          default: false
+        onlineUrl:
+          type: string
+        visibility:
+          type: string
+          enum: [public, private, invite_only]
+          default: public
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+
+    EventUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        coverImageUrl:
+          type: string
+        location:
+          type: string
+        isOnline:
+          type: boolean
+        onlineUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, published, cancelled, completed]
+        visibility:
+          type: string
+          enum: [public, private, invite_only]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        capacity:
+          type: integer
+
+    TicketType:
+      type: object
+      required: [id, eventId, name, price, currency, quantity]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+          description: 0 for free tickets
+        currency:
+          type: string
+          default: USD
+        quantity:
+          type: ["integer", "null"]
+          description: null means unlimited
+        sold:
+          type: integer
+        saleStartsAt:
+          type: ["string", "null"]
+          format: date-time
+        saleEndsAt:
+          type: ["string", "null"]
+          format: date-time
+
+    TicketTypeInput:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          default: USD
+        quantity:
+          type: integer
+        saleStartsAt:
+          type: string
+          format: date-time
+        saleEndsAt:
+          type: string
+          format: date-time
+
+    TicketTypeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+        quantity:
+          type: integer
+        saleStartsAt:
+          type: string
+          format: date-time
+        saleEndsAt:
+          type: string
+          format: date-time
+
+    RegistrationInput:
+      type: object
+      required: [ticketTypeId, attendeeName, attendeeEmail]
+      properties:
+        ticketTypeId:
+          type: integer
+        attendeeName:
+          type: string
+          minLength: 1
+        attendeeEmail:
+          type: string
+
+        quantity:
+          type: integer
+          default: 1
+          minimum: 1
+
+    Ticket:
+      type: object
+      required: [id, eventId, ticketTypeId, attendeeName, attendeeEmail, ticketCode, status, issuedAt]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        eventTitle:
+          type: ["string", "null"]
+        ticketTypeId:
+          type: integer
+        ticketTypeName:
+          type: ["string", "null"]
+        attendeeName:
+          type: string
+        attendeeEmail:
+          type: string
+        ticketCode:
+          type: string
+        status:
+          type: string
+          enum: [valid, used, cancelled]
+        checkedInAt:
+          type: ["string", "null"]
+          format: date-time
+        issuedAt:
+          type: string
+          format: date-time
+
+    Attendee:
+      type: object
+      required: [id, eventId, attendeeName, attendeeEmail, ticketCode, status, issuedAt]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        ticketTypeId:
+          type: integer
+        ticketTypeName:
+          type: ["string", "null"]
+        attendeeName:
+          type: string
+        attendeeEmail:
+          type: string
+        ticketCode:
+          type: string
+        status:
+          type: string
+          enum: [valid, used, cancelled]
+        checkedInAt:
+          type: ["string", "null"]
+          format: date-time
+        issuedAt:
+          type: string
+          format: date-time
+
+    CheckInInput:
+      type: object
+      required: [ticketCode]
+      properties:
+        ticketCode:
+          type: string
+
+    EventAnalytics:
+      type: object
+      required: [eventId, totalAttendees, checkedIn, ticketsByType, registrationsByDay]
+      properties:
+        eventId:
+          type: integer
+        totalAttendees:
+          type: integer
+        checkedIn:
+          type: integer
+        checkInRate:
+          type: number
+        revenue:
+          type: number
+        ticketsByType:
+          type: array
+          items:
+            type: object
+            required: [ticketTypeId, name, sold, revenue]
+            properties:
+              ticketTypeId:
+                type: integer
+              name:
+                type: string
+              sold:
+                type: integer
+              revenue:
+                type: number
+        registrationsByDay:
+          type: array
+          items:
+            type: object
+            required: [date, count]
+            properties:
+              date:
+                type: string
+              count:
+                type: integer
+
+    # ── CAMPAIGNS ────────────────────────────────────────────────────────────
+    CampaignField:
+      type: object
+      required: [id, label, type, required]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, textarea, email, phone, number, select, checkbox, date]
+        required:
+          type: boolean
+        options:
+          type: array
+          items:
+            type: string
+        placeholder:
+          type: string
+
+    Campaign:
+      type: object
+      required: [id, orgId, title, type, status, visibility, createdAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [registration, contribution, donation, application, membership, merchandise, custom]
+        status:
+          type: string
+          enum: [draft, active, ended]
+        visibility:
+          type: string
+          enum: [public, private]
+        goalAmount:
+          type: ["number", "null"]
+        currentAmount:
+          type: number
+        submissionsCount:
+          type: integer
+        requiresPayment:
+          type: boolean
+        paymentAmount:
+          type: ["number", "null"]
+        currency:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignField"
+        startsAt:
+          type: ["string", "null"]
+          format: date-time
+        endsAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CampaignInput:
+      type: object
+      required: [orgId, title, type]
+      properties:
+        orgId:
+          type: integer
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        coverImageUrl:
+          type: string
+        type:
+          type: string
+          enum: [registration, contribution, donation, application, membership, merchandise, custom]
+        visibility:
+          type: string
+          enum: [public, private]
+          default: public
+        goalAmount:
+          type: number
+        requiresPayment:
+          type: boolean
+          default: false
+        paymentAmount:
+          type: number
+        currency:
+          type: string
+          default: USD
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignField"
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    CampaignUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        coverImageUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, ended]
+        visibility:
+          type: string
+          enum: [public, private]
+        goalAmount:
+          type: number
+        requiresPayment:
+          type: boolean
+        paymentAmount:
+          type: number
+        currency:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/CampaignField"
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    CampaignResponseInput:
+      type: object
+      required: [submitterName, submitterEmail, data]
+      properties:
+        submitterName:
+          type: string
+          minLength: 1
+        submitterEmail:
+          type: string
+
+        data:
+          type: object
+          additionalProperties: true
+          description: Field values keyed by field ID
+
+    CampaignResponse:
+      type: object
+      required: [id, campaignId, submitterName, submitterEmail, data, submittedAt]
+      properties:
+        id:
+          type: integer
+        campaignId:
+          type: integer
+        submitterName:
+          type: string
+        submitterEmail:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+        amountPaid:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [pending, confirmed, rejected]
+        submittedAt:
+          type: string
+          format: date-time
+
+    CampaignAnalytics:
+      type: object
+      required: [campaignId, submissionsCount, submissionsByDay]
+      properties:
+        campaignId:
+          type: integer
+        submissionsCount:
+          type: integer
+        totalRevenue:
+          type: number
+        goalProgress:
+          type: ["number", "null"]
+        submissionsByDay:
+          type: array
+          items:
+            type: object
+            required: [date, count]
+            properties:
+              date:
+                type: string
+              count:
+                type: integer
+
+    # ── DISCOVERY ────────────────────────────────────────────────────────────
+    DiscoveryItem:
+      type: object
+      required: [id, type, title, organizationName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [election, event, campaign]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: ["string", "null"]
+        organizationName:
+          type: string
+        status:
+          type: string
+        startsAt:
+          type: ["string", "null"]
+          format: date-time
+        endsAt:
+          type: ["string", "null"]
+          format: date-time
+        participantsCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    DiscoveryFeed:
+      type: object
+      required: [items, featured, trending]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryItem"
+        featured:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryItem"
+        trending:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryItem"
+
+    SearchResults:
+      type: object
+      required: [query, total, items]
+      properties:
+        query:
+          type: string
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveryItem"
