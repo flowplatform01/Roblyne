@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowLeft, Megaphone, Plus, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Megaphone, Plus, Trash2, GripVertical } from "lucide-react";
 import { Link } from "wouter";
 import { ImageUpload } from "@/components/ui/image-upload";
 
