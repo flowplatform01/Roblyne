@@ -31,6 +31,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     name: user.name,
     avatarUrl: user.avatarUrl ?? null,
     createdAt: user.createdAt,
+    isPlatformAdmin: user.isPlatformAdmin ?? false,
   });
 });
 
@@ -62,6 +63,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     name: user.name,
     avatarUrl: user.avatarUrl ?? null,
     createdAt: user.createdAt,
+    isPlatformAdmin: user.isPlatformAdmin ?? false,
   });
 });
 
