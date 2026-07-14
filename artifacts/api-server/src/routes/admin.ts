@@ -17,7 +17,7 @@ router.post("/admin/bootstrap", async (req, res): Promise<void> => {
   }
 
   // Check whether any platform admin already exists
-  const [existing] = await db.execute(
+  const { rows: [existing] } = await db.execute(
     sql`SELECT id FROM users WHERE is_platform_admin = true LIMIT 1`
   );
   if (existing) {
@@ -39,7 +39,7 @@ router.use(requirePlatformAdmin);
 
 // GET /api/admin/stats — platform overview numbers
 router.get("/admin/stats", async (_req, res): Promise<void> => {
-  const [stats] = await db.execute(sql`
+  const { rows: [stats] } = await db.execute(sql`
     SELECT
       (SELECT COUNT(*) FROM users)::int                          AS total_users,
       (SELECT COUNT(*) FROM organizations)::int                  AS total_organizations,
