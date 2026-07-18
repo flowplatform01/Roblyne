@@ -59,7 +59,7 @@ export default function AdminDashboard() {
     if (!orgs) return [];
     const q = orgSearch.toLowerCase().trim();
     if (!q) return orgs;
-    return orgs.filter((o) =>
+    return orgs.filter((o: any) =>
       o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q)
     );
   }, [orgs, orgSearch]);
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     if (!users) return [];
     const q = userSearch.toLowerCase().trim();
     if (!q) return users;
-    return users.filter((u) =>
+    return users.filter((u: any) =>
       u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     );
   }, [users, userSearch]);
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOrgs.map((org) => (
+                      {filteredOrgs.map((org: any) => (
                         <TableRow key={org.id}>
                           <TableCell className="font-medium">{org.name}</TableCell>
                           <TableCell className="hidden sm:table-cell text-muted-foreground text-sm font-mono">{org.slug}</TableCell>
@@ -392,7 +392,7 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.map((u) => (
+                      {filteredUsers.map((u: any) => (
                         <TableRow key={u.id} className={u.id === user?.id ? 'bg-primary/5' : ''}>
                           <TableCell className="font-medium">
                             {u.name}

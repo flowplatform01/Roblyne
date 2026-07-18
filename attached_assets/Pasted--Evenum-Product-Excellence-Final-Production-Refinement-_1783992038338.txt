@@ -1,0 +1,390 @@
+# Evenum — Product Excellence & Final Production Refinement
+
+The current implementation is functional, but it does **not** yet represent the quality, craftsmanship, completeness, polish, or user experience expected from Evenum.
+
+Do not interpret this as a request to make minor improvements.
+
+Interpret this as a complete product refinement and production-quality elevation exercise.
+
+Your objective is to transform the application from **functional software** into a **world-class product**.
+
+Do not simply check whether something works.
+
+Critically evaluate whether it feels premium.
+
+If something technically works but feels incomplete, generic, visually weak, architecturally shallow, or poorly presented, redesign and improve it.
+
+Do not preserve mediocre implementations simply because they already exist.
+
+Challenge every screen, every workflow, every interaction, every layout, every component, every animation, every visual hierarchy, every navigation pattern, every administrative experience, and every public-facing experience.
+
+---
+
+# Think Like a Product Company
+
+Do not think like an AI generating CRUD pages.
+
+Think like a multidisciplinary product company preparing Evenum for launch.
+
+Every decision should answer:
+
+* Would a real organization trust this?
+* Would users enjoy using this?
+* Does this communicate professionalism?
+* Does this inspire confidence?
+* Does this look intentionally designed?
+* Does this feel complete?
+
+If the answer is no, improve it.
+
+---
+
+# Eliminate MVP Thinking Completely
+
+The current implementation still feels like an MVP in many places.
+
+Remove every trace of MVP thinking.
+
+Remove placeholder experiences.
+
+Remove unfinished flows.
+
+Remove generic layouts.
+
+Remove simplistic dashboards.
+
+Remove interfaces that merely satisfy functionality.
+
+The objective is not "working."
+
+The objective is "excellent."
+
+---
+
+# Every Screen Must Have Purpose
+
+Review every screen individually.
+
+Ask:
+
+Does this screen create confidence?
+
+Does this communicate professionalism?
+
+Does this feel premium?
+
+Does it guide the user naturally?
+
+Does it create a memorable experience?
+
+If not, redesign it.
+
+Never settle for default layouts.
+
+Never settle for template-generated interfaces.
+
+Every page should feel intentionally crafted.
+
+---
+
+# Elevate the Entire Design Language
+
+The application currently lacks a distinctive visual identity.
+
+Create one.
+
+Do not imitate existing products.
+
+Do not rely on generic UI kits.
+
+Do not produce template-based dashboards.
+
+Design a cohesive product language unique to Evenum.
+
+Every color.
+
+Every card.
+
+Every section.
+
+Every spacing decision.
+
+Every typography decision.
+
+Every component.
+
+Every interaction.
+
+Everything should belong to one consistent design system.
+
+Users should immediately recognize that they are inside Evenum.
+
+---
+
+# Public Experiences Must Become Exceptional
+
+This is one of the highest priorities.
+
+The public-facing experiences are where organizations showcase themselves and where participants interact with the platform.
+
+These pages should feel significantly more polished than standard management interfaces.
+
+Examples include:
+
+Voting pages
+
+Candidate pages
+
+Event pages
+
+Campaign pages
+
+Organization pages
+
+Registration experiences
+
+Participation flows
+
+Payment confirmation
+
+Voting confirmation
+
+Success pages
+
+Completion pages
+
+These experiences should feel immersive, elegant, responsive, and memorable.
+
+Avoid plain forms.
+
+Avoid basic cards.
+
+Avoid generic layouts.
+
+Create rich, carefully structured presentation experiences.
+
+---
+
+# Voting Experience Must Feel Like a Professional Election Platform
+
+Voting currently functions but does not communicate the seriousness or quality expected of a professional election platform.
+
+Improve:
+
+Candidate presentation
+
+Ballot presentation
+
+Election branding
+
+Visual hierarchy
+
+Selection experience
+
+Confirmation experience
+
+Result presentation
+
+Every stage should make users feel they are participating in a secure, trustworthy, premium election.
+
+---
+
+# Events Must Feel Like Premium Event Experiences
+
+Event pages should create excitement.
+
+People should want to attend simply because of the quality of the presentation.
+
+Improve:
+
+Hero sections
+
+Media presentation
+
+Ticket selection
+
+Registration experience
+
+Schedules
+
+Venue presentation
+
+Confirmation flows
+
+Everything should feel professionally curated.
+
+---
+
+# Campaigns Must Feel Meaningful
+
+Campaigns should inspire participation.
+
+The interface should clearly communicate purpose, progress, trust, and action.
+
+Presentation should encourage users to participate confidently.
+
+---
+
+# Platform Administration Must Become a Complete Control Center
+
+Platform Administration currently feels minimal.
+
+This is unacceptable.
+
+Platform Administration represents Evenum itself.
+
+Review every capability that a platform owner should reasonably expect.
+
+Expand administration thoughtfully.
+
+Provide meaningful operational visibility.
+
+Provide meaningful management capabilities.
+
+Provide meaningful oversight.
+
+Allow platform administrators to manage every platform resource appropriately.
+
+Avoid empty dashboards that only display counts.
+
+Provide actionable management interfaces.
+
+---
+
+# Organizations Must Feel Like Professional Workspaces
+
+Organizations should feel like they own a dedicated workspace.
+
+Everything they interact with should feel cohesive.
+
+Professional.
+
+Organized.
+
+Powerful.
+
+Simple.
+
+Avoid making organization workspaces feel like ordinary admin panels.
+
+---
+
+# Remove Visual Weaknesses
+
+Identify every place where the interface feels:
+
+Generic
+
+Flat
+
+Cheap
+
+Placeholder-like
+
+Template-generated
+
+Poorly spaced
+
+Poorly aligned
+
+Visually inconsistent
+
+Redesign those areas completely.
+
+Do not simply tweak them.
+
+Elevate them.
+
+---
+
+# Build Emotional Confidence
+
+Users should feel:
+
+"I trust this platform."
+
+"This organization looks professional."
+
+"This event looks legitimate."
+
+"This election feels secure."
+
+"This campaign feels credible."
+
+The interface itself should build confidence before users even interact with functionality.
+
+---
+
+# Finish Every Detail
+
+Review the application as though preparing for a real public launch.
+
+Inspect:
+
+Empty states
+
+Loading states
+
+Error states
+
+Confirmation states
+
+Success states
+
+Responsive layouts
+
+Accessibility
+
+Navigation consistency
+
+Animation quality
+
+Interaction feedback
+
+Visual consistency
+
+Typography
+
+Spacing
+
+Content hierarchy
+
+Media handling
+
+Image uploads
+
+Exports
+
+Reports
+
+Settings
+
+Administration
+
+Everything should feel finished.
+
+Nothing should feel accidental.
+
+Nothing should feel incomplete.
+
+Nothing should reveal that an AI generated the product.
+
+---
+
+# Final Standard
+
+Do not ask whether the application functions.
+
+Ask whether it deserves to become Evenum.
+
+Continue refining until the product reflects the original vision, demonstrates exceptional engineering quality, delivers a premium user experience, and feels like software built by a world-class product team rather than an automatically generated application.
+
+Do not stop after implementing improvements.
+
+Review them.
+
+Challenge them.
+
+Improve them again.
+
+Repeat this process until no obvious quality gaps remain.

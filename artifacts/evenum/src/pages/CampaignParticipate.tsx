@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Megaphone, AlertCircle, CheckCircle2, Lock } from "lucide-react";
+import { Loader2, Megaphone, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck, Badge } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 export default function CampaignParticipate() {
@@ -68,8 +68,8 @@ export default function CampaignParticipate() {
   if (isCampaignLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex items-center justify-center min-h-screen">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+        <div className="flex-1 flex items-center justify-center min-h-screen paper-grain">
+          <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
         </div>
       </Layout>
     );
@@ -80,10 +80,10 @@ export default function CampaignParticipate() {
   if (campaign.status !== 'active') {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center max-w-2xl">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-          <h1 className="text-3xl font-serif font-bold mb-4">Campaign Unavailable</h1>
-          <p className="text-lg text-muted-foreground">This campaign is not currently accepting submissions.</p>
+        <div className="container mx-auto px-4 py-32 text-center max-w-2xl animate-in fade-in duration-700">
+          <AlertCircle className="h-16 w-16 text-muted-foreground/50 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Campaign Unavailable</h1>
+          <p className="text-xl text-muted-foreground font-light">This campaign is not currently accepting submissions.</p>
         </div>
       </Layout>
     );
@@ -92,21 +92,23 @@ export default function CampaignParticipate() {
   if (isSuccess) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center max-w-lg">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
-            <CheckCircle2 className="h-10 w-10" />
+        <div className="container mx-auto px-4 py-32 text-center max-w-2xl animate-in zoom-in-95 duration-700">
+          <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+            <CheckCircle2 className="h-12 w-12" />
           </div>
-          <h1 className="text-3xl font-serif font-bold mb-4">Submission Received</h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            Thank you for participating! We have received your information.
+          <h1 className="text-5xl font-serif font-bold mb-6 tracking-tight">Submission Received</h1>
+          <p className="text-xl text-muted-foreground font-light mb-12 leading-relaxed">
+            Thank you for participating! We have securely recorded your information for {campaign.organizationName || 'the organizer'}.
           </p>
-          <Button variant="outline" onClick={() => {
-            setIsSuccess(false);
-            setFormData({});
-            setBaseData({ name: "", email: "" });
-          }}>
-            Submit Another
-          </Button>
+          <div className="flex justify-center">
+            <Button size="lg" variant="outline" className="h-14 px-8 text-base border-border/60 hover:bg-muted/50" onClick={() => {
+              setIsSuccess(false);
+              setFormData({});
+              setBaseData({ name: "", email: "" });
+            }}>
+              Submit Another Response
+            </Button>
+          </div>
         </div>
       </Layout>
     );
@@ -124,7 +126,7 @@ export default function CampaignParticipate() {
             required={field.required}
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
-            className="min-h-[100px]"
+            className="min-h-[120px] bg-background border-border/60 focus:border-amber-500 rounded-sm text-base p-4 resize-none"
           />
         );
       case 'select':
@@ -134,26 +136,27 @@ export default function CampaignParticipate() {
             onValueChange={(val) => handleFieldChange(field.id, val)}
             required={field.required}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-14 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4">
               <SelectValue placeholder={field.placeholder || "Select an option"} />
             </SelectTrigger>
             <SelectContent>
               {field.options?.map((opt: string) => (
-                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                <SelectItem key={opt} value={opt} className="text-base py-3">{opt}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
       case 'checkbox':
         return (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-start space-x-4 p-4 border border-border/60 rounded-sm bg-background/50">
             <Checkbox 
               id={field.id}
               checked={!!value}
               onCheckedChange={(checked) => handleFieldChange(field.id, checked)}
+              className="mt-1 w-5 h-5"
             />
-            <Label htmlFor={field.id} className="font-normal cursor-pointer text-sm">
-              I agree <span className="text-destructive">{field.required ? '*' : ''}</span>
+            <Label htmlFor={field.id} className="font-normal cursor-pointer text-base leading-relaxed">
+              {field.label} {field.required && <span className="text-destructive font-bold">*</span>}
             </Label>
           </div>
         );
@@ -166,6 +169,7 @@ export default function CampaignParticipate() {
             required={field.required}
             value={value}
             onChange={(e) => handleFieldChange(field.id, e.target.value)}
+            className="h-14 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4"
           />
         );
     }
@@ -173,55 +177,88 @@ export default function CampaignParticipate() {
 
   return (
     <Layout>
-      <div className="bg-muted/30 py-12 border-b">
-        <div className="container mx-auto px-4 max-w-3xl text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-amber-100 text-amber-700 mb-6 shadow-sm">
-            <Megaphone className="h-6 w-6" />
+      <div className="bg-foreground text-background py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/attached_assets/generated_images/campaign-abstract.jpg')] bg-cover bg-center opacity-20 mix-blend-screen" />
+        <div className="container mx-auto px-4 max-w-4xl text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-sm bg-amber-500/20 border border-amber-400/30 text-amber-400 mb-8 shadow-sm backdrop-blur-sm">
+            <Megaphone className="h-8 w-8" />
           </div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight mb-4">{campaign.title}</h1>
-          {campaign.description && <p className="text-lg text-muted-foreground">{campaign.description}</p>}
+          <div className="mb-6 flex justify-center">
+            <Badge className="bg-background/10 text-background hover:bg-background/20 px-4 py-1.5 text-xs font-bold uppercase tracking-widest rounded-sm border border-background/20 backdrop-blur-md">
+              {campaign.type}
+            </Badge>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight mb-8 leading-tight text-card">{campaign.title}</h1>
+          {campaign.description && <p className="text-xl text-card/80 font-light max-w-2xl mx-auto leading-relaxed">{campaign.description}</p>}
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12 max-w-2xl flex-1">
-        <Card className="shadow-lg border-border/60">
-          <CardHeader className="bg-muted/10 border-b pb-6">
-            <CardTitle className="font-serif">Submit Information</CardTitle>
-            <CardDescription>Please complete the form below.</CardDescription>
+      <div className="container mx-auto px-4 py-16 max-w-3xl flex-1 paper-grain relative z-20 -mt-8">
+        <Card className="shadow-2xl border-border/80 rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-12 duration-700 delay-150">
+          <div className="h-2 w-full bg-amber-500" />
+          
+          {campaign.coverImageUrl && (
+            <div className="w-full h-48 sm:h-64 border-b border-border/50">
+              <img src={campaign.coverImageUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+          
+          <CardHeader className="bg-card px-8 pt-10 pb-6 border-b border-border/50 text-center">
+            <CardTitle className="font-serif text-3xl">Submission Form</CardTitle>
+            <CardDescription className="text-base font-light mt-2">Please complete all required fields below.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6 px-4 sm:px-6">
-            <form id="campaign-form" onSubmit={handleSubmit} className="space-y-6">
+          
+          <CardContent className="p-8 sm:p-12 bg-card">
+            <form id="campaign-form" onSubmit={handleSubmit} className="space-y-12">
               
-              <div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-dashed">
-                <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-2">Basic Details</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="base-name">Full Name <span className="text-destructive">*</span></Label>
-                  <Input 
-                    id="base-name" 
-                    required 
-                    value={baseData.name}
-                    onChange={e => setBaseData({ ...baseData, name: e.target.value })}
-                  />
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 mb-8">
+                  <span className="h-px bg-border/60 flex-1"></span>
+                  <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-widest shrink-0">Personal Details</h3>
+                  <span className="h-px bg-border/60 flex-1"></span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="base-email">Email Address <span className="text-destructive">*</span></Label>
-                  <Input 
-                    id="base-email" 
-                    type="email" 
-                    required 
-                    value={baseData.email}
-                    onChange={e => setBaseData({ ...baseData, email: e.target.value })}
-                  />
+                
+                <div className="grid grid-cols-1 gap-8">
+                  <div className="space-y-3">
+                    <Label htmlFor="base-name" className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                      Full Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input 
+                      id="base-name" 
+                      required 
+                      value={baseData.name}
+                      onChange={e => setBaseData({ ...baseData, name: e.target.value })}
+                      className="h-14 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="base-email" className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                      Email Address <span className="text-destructive">*</span>
+                    </Label>
+                    <Input 
+                      id="base-email" 
+                      type="email" 
+                      required 
+                      value={baseData.email}
+                      onChange={e => setBaseData({ ...baseData, email: e.target.value })}
+                      className="h-14 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4"
+                    />
+                  </div>
                 </div>
               </div>
 
               {campaign.fields && campaign.fields.length > 0 && (
-                <div className="space-y-6 pt-4">
-                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-2 border-b pb-2">Campaign Details</h3>
+                <div className="space-y-8 pt-4">
+                  <div className="flex items-center gap-4 mb-8">
+                    <span className="h-px bg-border/60 flex-1"></span>
+                    <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-widest shrink-0">Campaign Info</h3>
+                    <span className="h-px bg-border/60 flex-1"></span>
+                  </div>
+                  
                   {campaign.fields.map(field => (
-                    <div key={field.id} className="space-y-2">
+                    <div key={field.id} className="space-y-3">
                       {field.type !== 'checkbox' && (
-                        <Label htmlFor={field.id} className="text-base break-words">
+                        <Label htmlFor={field.id} className="text-sm font-bold uppercase tracking-widest text-muted-foreground block mb-2">
                           {field.label} {field.required && <span className="text-destructive">*</span>}
                         </Label>
                       )}
@@ -232,29 +269,42 @@ export default function CampaignParticipate() {
               )}
             </form>
           </CardContent>
-          <CardFooter className="flex-col pt-2 pb-6 px-4 sm:px-6 bg-muted/5 border-t gap-4">
+          
+          <CardFooter className="flex-col pt-0 pb-12 px-8 sm:px-12 bg-card gap-8">
+            <div className="w-full h-px bg-border/50 mb-4" />
+            
             {campaign.requiresPayment && (
-              <div className="w-full flex items-center justify-between p-4 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50 mb-2">
-                <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4" />
-                  <span className="font-medium">Secure Payment Required</span>
+              <div className="w-full p-8 rounded-sm bg-amber-50/50 text-amber-900 border border-amber-200/60 dark:bg-amber-900/10 dark:text-amber-300 dark:border-amber-800/40 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-white/60 dark:bg-black/20 rounded-full shrink-0 shadow-sm border border-amber-200/50">
+                    <Lock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif font-bold text-xl mb-1">Secure Payment</h4>
+                    <p className="text-sm opacity-80">This campaign requires a financial contribution.</p>
+                  </div>
                 </div>
-                <span className="font-bold text-lg">${campaign.paymentAmount?.toFixed(2)}</span>
+                <div className="text-center sm:text-right shrink-0">
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1">Amount Due</p>
+                  <span className="font-bold font-serif text-4xl">${campaign.paymentAmount?.toFixed(2)}</span>
+                </div>
               </div>
             )}
             
             <Button 
               type="submit" 
               form="campaign-form" 
-              className="w-full h-12 text-base" 
+              className="w-full h-16 text-lg font-bold shadow-lg hover:shadow-xl transition-all bg-amber-600 hover:bg-amber-700 text-white rounded-sm" 
               disabled={submitMutation.isPending}
             >
-              {submitMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit'}
+              {submitMutation.isPending ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : null}
+              {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit Response'} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              By submitting this form, you agree to share your data with {campaign.organizationName || 'the organizer'}.
-            </p>
+            
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="w-4 h-4 opacity-50" />
+              <p>Data securely processed for {campaign.organizationName || 'the organizer'}.</p>
+            </div>
           </CardFooter>
         </Card>
       </div>

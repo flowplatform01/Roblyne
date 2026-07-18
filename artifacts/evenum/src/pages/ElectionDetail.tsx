@@ -71,7 +71,7 @@ export default function ElectionDetail() {
   const { data: analytics, isLoading: isAnalyticsLoading } = useGetElectionAnalytics(electionId);
   const { data: eligibleVoters, isLoading: isEligibleVotersLoading } = useListEligibleVoters(
     electionId,
-    { query: { enabled: !!election && election.eligibilityMode === 'allowlist' } }
+    { query: { enabled: !!election && election.eligibilityMode === 'allowlist', queryKey: getListEligibleVotersQueryKey(electionId) } }
   );
   
   const updateElection = useUpdateElection();

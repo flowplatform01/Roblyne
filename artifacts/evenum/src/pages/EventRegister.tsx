@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CalendarDays, MapPin, Clock, Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -54,8 +54,8 @@ export default function EventRegister() {
   if (isEventLoading || isTicketTypesLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex items-center justify-center min-h-screen">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+        <div className="flex-1 flex items-center justify-center min-h-screen paper-grain">
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
         </div>
       </Layout>
     );
@@ -66,10 +66,10 @@ export default function EventRegister() {
   if (event.status !== 'published') {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center max-w-2xl">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-          <h1 className="text-3xl font-serif font-bold mb-4">Registration Unavailable</h1>
-          <p className="text-lg text-muted-foreground">This event is not currently accepting registrations.</p>
+        <div className="container mx-auto px-4 py-32 text-center max-w-2xl animate-in fade-in duration-700">
+          <AlertCircle className="h-16 w-16 text-muted-foreground/50 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Registration Unavailable</h1>
+          <p className="text-xl text-muted-foreground font-light">This event is not currently accepting registrations.</p>
         </div>
       </Layout>
     );
@@ -78,64 +78,69 @@ export default function EventRegister() {
   if (isSuccess) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-20 text-center max-w-lg">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
-            <CheckCircle2 className="h-10 w-10" />
+        <div className="container mx-auto px-4 py-24 text-center max-w-2xl animate-in zoom-in-95 duration-700">
+          <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
+            <CheckCircle2 className="h-12 w-12" />
           </div>
-          <h1 className="text-3xl font-serif font-bold mb-4">You're Registered!</h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            We've sent a confirmation email to <strong>{formData.email}</strong>.
+          <h1 className="text-5xl font-serif font-bold mb-6 tracking-tight">You're Registered!</h1>
+          <p className="text-xl text-muted-foreground font-light mb-12 leading-relaxed">
+            We've sent a confirmation email to <strong className="text-foreground">{formData.email}</strong>. Keep this ticket safe.
           </p>
           
           {/* Ticket Card with QR Code */}
-          <div className="border-2 border-border rounded-2xl overflow-hidden shadow-lg bg-card text-left">
+          <div className="border border-border/80 rounded-sm overflow-hidden shadow-2xl bg-card text-left max-w-lg mx-auto transform transition-transform hover:-translate-y-2 duration-500">
             {/* Ticket header */}
-            <div className="bg-primary px-6 py-4">
-              <p className="text-primary-foreground/70 text-xs uppercase tracking-widest font-semibold mb-1">Event Ticket</p>
-              <h2 className="text-primary-foreground text-xl font-serif font-bold leading-tight">{event.title}</h2>
+            <div className="bg-foreground text-background px-8 py-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Ticket className="w-32 h-32" />
+              </div>
+              <p className="text-background/70 text-xs uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" /> Official Ticket
+              </p>
+              <h2 className="text-background text-2xl font-serif font-bold leading-tight relative z-10">{event.title}</h2>
             </div>
 
             {/* Divider with notches */}
-            <div className="relative flex items-center px-6">
-              <div className="absolute -left-4 w-8 h-8 rounded-full bg-background border-2 border-border" />
+            <div className="relative flex items-center px-8 bg-card">
+              <div className="absolute -left-4 w-8 h-8 rounded-full bg-background border border-border/80" />
               <div className="flex-1 border-t-2 border-dashed border-border/50 mx-4" />
-              <div className="absolute -right-4 w-8 h-8 rounded-full bg-background border-2 border-border" />
+              <div className="absolute -right-4 w-8 h-8 rounded-full bg-background border border-border/80" />
             </div>
 
             {/* Ticket body */}
-            <div className="px-6 py-6 flex flex-col sm:flex-row gap-6 items-center">
-              <div className="flex-1 space-y-3 min-w-0">
+            <div className="px-8 py-8 flex flex-col sm:flex-row gap-8 items-center bg-card">
+              <div className="flex-1 space-y-5 min-w-0 w-full">
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Attendee</p>
-                  <p className="font-semibold text-base truncate">{formData.name}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Attendee</p>
+                  <p className="font-serif font-bold text-xl truncate">{formData.name}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ticket Type</p>
-                  <p className="font-medium">{ticketTypeName}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Ticket Type</p>
+                  <p className="font-medium text-lg text-emerald-600">{ticketTypeName}</p>
                 </div>
                 {event.startsAt && (
                   <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</p>
-                    <p className="font-medium text-sm">{format(new Date(event.startsAt), 'MMM d, yyyy • h:mm a')}</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Date</p>
+                    <p className="font-medium">{format(new Date(event.startsAt), 'MMM d, yyyy • h:mm a')}</p>
                   </div>
                 )}
-                <div className="pt-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Ticket Code</p>
-                  <p className="font-mono text-sm font-bold tracking-widest text-primary">{ticketCode}</p>
+                <div className="pt-4 border-t border-border/50">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Entry Code</p>
+                  <p className="font-mono text-lg font-bold tracking-widest">{ticketCode}</p>
                 </div>
               </div>
 
               {/* QR Code */}
-              <div className="shrink-0 flex flex-col items-center gap-2">
-                <div className="p-3 bg-white rounded-xl border border-border/60 shadow-sm">
+              <div className="shrink-0 flex flex-col items-center gap-3">
+                <div className="p-4 bg-white rounded-sm border border-border/60 shadow-inner">
                   <QRCodeSVG
                     value={ticketCode}
-                    size={140}
+                    size={150}
                     level="M"
                     includeMargin={false}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Scan at check-in</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Scan at door</p>
               </div>
             </div>
           </div>
@@ -146,47 +151,62 @@ export default function EventRegister() {
 
   return (
     <Layout>
-      <div className="bg-foreground text-background py-16">
-        <div className="container mx-auto px-4 max-w-4xl text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/20 text-primary mb-6">
-            <CalendarDays className="h-6 w-6" />
+      <div className="bg-foreground text-background py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/attached_assets/generated_images/event-abstract.jpg')] bg-cover bg-center opacity-20 mix-blend-screen" />
+        <div className="container mx-auto px-4 max-w-4xl text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-sm bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 mb-8 shadow-sm backdrop-blur-sm">
+            <CalendarDays className="h-8 w-8" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight mb-6">{event.title}</h1>
+          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight mb-8 leading-tight text-card">{event.title}</h1>
           
-          <div className="flex flex-wrap justify-center gap-6 text-slate-300">
+          <div className="flex flex-wrap justify-center gap-8 text-card/80 font-medium">
             {event.startsAt && (
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
+              <div className="flex items-center gap-3 bg-background/10 px-5 py-2.5 rounded-sm border border-background/10 backdrop-blur-md">
+                <Clock className="h-5 w-5 text-emerald-400" />
                 <span>{format(new Date(event.startsAt), 'MMMM d, yyyy • h:mm a')}</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-3 bg-background/10 px-5 py-2.5 rounded-sm border border-background/10 backdrop-blur-md">
+              <MapPin className="h-5 w-5 text-emerald-400" />
               <span>{event.isOnline ? "Online Event" : event.location || "Location TBA"}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12 max-w-5xl flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
+      <div className="container mx-auto px-4 py-16 max-w-6xl flex-1 paper-grain relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16">
           
-          <div className="md:col-span-3 space-y-8">
+          <div className="lg:col-span-3 space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+            {event.coverImageUrl && (
+              <div className="w-full h-64 sm:h-80 md:h-96 rounded-sm overflow-hidden shadow-lg border border-border/60">
+                <img src={event.coverImageUrl} alt={event.title} className="w-full h-full object-cover" />
+              </div>
+            )}
+            
             <section>
-              <h2 className="text-2xl font-serif font-bold mb-4">About this event</h2>
-              <div className="prose prose-slate max-w-none text-muted-foreground">
+              <h2 className="text-3xl font-serif font-bold mb-6 flex items-center gap-4">
+                <span className="w-8 h-1 bg-emerald-600 block"></span>
+                About this event
+              </h2>
+              <div className="prose prose-lg prose-slate max-w-none text-foreground/80 font-light leading-relaxed">
                 {event.description ? (
-                  <p className="whitespace-pre-line leading-relaxed">{event.description}</p>
+                  <p className="whitespace-pre-line">{event.description}</p>
                 ) : (
-                  <p className="italic">No description provided for this event.</p>
+                  <p className="italic text-muted-foreground">No description provided for this event.</p>
                 )}
               </div>
             </section>
             
             <section>
-              <h2 className="text-2xl font-serif font-bold mb-6">Select Tickets</h2>
+              <h2 className="text-3xl font-serif font-bold mb-8 flex items-center gap-4">
+                <span className="w-8 h-1 bg-emerald-600 block"></span>
+                Select Tickets
+              </h2>
               {(!ticketTypes || ticketTypes.length === 0) ? (
-                <p className="text-muted-foreground">No tickets are currently available.</p>
+                <div className="p-8 text-center bg-card border border-dashed rounded-sm">
+                  <p className="text-muted-foreground">No tickets are currently available.</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {ticketTypes.map((ticket) => {
@@ -197,26 +217,28 @@ export default function EventRegister() {
                       <div 
                         key={ticket.id}
                         onClick={() => !isSoldOut && setSelectedTicketId(ticket.id)}
-                        className={`flex flex-row items-center justify-between p-4 sm:p-5 rounded-xl border transition-all ${
-                          isSoldOut ? 'opacity-50 bg-muted/50 cursor-not-allowed' : 
-                          isSelected ? 'border-primary ring-1 ring-primary bg-primary/5 cursor-pointer' : 
-                          'bg-card hover:border-primary/50 hover:bg-muted/10 cursor-pointer'
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-6 rounded-sm border-2 transition-all duration-300 ${
+                          isSoldOut ? 'opacity-50 bg-muted cursor-not-allowed border-border/50' : 
+                          isSelected ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-900/10 shadow-md transform scale-[1.01]' : 
+                          'bg-card border-border/60 hover:border-emerald-600/50 hover:shadow-sm cursor-pointer'
                         }`}
                       >
-                        <div className="flex-1 min-w-0 pr-4">
-                          <h3 className="font-bold text-base sm:text-lg truncate">{ticket.name}</h3>
-                          {ticket.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{ticket.description}</p>}
-                          {isSoldOut && <Badge variant="secondary" className="mt-2 text-xs">Sold Out</Badge>}
+                        <div className="flex-1 min-w-0 pr-6 mb-4 sm:mb-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="font-serif font-bold text-2xl truncate">{ticket.name}</h3>
+                            {isSoldOut && <Badge variant="secondary" className="text-xs uppercase tracking-widest font-bold">Sold Out</Badge>}
+                          </div>
+                          {ticket.description && <p className="text-muted-foreground font-light line-clamp-2">{ticket.description}</p>}
                         </div>
-                        <div className="flex flex-col items-end gap-2 shrink-0">
-                          <span className="text-xl font-bold text-emerald-600">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 shrink-0 border-t sm:border-t-0 sm:border-l border-border/50 pt-4 sm:pt-0 sm:pl-6">
+                          <span className={`text-2xl font-bold font-serif ${isSoldOut ? 'text-muted-foreground' : 'text-emerald-600'}`}>
                             {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
                           </span>
                           {!isSoldOut && (
-                            <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${
-                              isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-input'
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              isSelected ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-input bg-background'
                             }`}>
-                              {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                              {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-white animate-in zoom-in" />}
                             </div>
                           )}
                         </div>
@@ -228,17 +250,21 @@ export default function EventRegister() {
             </section>
           </div>
           
-          <div className="md:col-span-2">
-            <div className="sticky top-24">
-              <Card className="shadow-lg border-border/60">
-                <CardHeader className="bg-muted/30 pb-4 border-b">
-                  <CardTitle className="font-serif">Registration</CardTitle>
-                  <CardDescription>Enter your details to secure your spot</CardDescription>
+          <div className="lg:col-span-2">
+            <div className="sticky top-24 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-300">
+              <Card className="shadow-2xl border-border rounded-sm overflow-hidden">
+                <div className="h-2 w-full bg-emerald-600" />
+                <CardHeader className="bg-card px-8 pt-8 pb-6 border-b border-border/50">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Ticket className="h-5 w-5 text-emerald-600" />
+                    <CardTitle className="font-serif text-2xl">Registration</CardTitle>
+                  </div>
+                  <CardDescription className="text-base font-light">Enter your details to secure your spot</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-6">
-                  <form id="registration-form" onSubmit={handleRegister} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
+                <CardContent className="p-8 bg-card">
+                  <form id="registration-form" onSubmit={handleRegister} className="space-y-6">
+                    <div className="space-y-3">
+                      <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Full Name</Label>
                       <Input 
                         id="name" 
                         required 
@@ -246,10 +272,11 @@ export default function EventRegister() {
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
                         disabled={!selectedTicketId || registerMutation.isPending}
+                        className="h-14 text-lg bg-background border-border/60 focus:border-emerald-500 rounded-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
+                    <div className="space-y-3">
+                      <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Email Address</Label>
                       <Input 
                         id="email" 
                         type="email" 
@@ -258,30 +285,39 @@ export default function EventRegister() {
                         value={formData.email}
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
                         disabled={!selectedTicketId || registerMutation.isPending}
+                        className="h-14 text-lg bg-background border-border/60 focus:border-emerald-500 rounded-sm"
                       />
                     </div>
                   </form>
                 </CardContent>
-                <CardFooter className="flex-col pt-2 pb-6 px-6 bg-muted/10 border-t gap-4">
-                  <div className="w-full flex justify-between items-center py-2 text-sm font-medium">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="text-lg">
-                      {selectedTicketId 
-                        ? (ticketTypes?.find(t => t.id === selectedTicketId)?.price === 0 
-                            ? 'Free' 
-                            : `$${ticketTypes?.find(t => t.id === selectedTicketId)?.price.toFixed(2)}`)
-                        : '$0.00'
-                      }
-                    </span>
+                <CardFooter className="flex-col pt-0 pb-8 px-8 bg-card gap-6">
+                  <div className="w-full p-6 bg-muted/30 border border-border/50 rounded-sm">
+                    <div className="flex justify-between items-center text-sm font-medium mb-2">
+                      <span className="text-muted-foreground uppercase tracking-widest text-xs font-bold">Selected</span>
+                      <span className="font-serif truncate max-w-[150px] text-right">
+                        {selectedTicketId ? ticketTypes?.find(t => t.id === selectedTicketId)?.name : 'None'}
+                      </span>
+                    </div>
+                    <div className="w-full flex justify-between items-end border-t border-border/50 pt-4 mt-2">
+                      <span className="text-muted-foreground uppercase tracking-widest text-xs font-bold">Total Due</span>
+                      <span className="text-3xl font-serif font-bold text-emerald-600">
+                        {selectedTicketId 
+                          ? (ticketTypes?.find(t => t.id === selectedTicketId)?.price === 0 
+                              ? 'Free' 
+                              : `$${ticketTypes?.find(t => t.id === selectedTicketId)?.price.toFixed(2)}`)
+                          : '$0.00'
+                        }
+                      </span>
+                    </div>
                   </div>
                   <Button 
                     type="submit" 
                     form="registration-form" 
-                    className="w-full h-12 text-base" 
+                    className="w-full h-16 text-lg font-bold shadow-lg hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm" 
                     disabled={!selectedTicketId || !formData.name || !formData.email || registerMutation.isPending}
                   >
-                    {registerMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                    Complete Registration
+                    {registerMutation.isPending ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : null}
+                    Complete Registration <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </CardFooter>
               </Card>

@@ -1,0 +1,276 @@
+
+Evenum — Product Experience, Identity & Excellence Refinement
+IMPORTANT
+The original master prompt in the attached_assets folder remains the source of truth.
+Read it completely.
+Read the refinement prompt completely.
+Do not replace either of them.
+This prompt exists because the current implementation, while functional, still does not fully embody the vision of Evenum.
+The application works.
+The architecture is improving.
+The features exist.
+However, the overall product still feels like software that functions rather than a platform that inspires confidence.
+This refinement is about elevating the product from functional to exceptional.
+
+Your Mission
+You are no longer implementing features.
+You are acting as a world-class multidisciplinary product team preparing Evenum for public launch.
+Challenge everything.
+Do not assume existing implementations are correct simply because they work.
+If something feels generic, redesign it.
+If something feels incomplete, complete it.
+If something feels ordinary, elevate it.
+Do not stop at "it works."
+Continue until the application genuinely feels premium.
+
+Stop Thinking Like CRUD Software
+One of the biggest remaining weaknesses is that many experiences still feel like traditional CRUD interfaces.
+Creating.
+Editing.
+Listing.
+Viewing.
+Submitting.
+That is not the product.
+Those are merely operations.
+Evenum is about participation.
+Everything should revolve around participation experiences rather than management screens.
+Management exists to support the experience—not replace it.
+
+Build Experiences, Not Pages
+Every public-facing interface should feel like entering a destination.
+Never design pages as simple forms.
+Never design them as information cards stacked together.
+Instead, create immersive experiences.
+Users should immediately understand:
+* what this is
+* why it matters
+* who organized it
+* what they are participating in
+* why they should continue
+The platform should create confidence before users perform any action.
+
+Voting Must Feel Like a Real Election
+This is currently the weakest area.
+The current implementation behaves correctly but emotionally feels like completing a survey or poll.
+That is fundamentally different from the vision.
+Evenum is a professional voting platform.
+A user should immediately feel that they have entered a real election.
+Redesign the entire public voting experience around this principle.
+Do not simply display positions and candidate cards.
+Instead create a complete election experience.
+Include rich election identity.
+Professional election branding.
+Election cover media.
+Organization identity.
+Election overview.
+Election timeline.
+Countdown while active.
+Election announcements.
+Participation statistics where appropriate.
+Verified indicators where appropriate.
+Election rules.
+Election information.
+Professional navigation through the election.
+Allow users to understand the election before asking them to vote.
+Candidates should never feel like plain records inside cards.
+Candidates are contestants.
+Present them with personality and professionalism.
+Support rich profiles including:
+Professional photography
+Campaign branding
+Manifesto
+Biography
+Vision
+Promises
+Experience
+Media where appropriate
+Comparison experience
+Candidate detail pages
+Shareable candidate pages
+Professional ballot presentation
+Voting should feel deliberate.
+Not mechanical.
+Review and confirmation should reinforce trust before submission.
+Success should feel meaningful.
+After voting, users should feel they participated in an important event—not merely submitted a form.
+Results should tell a story.
+Do not only display tables.
+Present participation.
+Rankings.
+Statistics.
+Turnout.
+Breakdowns.
+Visual summaries where appropriate.
+Professional presentation.
+The entire voting lifecycle should communicate credibility.
+
+Events Must Feel Like Real Events
+Current implementation focuses primarily on management.
+The attendee experience should become equally important.
+Opening an event should feel like opening a premium event website.
+Create excitement.
+Create anticipation.
+Use rich hero sections.
+Professional event presentation.
+Schedules.
+Venue information.
+Maps where appropriate.
+Speakers.
+Gallery.
+Highlights.
+Countdown.
+Announcements.
+FAQs.
+Sponsors where applicable.
+Ticket presentation should feel premium.
+Ticket purchase should feel trustworthy.
+Digital tickets should be beautifully designed.
+Downloads should be professionally formatted.
+QR experiences should feel polished.
+Confirmation should celebrate attendance.
+Not simply confirm payment.
+
+Campaigns Must Inspire Participation
+Campaigns should never feel like payment forms.
+Users should immediately understand:
+Purpose.
+Mission.
+Impact.
+Goal.
+Progress.
+Why their participation matters.
+Present campaigns emotionally without sacrificing professionalism.
+Encourage trust.
+Transparency.
+Credibility.
+Participation.
+Allow campaigns to feel alive through updates, progress, milestones, stories, and meaningful presentation.
+
+Every Organization Should Feel Unique
+Organizations should not all look identical.
+Allow organizations to express identity through:
+Branding
+Logo
+Cover image
+Theme
+Description
+Mission
+Social links
+Verification where appropriate
+Public organization pages should feel like digital headquarters.
+Not profile cards.
+
+Give Every Participation Experience an Identity
+No two voting activities should feel identical.
+No two events should feel identical.
+No two campaigns should feel identical.
+Allow organizers to customize presentation while preserving Evenum's design language.
+Every experience should have personality.
+
+Make Public Experiences Feel Alive
+Introduce meaningful polish where appropriate.
+Examples include:
+Elegant transitions.
+Thoughtful motion.
+Progress feedback.
+Interactive elements.
+Context-aware confirmations.
+Live updates where appropriate.
+Visual richness.
+Loading experiences.
+Empty states.
+Success states.
+Completion states.
+Do not add animation simply for decoration.
+Every animation should reinforce understanding and confidence.
+
+Strengthen Mobile Experience
+Evenum must feel native on mobile.
+Do not simply resize desktop layouts.
+Design mobile intentionally.
+Navigation.
+Cards.
+Forms.
+Media.
+Voting.
+Ticket purchase.
+Campaign participation.
+Everything should feel designed specifically for touch interaction.
+The platform should feel equally premium on phones and desktops.
+
+Platform Administration Must Become a True Command Center
+Platform Administration should reflect ownership of the entire ecosystem.
+Review every capability expected from operating a professional SaaS platform.
+Provide meaningful administration.
+Moderation.
+Verification.
+Financial oversight.
+Commission management.
+Organization management.
+User management.
+Platform analytics.
+Operational monitoring.
+Support tools.
+Content oversight.
+Audit capabilities.
+Administrative workflows should feel complete and powerful without becoming unnecessarily complex.
+
+Review Every Feature Against the Original Vision
+Do not merely check whether features exist.
+Ask:
+Does this implementation truly represent Evenum?
+Would a professional organization proudly use this?
+Would participants enjoy using it?
+Would this inspire trust?
+Would this stand confidently beside the best participation platforms in the world?
+If not, improve it.
+
+Raise the Standard Everywhere
+Review every aspect of the application.
+Typography.
+Spacing.
+Color hierarchy.
+Media handling.
+Icons.
+Cards.
+Buttons.
+Forms.
+Navigation.
+Search.
+Discovery.
+Loading states.
+Error handling.
+Accessibility.
+Responsiveness.
+Image uploads.
+Exports.
+Reports.
+Settings.
+Organization management.
+Administration.
+Participation.
+Presentation.
+Consistency.
+Everything should feel intentionally crafted.
+Nothing should feel like an unfinished AI-generated application.
+
+Build a Product, Not Just Software
+The objective is not to produce more code.
+The objective is to create a product that organizations trust, participants enjoy, and Evenum can proudly represent.
+Every interaction should communicate professionalism.
+Every screen should communicate confidence.
+Every workflow should communicate quality.
+Every experience should communicate that Evenum is a premium participation platform.
+When users open Evenum, they should not feel like they are using a generic management application.
+They should feel like they have entered a carefully crafted platform dedicated to professional participation.
+
+Final Directive
+Do not stop after making obvious improvements.
+Review the product again.
+Question every design decision.
+Question every workflow.
+Question every interaction.
+Refine weak areas.
+Improve inconsistent areas.
+Complete unfinished experiences.
+Repeat this process until the application no longer feels like an MVP or a generated template, but instead feels like a polished, world-class platform that could confidently serve real organizations at scale.
