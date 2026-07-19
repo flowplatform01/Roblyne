@@ -14,6 +14,8 @@ import {
   useUpdateOrganization,
   getListOrganizationMembersQueryKey,
   getGetOrganizationQueryKey,
+  getListOrganizationsQueryKey,
+  getGetPublicOrganizationQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -516,6 +518,8 @@ function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetOrganizationQueryKey(orgId) });
+          queryClient.invalidateQueries({ queryKey: getListOrganizationsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetPublicOrganizationQueryKey(orgId) });
           toast({ title: 'Settings saved', description: 'Organization profile updated.' });
         },
         onError: () =>

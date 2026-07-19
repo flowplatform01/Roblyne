@@ -14,8 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye } from "lucide-react";
+import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -196,6 +200,12 @@ export default function CampaignDetail() {
               >
                 Analytics
               </TabsTrigger>
+              <TabsTrigger 
+                value="branding" 
+                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                Branding
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="submissions" className="mt-0 space-y-6">
@@ -333,6 +343,10 @@ export default function CampaignDetail() {
                 </Card>
               )}
             </TabsContent>
+
+            <TabsContent value="branding" className="mt-0">
+              <CampaignBrandingSection campaign={campaign} campaignId={campaignId} />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -414,5 +428,97 @@ export default function CampaignDetail() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+function CampaignBrandingSection({ campaign, campaignId }: { campaign: any; campaignId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [heroImageUrl, setHeroImageUrl] = useState<string>(campaign.heroImageUrl ?? '');
+  const [coverImageUrl, setCoverImageUrl] = useState<string>(campaign.coverImageUrl ?? '');
+  const [accentColor, setAccentColor] = useState<string>(campaign.accentColor ?? '#4F46E5');
+  const [theme, setTheme] = useState<'evenum' | 'light' | 'dark'>(campaign.theme ?? 'evenum');
+  const updateCampaign = useUpdateCampaign();
+
+  const handleSave = () => {
+    updateCampaign.mutate(
+      {
+        campaignId,
+        data: {
+          heroImageUrl: heroImageUrl || undefined,
+          coverImageUrl: coverImageUrl || undefined,
+          accentColor,
+          theme,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
+          toast({ title: 'Branding saved', description: 'Campaign branding updated.' });
+        },
+        onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-serif font-bold mb-1">Campaign Branding</h2>
+        <p className="text-sm text-muted-foreground">These settings override the organization theme for this campaign's public participation page.</p>
+      </div>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Media</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Hero Image</Label>
+            <p className="text-xs text-muted-foreground">Full-width background shown on the campaign page header</p>
+            <ImageUpload value={heroImageUrl || undefined} onChange={v => setHeroImageUrl(v ?? '')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Cover Image</Label>
+            <p className="text-xs text-muted-foreground">Used in cards, previews, and social sharing</p>
+            <ImageUpload value={coverImageUrl || undefined} onChange={v => setCoverImageUrl(v ?? '')} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Appearance</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Accent Color</Label>
+            <p className="text-xs text-muted-foreground">Primary color for buttons and highlights on the campaign page</p>
+            <AccentColorPicker value={accentColor} onChange={setAccentColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Theme</Label>
+            <p className="text-xs text-muted-foreground">Visual theme for the public campaign experience</p>
+            <Select value={theme} onValueChange={v => setTheme(v as 'evenum' | 'light' | 'dark')}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="evenum">Evenum (Dark Blue)</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={updateCampaign.isPending} className="h-10 px-8 rounded-sm">
+          {updateCampaign.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Branding
+        </Button>
+      </div>
+    </div>
   );
 }

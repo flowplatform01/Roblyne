@@ -25,8 +25,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard } from "lucide-react";
+import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard, Save } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -368,6 +372,12 @@ export default function EventDetail() {
               >
                 Analytics
               </TabsTrigger>
+              <TabsTrigger 
+                value="branding" 
+                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                Branding
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="tickets" className="mt-0 space-y-6">
@@ -665,6 +675,10 @@ export default function EventDetail() {
                 </Card>
               </div>
             </TabsContent>
+
+            <TabsContent value="branding" className="mt-0">
+              <EventBrandingSection event={event} eventId={eventId} />
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -697,5 +711,97 @@ export default function EventDetail() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function EventBrandingSection({ event, eventId }: { event: any; eventId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [heroImageUrl, setHeroImageUrl] = useState<string>(event.heroImageUrl ?? '');
+  const [coverImageUrl, setCoverImageUrl] = useState<string>(event.coverImageUrl ?? '');
+  const [accentColor, setAccentColor] = useState<string>(event.accentColor ?? '#4F46E5');
+  const [theme, setTheme] = useState<'evenum' | 'light' | 'dark'>(event.theme ?? 'evenum');
+  const updateEvent = useUpdateEvent();
+
+  const handleSave = () => {
+    updateEvent.mutate(
+      {
+        eventId,
+        data: {
+          heroImageUrl: heroImageUrl || undefined,
+          coverImageUrl: coverImageUrl || undefined,
+          accentColor,
+          theme,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(eventId) });
+          toast({ title: 'Branding saved', description: 'Event branding updated.' });
+        },
+        onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-serif font-bold mb-1">Event Branding</h2>
+        <p className="text-sm text-muted-foreground">These settings override the organization theme for this event's public registration page.</p>
+      </div>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Media</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Hero Image</Label>
+            <p className="text-xs text-muted-foreground">Full-width background shown on the registration page header</p>
+            <ImageUpload value={heroImageUrl || undefined} onChange={v => setHeroImageUrl(v ?? '')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Cover Image</Label>
+            <p className="text-xs text-muted-foreground">Used in cards, previews, and social sharing</p>
+            <ImageUpload value={coverImageUrl || undefined} onChange={v => setCoverImageUrl(v ?? '')} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Appearance</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Accent Color</Label>
+            <p className="text-xs text-muted-foreground">Primary color for buttons and highlights on the registration page</p>
+            <AccentColorPicker value={accentColor} onChange={setAccentColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Theme</Label>
+            <p className="text-xs text-muted-foreground">Visual theme for the public registration experience</p>
+            <Select value={theme} onValueChange={v => setTheme(v as 'evenum' | 'light' | 'dark')}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="evenum">Evenum (Dark Blue)</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={updateEvent.isPending} className="h-10 px-8 rounded-sm">
+          {updateEvent.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Branding
+        </Button>
+      </div>
+    </div>
   );
 }

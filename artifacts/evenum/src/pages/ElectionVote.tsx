@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
+import { hexToHsl } from "@/lib/branding";
 
 function useCountdown(targetDate: string | null | undefined) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
@@ -139,6 +140,10 @@ export default function ElectionVote() {
 
   if (!election) return null;
 
+  const primaryStyle: React.CSSProperties = election.accentColor
+    ? { "--primary": hexToHsl(election.accentColor) } as React.CSSProperties
+    : {};
+
   const needsInviteCode = election.visibility === 'invite_only';
   const needsVoterEmail = election.eligibilityMode === 'allowlist';
   const positionList = positions || [];
@@ -221,7 +226,13 @@ export default function ElectionVote() {
     return (
       <Layout>
         {/* Election hero — dark, ceremonial */}
-        <div className="relative bg-foreground text-background overflow-hidden">
+        <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
+          {((election as any).heroImageUrl || election.coverImageUrl) && (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${(election as any).heroImageUrl || election.coverImageUrl})`, opacity: 0.18 }}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
           {/* Subtle pattern */}
           <div className="absolute inset-0 opacity-[0.03]" style={{
@@ -334,7 +345,7 @@ export default function ElectionVote() {
         )}
 
         {/* Election credentials + CTA */}
-        <div className="container mx-auto px-4 py-16 max-w-2xl">
+        <div className="container mx-auto px-4 py-16 max-w-2xl" style={primaryStyle}>
 
           {/* Election integrity notice */}
           <div className="flex items-start gap-4 bg-primary/5 border border-primary/15 rounded-sm p-5 mb-8">
@@ -435,7 +446,7 @@ export default function ElectionVote() {
     return (
       <Layout>
         {/* Sticky ballot header */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm">
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm" style={primaryStyle}>
           <div className="container mx-auto px-4 max-w-4xl">
             <div className="py-3 flex items-center gap-4">
               <span className="text-xs font-bold text-muted-foreground hidden sm:block truncate">{election.title}</span>

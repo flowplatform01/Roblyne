@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { hexToHsl } from "@/lib/branding";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -111,7 +112,8 @@ export default function EventRegister() {
       setMeta('og:description', event.description || `Register for ${event.title}`, true);
       setMeta('og:url', shareUrl, true);
       setMeta('og:type', 'website', true);
-      if (event.coverImageUrl) setMeta('og:image', event.coverImageUrl, true);
+      const ogImage = (event as any).heroImageUrl || event.coverImageUrl;
+      if (ogImage) setMeta('og:image', ogImage, true);
     }
   }, [event, shareUrl]);
 
@@ -166,6 +168,10 @@ export default function EventRegister() {
   }
 
   if (!event) return null;
+
+  const primaryStyle: React.CSSProperties = (event as any).accentColor
+    ? { "--primary": hexToHsl((event as any).accentColor) } as React.CSSProperties
+    : {};
 
   if (event.status !== 'published') {
     return (
@@ -272,10 +278,10 @@ export default function EventRegister() {
     <Layout>
       {/* Hero */}
       <div className="relative bg-foreground text-background overflow-hidden">
-        {event.coverImageUrl && (
+        {((event as any).heroImageUrl || event.coverImageUrl) && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${event.coverImageUrl})` }}
+            className="absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(${(event as any).heroImageUrl || event.coverImageUrl})` }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-foreground/50 to-foreground/95" />
@@ -342,7 +348,7 @@ export default function EventRegister() {
       </div>
 
       {/* Two-column body */}
-      <div className="container mx-auto px-4 py-16 max-w-6xl">
+      <div className="container mx-auto px-4 py-16 max-w-6xl" style={primaryStyle}>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16">
 
           {/* Left: Event info */}

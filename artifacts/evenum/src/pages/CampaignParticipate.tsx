@@ -15,6 +15,7 @@ import {
   Users, Heart, TrendingUp, Target, Sparkles
 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { hexToHsl } from "@/lib/branding";
 import { useToast } from '@/hooks/use-toast';
 
 export default function CampaignParticipate() {
@@ -45,7 +46,8 @@ export default function CampaignParticipate() {
       setMeta('og:description', campaign.description || `Participate in ${campaign.title}`, true);
       setMeta('og:url', shareUrl, true);
       setMeta('og:type', 'website', true);
-      if (campaign.coverImageUrl) setMeta('og:image', campaign.coverImageUrl, true);
+      const ogImage = (campaign as any).heroImageUrl || campaign.coverImageUrl;
+      if (ogImage) setMeta('og:image', ogImage, true);
     }
   }, [campaign, shareUrl]);
 
@@ -97,6 +99,10 @@ export default function CampaignParticipate() {
   }
 
   if (!campaign) return null;
+
+  const primaryStyle: React.CSSProperties = (campaign as any).accentColor
+    ? { "--primary": hexToHsl((campaign as any).accentColor) } as React.CSSProperties
+    : {};
 
   if (campaign.status !== 'active') {
     return (
@@ -223,10 +229,10 @@ export default function CampaignParticipate() {
     <Layout>
       {/* Campaign hero */}
       <div className="relative bg-foreground text-background overflow-hidden">
-        {campaign.coverImageUrl && (
+        {((campaign as any).heroImageUrl || campaign.coverImageUrl) && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-20"
-            style={{ backgroundImage: `url(${campaign.coverImageUrl})` }}
+            className="absolute inset-0 bg-cover bg-center opacity-25"
+            style={{ backgroundImage: `url(${(campaign as any).heroImageUrl || campaign.coverImageUrl})` }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-foreground/60 to-foreground/95" />
@@ -318,7 +324,7 @@ export default function CampaignParticipate() {
       )}
 
       {/* Form section */}
-      <div className="container mx-auto px-4 py-16 max-w-2xl">
+      <div className="container mx-auto px-4 py-16 max-w-2xl" style={primaryStyle}>
 
         {/* Why your participation matters */}
         <div className="rounded-sm overflow-hidden border border-amber-200/60 mb-10">
