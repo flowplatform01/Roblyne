@@ -31,6 +31,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
@@ -314,6 +315,12 @@ export default function ElectionDetail() {
                 <ExternalLink className="mr-2 h-4 w-4" /> View Voting Page
               </Link>
             </Button>
+            <ShareButton
+              url={`${window.location.origin}/elections/${election.id}/vote`}
+              title={election.title}
+              description={election.description || `Vote in ${election.title}`}
+              variant="icon"
+            />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

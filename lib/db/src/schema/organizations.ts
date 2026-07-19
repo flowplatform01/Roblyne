@@ -9,7 +9,11 @@ export const organizationsTable = pgTable("organizations", {
   slug: text("slug").notNull().unique(),
   description: text("description"),
   logoUrl: text("logo_url"),
+  coverImageUrl: text("cover_image_url"),
+  heroImageUrl: text("hero_image_url"),
   website: text("website"),
+  accentColor: text("accent_color"), // hex color e.g. "#4F46E5"
+  theme: text("theme").notNull().default("evenum"), // evenum | light | dark
   ownerId: integer("owner_id").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

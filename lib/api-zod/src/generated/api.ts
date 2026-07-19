@@ -76,15 +76,41 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary Update current user profile (name, avatar)
+ */
+
+
+
+export const UpdateMeBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "avatarUrl": zod.string().optional()
+})
+
+export const UpdateMeResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "avatarUrl": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List organizations for the current user
  */
+export const listOrganizationsResponseThemeDefault = `evenum`;
+
 export const ListOrganizationsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "slug": zod.string(),
   "description": zod.string().nullish(),
   "logoUrl": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
   "website": zod.string().nullish(),
+  "accentColor": zod.string().nullish().describe('Hex color e.g. \"#4F46E5\"'),
+  "theme": zod.enum(['evenum', 'light', 'dark']).default(listOrganizationsResponseThemeDefault),
   "ownerId": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -101,8 +127,14 @@ export const CreateOrganizationBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().optional(),
   "logoUrl": zod.string().optional(),
-  "website": zod.string().optional()
+  "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "website": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional()
 })
+
+export const createOrganizationResponseThemeDefault = `evenum`;
 
 export const CreateOrganizationResponse = zod.object({
   "id": zod.number(),
@@ -110,7 +142,11 @@ export const CreateOrganizationResponse = zod.object({
   "slug": zod.string(),
   "description": zod.string().nullish(),
   "logoUrl": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
   "website": zod.string().nullish(),
+  "accentColor": zod.string().nullish().describe('Hex color e.g. \"#4F46E5\"'),
+  "theme": zod.enum(['evenum', 'light', 'dark']).default(createOrganizationResponseThemeDefault),
   "ownerId": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -123,13 +159,19 @@ export const GetOrganizationParams = zod.object({
   "orgId": zod.coerce.number()
 })
 
+export const getOrganizationResponseThemeDefault = `evenum`;
+
 export const GetOrganizationResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "slug": zod.string(),
   "description": zod.string().nullish(),
   "logoUrl": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
   "website": zod.string().nullish(),
+  "accentColor": zod.string().nullish().describe('Hex color e.g. \"#4F46E5\"'),
+  "theme": zod.enum(['evenum', 'light', 'dark']).default(getOrganizationResponseThemeDefault),
   "ownerId": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -149,8 +191,14 @@ export const UpdateOrganizationBody = zod.object({
   "name": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "logoUrl": zod.string().optional(),
-  "website": zod.string().optional()
+  "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "website": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional()
 })
+
+export const updateOrganizationResponseThemeDefault = `evenum`;
 
 export const UpdateOrganizationResponse = zod.object({
   "id": zod.number(),
@@ -158,9 +206,123 @@ export const UpdateOrganizationResponse = zod.object({
   "slug": zod.string(),
   "description": zod.string().nullish(),
   "logoUrl": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
   "website": zod.string().nullish(),
+  "accentColor": zod.string().nullish().describe('Hex color e.g. \"#4F46E5\"'),
+  "theme": zod.enum(['evenum', 'light', 'dark']).default(updateOrganizationResponseThemeDefault),
   "ownerId": zod.number(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get public profile of an organization (with stats)
+ */
+export const GetPublicOrganizationParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const GetPublicOrganizationResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "description": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
+  "createdAt": zod.coerce.date(),
+  "stats": zod.object({
+  "electionsCount": zod.number(),
+  "eventsCount": zod.number(),
+  "campaignsCount": zod.number(),
+  "totalParticipants": zod.number(),
+  "activeElectionsCount": zod.number().optional(),
+  "upcomingEventsCount": zod.number().optional(),
+  "activeCampaignsCount": zod.number().optional()
+}),
+  "recentElections": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
+  "status": zod.enum(['draft', 'active', 'ended']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "requiresAuth": zod.boolean().optional(),
+  "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
+  "inviteCode": zod.string().nullish(),
+  "startsAt": zod.coerce.date().nullish(),
+  "endsAt": zod.coerce.date().nullish(),
+  "totalVotes": zod.number().optional(),
+  "positionsCount": zod.number().optional(),
+  "candidatesCount": zod.number().optional(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "recentEvents": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
+  "location": zod.string().nullish(),
+  "isOnline": zod.boolean().optional(),
+  "onlineUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'published', 'cancelled', 'completed']),
+  "visibility": zod.enum(['public', 'private', 'invite_only']),
+  "inviteCode": zod.string().nullish(),
+  "startsAt": zod.coerce.date().nullish(),
+  "endsAt": zod.coerce.date().nullish(),
+  "capacity": zod.number().nullish(),
+  "attendeesCount": zod.number().optional(),
+  "ticketTypesCount": zod.number().optional(),
+  "createdAt": zod.coerce.date()
+})).optional(),
+  "recentCampaigns": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
+  "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
+  "status": zod.enum(['draft', 'active', 'ended']),
+  "visibility": zod.enum(['public', 'private']),
+  "goalAmount": zod.number().nullish(),
+  "currentAmount": zod.number().optional(),
+  "submissionsCount": zod.number().optional(),
+  "requiresPayment": zod.boolean().optional(),
+  "paymentAmount": zod.number().nullish(),
+  "currency": zod.string().optional(),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "type": zod.enum(['text', 'textarea', 'email', 'phone', 'number', 'select', 'checkbox', 'date']),
+  "required": zod.boolean(),
+  "options": zod.array(zod.string()).optional(),
+  "placeholder": zod.string().optional()
+})).optional(),
+  "startsAt": zod.coerce.date().nullish(),
+  "endsAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})).optional()
 })
 
 
@@ -275,8 +437,13 @@ export const ListElectionsResponseItem = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
@@ -304,6 +471,10 @@ export const CreateElectionBody = zod.object({
   "orgId": zod.number(),
   "title": zod.string().min(1),
   "description": zod.string().optional(),
+  "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "visibility": zod.enum(['public', 'private', 'invite_only']).default(createElectionBodyVisibilityDefault),
   "requiresAuth": zod.boolean().default(createElectionBodyRequiresAuthDefault),
   "eligibilityMode": zod.enum(['open', 'allowlist']).default(createElectionBodyEligibilityModeDefault),
@@ -315,8 +486,13 @@ export const CreateElectionResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
@@ -342,8 +518,13 @@ export const GetElectionResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
@@ -371,6 +552,10 @@ export const UpdateElectionParams = zod.object({
 export const UpdateElectionBody = zod.object({
   "title": zod.string().min(1).optional(),
   "description": zod.string().optional(),
+  "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']).optional(),
   "visibility": zod.enum(['public', 'private', 'invite_only']).optional(),
   "requiresAuth": zod.boolean().optional(),
@@ -383,8 +568,13 @@ export const UpdateElectionResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
+  "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private', 'invite_only']),
   "requiresAuth": zod.boolean().optional(),
@@ -453,6 +643,35 @@ export const CreatePositionResponse = zod.object({
   "description": zod.string().nullish(),
   "maxSelections": zod.number(),
   "sortOrder": zod.number()
+})
+
+
+/**
+ * @summary Get a single position by ID
+ */
+export const GetPositionParams = zod.object({
+  "electionId": zod.coerce.number(),
+  "positionId": zod.coerce.number()
+})
+
+export const GetPositionResponse = zod.object({
+  "id": zod.number(),
+  "electionId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "maxSelections": zod.number(),
+  "sortOrder": zod.number(),
+  "candidates": zod.array(zod.object({
+  "id": zod.number(),
+  "electionId": zod.number(),
+  "positionId": zod.number(),
+  "positionTitle": zod.string().nullish(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "photoUrl": zod.string().nullish(),
+  "platform": zod.string().nullish(),
+  "voteCount": zod.number().nullish()
+}))
 })
 
 
@@ -759,9 +978,13 @@ export const ListEventsResponseItem = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().nullish(),
   "isOnline": zod.boolean().optional(),
   "onlineUrl": zod.string().nullish(),
@@ -790,6 +1013,9 @@ export const CreateEventBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
   "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().optional(),
   "isOnline": zod.boolean().default(createEventBodyIsOnlineDefault),
   "onlineUrl": zod.string().optional(),
@@ -803,9 +1029,13 @@ export const CreateEventResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().nullish(),
   "isOnline": zod.boolean().optional(),
   "onlineUrl": zod.string().nullish(),
@@ -832,9 +1062,13 @@ export const GetEventResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().nullish(),
   "isOnline": zod.boolean().optional(),
   "onlineUrl": zod.string().nullish(),
@@ -864,6 +1098,9 @@ export const UpdateEventBody = zod.object({
   "title": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().optional(),
   "isOnline": zod.boolean().optional(),
   "onlineUrl": zod.string().optional(),
@@ -878,9 +1115,13 @@ export const UpdateEventResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "location": zod.string().nullish(),
   "isOnline": zod.boolean().optional(),
   "onlineUrl": zod.string().nullish(),
@@ -1154,9 +1395,13 @@ export const ListCampaignsResponseItem = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private']),
@@ -1194,6 +1439,9 @@ export const CreateCampaignBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
   "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
   "visibility": zod.enum(['public', 'private']).default(createCampaignBodyVisibilityDefault),
   "goalAmount": zod.number().optional(),
@@ -1216,9 +1464,13 @@ export const CreateCampaignResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private']),
@@ -1253,9 +1505,13 @@ export const GetCampaignResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private']),
@@ -1293,6 +1549,9 @@ export const UpdateCampaignBody = zod.object({
   "title": zod.string().min(1).optional(),
   "description": zod.string().optional(),
   "coverImageUrl": zod.string().optional(),
+  "heroImageUrl": zod.string().optional(),
+  "accentColor": zod.string().optional(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "status": zod.enum(['draft', 'active', 'ended']).optional(),
   "visibility": zod.enum(['public', 'private']).optional(),
   "goalAmount": zod.number().optional(),
@@ -1315,9 +1574,13 @@ export const UpdateCampaignResponse = zod.object({
   "id": zod.number(),
   "orgId": zod.number(),
   "organizationName": zod.string().nullish(),
+  "organizationLogoUrl": zod.string().nullish(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "coverImageUrl": zod.string().nullish(),
+  "heroImageUrl": zod.string().nullish(),
+  "accentColor": zod.string().nullish(),
+  "theme": zod.enum(['evenum', 'light', 'dark']).optional(),
   "type": zod.enum(['registration', 'contribution', 'donation', 'application', 'membership', 'merchandise', 'custom']),
   "status": zod.enum(['draft', 'active', 'ended']),
   "visibility": zod.enum(['public', 'private']),

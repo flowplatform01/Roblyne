@@ -26,6 +26,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -312,6 +313,12 @@ export default function EventDetail() {
                 <ExternalLink className="mr-2 h-4 w-4" /> View Page
               </Link>
             </Button>
+            <ShareButton
+              url={`${window.location.origin}/events/${event.id}/register`}
+              title={event.title}
+              description={event.description || `Register for ${event.title}`}
+              variant="icon"
+            />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -1,0 +1,228 @@
+
+Evenum — Organization Experience, Branding, Customization & Participation Refinement
+Context
+This prompt is an incremental refinement of the existing production codebase.
+Read every previous prompt (attached_assets) completely before making changes.
+Do not rebuild existing functionality.
+Do not remove working features.
+Instead, identify weak implementations, incomplete experiences, inconsistencies, and missing capabilities, then improve them while preserving the established architecture.
+The goal of this refinement is to transform Evenum into a platform that organizations can truly make their own without compromising the platform's design quality.
+
+Mission
+The application has reached a stage where core functionality exists.
+The remaining work is no longer feature implementation.
+It is refinement.
+Professional polish.
+Configurability.
+Consistency.
+Identity.
+Shareability.
+Monetization.
+Every improvement should make Evenum feel less like a generic software product and more like a premium participation platform.
+
+1. Complete Organization Identity
+Review the entire organization profile system.
+Updating an organization's profile must update every place where that organization is represented throughout the application.
+This includes, but is not limited to:
+* Organization avatar
+* Organization logo
+* Organization cover image
+* Organization name
+* Organization description
+* Organization branding
+* Organization identity in navigation
+* Dashboard header
+* Sidebar
+* Public pages
+* Event pages
+* Voting pages
+* Campaign pages
+* Search results
+* Organization cards
+* Public organization profile
+* Administrative interfaces where appropriate
+No stale placeholders should remain after profile updates.
+There should never be situations where the organization profile is updated successfully but the application continues displaying default avatars or outdated branding.
+Identity should remain consistent everywhere.
+
+2. Replace Fixed Hero Backgrounds With Configurable Branding
+Current implementation uses static hero backgrounds.
+Keep the default Evenum design.
+However, organizations should optionally customize the presentation of each experience.
+Support optional hero customization for:
+Voting
+Events
+Campaigns
+Organization pages
+Allow organizations to upload:
+* Cover artwork
+* Hero banner
+* Background image
+If no custom media exists,
+display the default Evenum blue grid visual identity.
+If custom media exists,
+use it elegantly without breaking readability.
+Always preserve typography, spacing, overlays and accessibility.
+Customization should never reduce visual quality.
+
+3. Theme & Appearance Customization
+Organizations should be able to personalize public experiences while remaining inside Evenum's design language.
+Support configurable presentation options such as:
+* Light theme
+* Dark theme
+* Evenum default theme
+Additionally, provide a curated accent color system.
+Allow organizations to choose from carefully designed platform-approved colors.
+Optionally support custom accent colors while automatically maintaining sufficient contrast and accessibility.
+Every selected color should intelligently propagate through:
+* Buttons
+* Highlights
+* Progress indicators
+* Interactive controls
+* Links
+* Status elements
+The system must automatically preserve readability and visual consistency.
+Customization must never produce poor-looking interfaces.
+
+4. Improve Navigation Into Individual Positions
+Current voting experience requires entering the complete voting workflow before interacting with positions.
+Improve discoverability.
+Each position should be directly selectable from the overview or public facing 
+Selecting a position should immediately open that position's experience.
+Users should still be able to continue through the complete election naturally.
+Support both navigation styles.
+
+5. Candidate Experience Must Become Shareable
+Candidates should not only exist inside ballots.
+Each candidate should have an individual public profile.
+Candidate pages should include:
+* Professional profile
+* Campaign information
+* Biography
+* Manifesto
+* Position
+* Organization
+* Election
+* Share functionality
+Every candidate should have a shareable public URL.
+When recipients open that URL:
+They should land directly on the candidate profile.
+If voting is available,
+they should be guided naturally into voting.
+Sharing should become a growth mechanism for elections.
+
+6. Shareability Across Every Pillar
+Apply the same philosophy everywhere.
+Voting
+Share election
+Share position
+Share candidate
+Events
+Share event
+Share ticket page
+Share speaker
+Share schedule
+Campaigns
+Share campaign
+Share updates
+Share milestones
+Organizations
+Share organization
+Share public profile
+Every important entity should be individually shareable.
+
+7. Improve Discoverability
+Public experiences should be easy to discover.
+Support:
+Rich previews
+Social metadata
+Open Graph metadata
+Professional thumbnails
+Meaningful page titles
+Beautiful preview descriptions
+When users share Evenum links,
+they should look professional across messaging platforms and social media.
+
+8. Monetization Workflow Must Become First-Class
+Current implementation treats voting as primarily free.
+This does not fully reflect Evenum's business model.
+Organizations should define participation models during creation.
+Examples include:
+Free participation 
+Paid participation
+Mixed participation
+Per-position pricing
+Per-ticket pricing
+Campaign contribution requirements
+Registration payments
+The workflow should clearly guide organizers through configuring financial participation.
+Participants should always understand any payment requirements before continuing.
+All paid flows must integrate with the centralized Commission Engine introduced in previous refinements.
+Revenue should never bypass platform financial infrastructure.
+
+9. Organization Workflow Customization
+Organizations should have meaningful control over how their public experiences behave.
+Support configurable options such as:
+Branding
+Appearance
+Theme
+Accent color
+Hero media
+Participation settings
+Visibility
+Sharing preferences
+Registration behaviour
+Payment configuration
+Confirmation experience
+These settings should be presented professionally without overwhelming users.
+
+10. Consistency Across Every Pillar
+Every improvement introduced here should be evaluated across:
+Voting
+Events
+Campaigns
+Organizations
+Future participation modules
+Avoid implementing features for only one pillar if they logically belong across the platform.
+
+11. Improve Overall Product Quality
+Review every public-facing experience.
+Identify interactions that feel mechanical.
+Replace them with richer product experiences.
+Examples include:
+Better transitions
+Better confirmations
+Improved navigation
+More intuitive interactions
+Higher quality empty states
+Better onboarding
+Professional loading states
+Meaningful success screens
+Thoughtful error handling
+Better visual hierarchy
+The objective is refinement rather than decoration.
+
+12. Architecture Expectations
+Do not hardcode organization branding.
+Do not hardcode themes.
+Do not hardcode appearance options.
+Build reusable systems.
+Branding system
+Theme engine
+Appearance configuration
+Hero media management
+Share engine
+Customization framework
+These systems should support future platform growth without redesign.
+
+Final Objective
+After this refinement, Evenum should no longer feel like a platform where every organization looks the same.
+Instead:
+* Every organization should have a recognizable identity.
+* Every voting experience should feel unique while still looking unmistakably like Evenum.
+* Every event should communicate its own atmosphere.
+* Every campaign should express its own mission.
+* Every important entity should be discoverable and shareable.
+* Monetization should be a natural, configurable part of professional participation, integrated with the platform's financial infrastructure.
+* Customization should empower organizations without sacrificing consistency, accessibility, or design quality.
+The result should be a platform that combines Evenum's unified design language with organization-level flexibility, making every experience feel professional, distinctive, and production-ready while remaining cohesive as a single world-class platform.

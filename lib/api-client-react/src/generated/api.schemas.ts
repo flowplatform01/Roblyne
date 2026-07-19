@@ -24,7 +24,6 @@ export interface AuthUser {
   /** @nullable */
   avatarUrl?: string | null;
   createdAt: string;
-  isPlatformAdmin?: boolean;
 }
 
 export interface RegisterInput {
@@ -40,6 +39,15 @@ export interface LoginInput {
   password: string;
 }
 
+export type OrganizationTheme = typeof OrganizationTheme[keyof typeof OrganizationTheme];
+
+
+export const OrganizationTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
 export interface Organization {
   id: number;
   name: string;
@@ -49,26 +57,29 @@ export interface Organization {
   /** @nullable */
   logoUrl?: string | null;
   /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroImageUrl?: string | null;
+  /** @nullable */
   website?: string | null;
+  /**
+     * Hex color e.g. "#4F46E5"
+     * @nullable
+     */
+  accentColor?: string | null;
+  theme?: OrganizationTheme;
   ownerId: number;
   createdAt: string;
 }
 
-export interface OrganizationInput {
-  /** @minLength 1 */
-  name: string;
-  description?: string;
-  logoUrl?: string;
-  website?: string;
-}
+export type PublicOrganizationTheme = typeof PublicOrganizationTheme[keyof typeof PublicOrganizationTheme];
 
-export interface OrganizationUpdate {
-  /** @minLength 1 */
-  name?: string;
-  description?: string;
-  logoUrl?: string;
-  website?: string;
-}
+
+export const PublicOrganizationTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export interface OrganizationStats {
   electionsCount: number;
@@ -79,6 +90,15 @@ export interface OrganizationStats {
   upcomingEventsCount?: number;
   activeCampaignsCount?: number;
 }
+
+export type ElectionTheme = typeof ElectionTheme[keyof typeof ElectionTheme];
+
+
+export const ElectionTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export type ElectionStatus = typeof ElectionStatus[keyof typeof ElectionStatus];
 
@@ -111,9 +131,18 @@ export interface Election {
   orgId: number;
   /** @nullable */
   organizationName?: string | null;
+  /** @nullable */
+  organizationLogoUrl?: string | null;
   title: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroImageUrl?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  theme?: ElectionTheme;
   status: ElectionStatus;
   visibility: ElectionVisibility;
   requiresAuth?: boolean;
@@ -129,6 +158,272 @@ export interface Election {
   candidatesCount?: number;
   createdAt: string;
 }
+
+export type EventTheme = typeof EventTheme[keyof typeof EventTheme];
+
+
+export const EventTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export type EventStatus = typeof EventStatus[keyof typeof EventStatus];
+
+
+export const EventStatus = {
+  draft: 'draft',
+  published: 'published',
+  cancelled: 'cancelled',
+  completed: 'completed',
+} as const;
+
+export type EventVisibility = typeof EventVisibility[keyof typeof EventVisibility];
+
+
+export const EventVisibility = {
+  public: 'public',
+  private: 'private',
+  invite_only: 'invite_only',
+} as const;
+
+export interface Event {
+  id: number;
+  orgId: number;
+  /** @nullable */
+  organizationName?: string | null;
+  /** @nullable */
+  organizationLogoUrl?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroImageUrl?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  theme?: EventTheme;
+  /** @nullable */
+  location?: string | null;
+  isOnline?: boolean;
+  /** @nullable */
+  onlineUrl?: string | null;
+  status: EventStatus;
+  visibility: EventVisibility;
+  /** @nullable */
+  inviteCode?: string | null;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  capacity?: number | null;
+  attendeesCount?: number;
+  ticketTypesCount?: number;
+  createdAt: string;
+}
+
+export type CampaignTheme = typeof CampaignTheme[keyof typeof CampaignTheme];
+
+
+export const CampaignTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export type CampaignType = typeof CampaignType[keyof typeof CampaignType];
+
+
+export const CampaignType = {
+  registration: 'registration',
+  contribution: 'contribution',
+  donation: 'donation',
+  application: 'application',
+  membership: 'membership',
+  merchandise: 'merchandise',
+  custom: 'custom',
+} as const;
+
+export type CampaignStatus = typeof CampaignStatus[keyof typeof CampaignStatus];
+
+
+export const CampaignStatus = {
+  draft: 'draft',
+  active: 'active',
+  ended: 'ended',
+} as const;
+
+export type CampaignVisibility = typeof CampaignVisibility[keyof typeof CampaignVisibility];
+
+
+export const CampaignVisibility = {
+  public: 'public',
+  private: 'private',
+} as const;
+
+export type CampaignFieldType = typeof CampaignFieldType[keyof typeof CampaignFieldType];
+
+
+export const CampaignFieldType = {
+  text: 'text',
+  textarea: 'textarea',
+  email: 'email',
+  phone: 'phone',
+  number: 'number',
+  select: 'select',
+  checkbox: 'checkbox',
+  date: 'date',
+} as const;
+
+export interface CampaignField {
+  id: string;
+  label: string;
+  type: CampaignFieldType;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface Campaign {
+  id: number;
+  orgId: number;
+  /** @nullable */
+  organizationName?: string | null;
+  /** @nullable */
+  organizationLogoUrl?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroImageUrl?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  theme?: CampaignTheme;
+  type: CampaignType;
+  status: CampaignStatus;
+  visibility: CampaignVisibility;
+  /** @nullable */
+  goalAmount?: number | null;
+  currentAmount?: number;
+  submissionsCount?: number;
+  requiresPayment?: boolean;
+  /** @nullable */
+  paymentAmount?: number | null;
+  currency?: string;
+  fields?: CampaignField[];
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  createdAt: string;
+}
+
+export interface PublicOrganization {
+  id: number;
+  name: string;
+  slug: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroImageUrl?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  theme?: PublicOrganizationTheme;
+  createdAt: string;
+  stats: OrganizationStats;
+  recentElections?: Election[];
+  recentEvents?: Event[];
+  recentCampaigns?: Campaign[];
+}
+
+export type OrganizationInputTheme = typeof OrganizationInputTheme[keyof typeof OrganizationInputTheme];
+
+
+export const OrganizationInputTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export interface OrganizationInput {
+  /** @minLength 1 */
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  heroImageUrl?: string;
+  website?: string;
+  accentColor?: string;
+  theme?: OrganizationInputTheme;
+}
+
+export type OrganizationUpdateTheme = typeof OrganizationUpdateTheme[keyof typeof OrganizationUpdateTheme];
+
+
+export const OrganizationUpdateTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
+
+export interface OrganizationUpdate {
+  /** @minLength 1 */
+  name?: string;
+  description?: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  heroImageUrl?: string;
+  website?: string;
+  accentColor?: string;
+  theme?: OrganizationUpdateTheme;
+}
+
+export interface Candidate {
+  id: number;
+  electionId: number;
+  positionId: number;
+  /** @nullable */
+  positionTitle?: string | null;
+  name: string;
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  platform?: string | null;
+  /** @nullable */
+  voteCount?: number | null;
+}
+
+export interface PositionWithCandidates {
+  id: number;
+  electionId: number;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  maxSelections: number;
+  sortOrder: number;
+  candidates: Candidate[];
+}
+
+export type ElectionInputTheme = typeof ElectionInputTheme[keyof typeof ElectionInputTheme];
+
+
+export const ElectionInputTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export type ElectionInputVisibility = typeof ElectionInputVisibility[keyof typeof ElectionInputVisibility];
 
@@ -152,12 +447,25 @@ export interface ElectionInput {
   /** @minLength 1 */
   title: string;
   description?: string;
+  coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: ElectionInputTheme;
   visibility?: ElectionInputVisibility;
   requiresAuth?: boolean;
   eligibilityMode?: ElectionInputEligibilityMode;
   startsAt?: string;
   endsAt?: string;
 }
+
+export type ElectionUpdateTheme = typeof ElectionUpdateTheme[keyof typeof ElectionUpdateTheme];
+
+
+export const ElectionUpdateTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export type ElectionUpdateStatus = typeof ElectionUpdateStatus[keyof typeof ElectionUpdateStatus];
 
@@ -189,6 +497,10 @@ export interface ElectionUpdate {
   /** @minLength 1 */
   title?: string;
   description?: string;
+  coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: ElectionUpdateTheme;
   status?: ElectionUpdateStatus;
   visibility?: ElectionUpdateVisibility;
   requiresAuth?: boolean;
@@ -280,23 +592,6 @@ export interface PositionUpdate {
   sortOrder?: number;
 }
 
-export interface Candidate {
-  id: number;
-  electionId: number;
-  positionId: number;
-  /** @nullable */
-  positionTitle?: string | null;
-  name: string;
-  /** @nullable */
-  bio?: string | null;
-  /** @nullable */
-  photoUrl?: string | null;
-  /** @nullable */
-  platform?: string | null;
-  /** @nullable */
-  voteCount?: number | null;
-}
-
 export interface CandidateInput {
   positionId: number;
   /** @minLength 1 */
@@ -367,54 +662,14 @@ export interface ElectionAnalytics {
   topPositions?: ElectionAnalyticsTopPositionsItem[];
 }
 
-export type EventStatus = typeof EventStatus[keyof typeof EventStatus];
+export type EventInputTheme = typeof EventInputTheme[keyof typeof EventInputTheme];
 
 
-export const EventStatus = {
-  draft: 'draft',
-  published: 'published',
-  cancelled: 'cancelled',
-  completed: 'completed',
+export const EventInputTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
 } as const;
-
-export type EventVisibility = typeof EventVisibility[keyof typeof EventVisibility];
-
-
-export const EventVisibility = {
-  public: 'public',
-  private: 'private',
-  invite_only: 'invite_only',
-} as const;
-
-export interface Event {
-  id: number;
-  orgId: number;
-  /** @nullable */
-  organizationName?: string | null;
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  coverImageUrl?: string | null;
-  /** @nullable */
-  location?: string | null;
-  isOnline?: boolean;
-  /** @nullable */
-  onlineUrl?: string | null;
-  status: EventStatus;
-  visibility: EventVisibility;
-  /** @nullable */
-  inviteCode?: string | null;
-  /** @nullable */
-  startsAt?: string | null;
-  /** @nullable */
-  endsAt?: string | null;
-  /** @nullable */
-  capacity?: number | null;
-  attendeesCount?: number;
-  ticketTypesCount?: number;
-  createdAt: string;
-}
 
 export type EventInputVisibility = typeof EventInputVisibility[keyof typeof EventInputVisibility];
 
@@ -431,6 +686,9 @@ export interface EventInput {
   title: string;
   description?: string;
   coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: EventInputTheme;
   location?: string;
   isOnline?: boolean;
   onlineUrl?: string;
@@ -439,6 +697,15 @@ export interface EventInput {
   endsAt?: string;
   capacity?: number;
 }
+
+export type EventUpdateTheme = typeof EventUpdateTheme[keyof typeof EventUpdateTheme];
+
+
+export const EventUpdateTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export type EventUpdateStatus = typeof EventUpdateStatus[keyof typeof EventUpdateStatus];
 
@@ -464,6 +731,9 @@ export interface EventUpdate {
   title?: string;
   description?: string;
   coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: EventUpdateTheme;
   location?: string;
   isOnline?: boolean;
   onlineUrl?: string;
@@ -606,87 +876,20 @@ export interface EventAnalytics {
   registrationsByDay: EventAnalyticsRegistrationsByDayItem[];
 }
 
-export type CampaignFieldType = typeof CampaignFieldType[keyof typeof CampaignFieldType];
-
-
-export const CampaignFieldType = {
-  text: 'text',
-  textarea: 'textarea',
-  email: 'email',
-  phone: 'phone',
-  number: 'number',
-  select: 'select',
-  checkbox: 'checkbox',
-  date: 'date',
-} as const;
-
-export interface CampaignField {
-  id: string;
-  label: string;
-  type: CampaignFieldType;
-  required: boolean;
-  options?: string[];
-  placeholder?: string;
+export interface AuthUserUpdate {
+  /** @minLength 1 */
+  name?: string;
+  avatarUrl?: string;
 }
 
-export type CampaignType = typeof CampaignType[keyof typeof CampaignType];
+export type CampaignInputTheme = typeof CampaignInputTheme[keyof typeof CampaignInputTheme];
 
 
-export const CampaignType = {
-  registration: 'registration',
-  contribution: 'contribution',
-  donation: 'donation',
-  application: 'application',
-  membership: 'membership',
-  merchandise: 'merchandise',
-  custom: 'custom',
+export const CampaignInputTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
 } as const;
-
-export type CampaignStatus = typeof CampaignStatus[keyof typeof CampaignStatus];
-
-
-export const CampaignStatus = {
-  draft: 'draft',
-  active: 'active',
-  ended: 'ended',
-} as const;
-
-export type CampaignVisibility = typeof CampaignVisibility[keyof typeof CampaignVisibility];
-
-
-export const CampaignVisibility = {
-  public: 'public',
-  private: 'private',
-} as const;
-
-export interface Campaign {
-  id: number;
-  orgId: number;
-  /** @nullable */
-  organizationName?: string | null;
-  title: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  coverImageUrl?: string | null;
-  type: CampaignType;
-  status: CampaignStatus;
-  visibility: CampaignVisibility;
-  /** @nullable */
-  goalAmount?: number | null;
-  currentAmount?: number;
-  submissionsCount?: number;
-  requiresPayment?: boolean;
-  /** @nullable */
-  paymentAmount?: number | null;
-  currency?: string;
-  fields?: CampaignField[];
-  /** @nullable */
-  startsAt?: string | null;
-  /** @nullable */
-  endsAt?: string | null;
-  createdAt: string;
-}
 
 export type CampaignInputType = typeof CampaignInputType[keyof typeof CampaignInputType];
 
@@ -715,6 +918,9 @@ export interface CampaignInput {
   title: string;
   description?: string;
   coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: CampaignInputTheme;
   type: CampaignInputType;
   visibility?: CampaignInputVisibility;
   goalAmount?: number;
@@ -725,6 +931,15 @@ export interface CampaignInput {
   startsAt?: string;
   endsAt?: string;
 }
+
+export type CampaignUpdateTheme = typeof CampaignUpdateTheme[keyof typeof CampaignUpdateTheme];
+
+
+export const CampaignUpdateTheme = {
+  evenum: 'evenum',
+  light: 'light',
+  dark: 'dark',
+} as const;
 
 export type CampaignUpdateStatus = typeof CampaignUpdateStatus[keyof typeof CampaignUpdateStatus];
 
@@ -748,6 +963,9 @@ export interface CampaignUpdate {
   title?: string;
   description?: string;
   coverImageUrl?: string;
+  heroImageUrl?: string;
+  accentColor?: string;
+  theme?: CampaignUpdateTheme;
   status?: CampaignUpdateStatus;
   visibility?: CampaignUpdateVisibility;
   goalAmount?: number;

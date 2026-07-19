@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { useGetEvent, useListTicketTypes, useRegisterForEvent } from "@workspace/api-client-react";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -94,6 +95,25 @@ export default function EventRegister() {
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
   const countdown = useCountdown(event?.startsAt);
+
+  const shareUrl = `${window.location.origin}/events/${eventId}/register`;
+
+  useEffect(() => {
+    if (event) {
+      document.title = `${event.title} | Evenum`;
+      const setMeta = (name: string, content: string, prop = false) => {
+        const attr = prop ? 'property' : 'name';
+        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+        el.content = content;
+      };
+      setMeta('og:title', event.title, true);
+      setMeta('og:description', event.description || `Register for ${event.title}`, true);
+      setMeta('og:url', shareUrl, true);
+      setMeta('og:type', 'website', true);
+      if (event.coverImageUrl) setMeta('og:image', event.coverImageUrl, true);
+    }
+  }, [event, shareUrl]);
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,6 +291,15 @@ export default function EventRegister() {
           <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-center mb-6">
             {event.title}
           </h1>
+
+          <div className="flex justify-center mb-6">
+            <ShareButton
+              url={shareUrl}
+              title={event.title}
+              description={event.description || `Register for ${event.title}`}
+              className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+            />
+          </div>
 
           <div className="flex flex-wrap justify-center gap-6 text-background/70 text-sm font-medium mb-10">
             {event.startsAt && (

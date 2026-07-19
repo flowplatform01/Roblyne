@@ -5,6 +5,7 @@ import { useGetElection, useGetElectionResults, useGetElectionAnalytics, exportE
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, Download, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Medal } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -23,6 +24,24 @@ export default function ElectionResults() {
     const t = setTimeout(() => setBarsVisible(true), 400);
     return () => clearTimeout(t);
   }, []);
+
+  const shareUrl = `${window.location.origin}/elections/${electionId}/results`;
+
+  useEffect(() => {
+    if (election) {
+      document.title = `${election.title} — Results | Evenum`;
+      const setMeta = (name: string, content: string, prop = false) => {
+        const attr = prop ? 'property' : 'name';
+        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+        el.content = content;
+      };
+      setMeta('og:title', `${election.title} — Official Results`, true);
+      setMeta('og:description', `View the official results for ${election.title}`, true);
+      setMeta('og:url', shareUrl, true);
+      setMeta('og:type', 'website', true);
+    }
+  }, [election, shareUrl]);
 
   const handleExportCSV = async () => {
     setIsExporting(true);
@@ -110,15 +129,23 @@ export default function ElectionResults() {
             )}
           </div>
 
-          <Button
-            variant="outline"
-            onClick={handleExportCSV}
-            disabled={isExporting}
-            className="h-12 px-8 bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background transition-all rounded-sm"
-          >
-            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            Export Certified CSV
-          </Button>
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="h-12 px-8 bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background transition-all rounded-sm"
+            >
+              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Export Certified CSV
+            </Button>
+            <ShareButton
+              url={`${window.location.origin}/elections/${electionId}/results`}
+              title={election.title + ' — Results'}
+              description={`Official results for ${election.title}`}
+              className="h-12 px-6 bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+            />
+          </div>
         </div>
       </div>
 

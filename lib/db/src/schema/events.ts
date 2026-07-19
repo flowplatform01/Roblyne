@@ -9,6 +9,9 @@ export const eventsTable = pgTable("events", {
   title: text("title").notNull(),
   description: text("description"),
   coverImageUrl: text("cover_image_url"),
+  heroImageUrl: text("hero_image_url"),
+  accentColor: text("accent_color"),
+  theme: text("theme").notNull().default("evenum"), // evenum | light | dark
   location: text("location"),
   isOnline: boolean("is_online").notNull().default(false),
   onlineUrl: text("online_url"),

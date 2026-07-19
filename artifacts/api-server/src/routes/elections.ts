@@ -141,6 +141,30 @@ router.post("/elections/:electionId/positions", requireAuth, async (req, res): P
   res.status(201).json(pos);
 });
 
+router.get("/elections/:electionId/positions/:positionId", async (req, res): Promise<void> => {
+  const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
+  const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
+  const electionId = parseInt(rawElId, 10);
+  const positionId = parseInt(rawPosId, 10);
+  if (isNaN(electionId) || isNaN(positionId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const [pos] = await db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1);
+  if (!pos) { res.status(404).json({ error: "Not found" }); return; }
+
+  const candidates = await db
+    .select({ candidate: candidatesTable, positionTitle: positionsTable.title })
+    .from(candidatesTable)
+    .leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
+    .where(eq(candidatesTable.positionId, positionId));
+
+  const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, candidate.id));
+    return { ...candidate, positionTitle: positionTitle ?? null, voteCount: count ?? 0 };
+  }));
+
+  res.json({ ...pos, candidates: withVotes });
+});
+
 router.patch("/elections/:electionId/positions/:positionId", requireAuth, async (req, res): Promise<void> => {
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;

@@ -17,10 +17,11 @@ function toCsvValue(value: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function campaignRow(campaign: any, orgName: string | null, submissionsCount: number) {
+function campaignRow(campaign: any, orgName: string | null, submissionsCount: number, orgLogoUrl?: string | null) {
   return {
     ...campaign,
     organizationName: orgName,
+    organizationLogoUrl: orgLogoUrl ?? null,
     currentAmount: parseFloat(campaign.currentAmount ?? "0"),
     goalAmount: campaign.goalAmount ? parseFloat(campaign.goalAmount) : null,
     paymentAmount: campaign.paymentAmount ? parseFloat(campaign.paymentAmount) : null,
@@ -40,13 +41,13 @@ router.get("/campaigns", async (req, res): Promise<void> => {
     if (visibility) filters.push(eq(campaignsTable.visibility, visibility));
   }
 
-  const rows = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name })
+  const rows = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
     .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const campaigns = await Promise.all(rows.map(async ({ campaign, orgName }) => {
+  const campaigns = await Promise.all(rows.map(async ({ campaign, orgName, orgLogoUrl }) => {
     const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, campaign.id));
-    return campaignRow(campaign, orgName ?? null, count ?? 0);
+    return campaignRow(campaign, orgName ?? null, count ?? 0, orgLogoUrl);
   }));
   res.json(campaigns);
 });
@@ -55,9 +56,9 @@ router.get("/campaigns", async (req, res): Promise<void> => {
 router.post("/campaigns", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateCampaignBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { orgId, title, description, coverImageUrl, type, visibility, goalAmount, requiresPayment, paymentAmount, currency, fields, startsAt, endsAt } = parsed.data;
+  const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, type, visibility, goalAmount, requiresPayment, paymentAmount, currency, fields, startsAt, endsAt } = parsed.data;
   const [campaign] = await db.insert(campaignsTable).values({
-    orgId, title, description, coverImageUrl, type, visibility: visibility ?? "public",
+    orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme: theme ?? "evenum", type, visibility: visibility ?? "public",
     goalAmount: goalAmount ? String(goalAmount) : null,
     requiresPayment: requiresPayment ?? false,
     paymentAmount: paymentAmount ? String(paymentAmount) : null,
@@ -73,12 +74,12 @@ router.get("/campaigns/:campaignId", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = GetCampaignParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [row] = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name })
+  const [row] = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
     .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
     .where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, row.campaign.id));
-  res.json(campaignRow(row.campaign, row.orgName ?? null, count ?? 0));
+  res.json(campaignRow(row.campaign, row.orgName ?? null, count ?? 0, row.orgLogoUrl));
 });
 
 // Update campaign

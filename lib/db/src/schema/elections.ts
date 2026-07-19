@@ -8,6 +8,10 @@ export const electionsTable = pgTable("elections", {
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
+  coverImageUrl: text("cover_image_url"),
+  heroImageUrl: text("hero_image_url"),
+  accentColor: text("accent_color"),
+  theme: text("theme").notNull().default("evenum"), // evenum | light | dark
   status: text("status").notNull().default("draft"), // draft | active | ended
   visibility: text("visibility").notNull().default("public"), // public | private | invite_only
   requiresAuth: boolean("requires_auth").notNull().default(false),

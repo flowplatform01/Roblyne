@@ -40,9 +40,22 @@ export function AppSidebar({ orgId }: { orgId?: string }) {
     <Sidebar variant="inset" className="border-r">
       <SidebarHeader className="border-b px-4 py-4">
         {currentOrg ? (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('sidebar.organization')}</span>
-            <span className="font-serif font-bold text-lg">{currentOrg.name}</span>
+          <div className="flex items-center gap-3">
+            {currentOrg.logoUrl ? (
+              <img
+                src={currentOrg.logoUrl}
+                alt={currentOrg.name}
+                className="w-9 h-9 rounded object-cover border border-border/60 shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded bg-primary/10 text-primary flex items-center justify-center border border-border/30 shrink-0">
+                <span className="font-serif font-bold text-sm">{currentOrg.name.charAt(0)}</span>
+              </div>
+            )}
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('sidebar.organization')}</span>
+              <span className="font-serif font-bold text-base leading-tight truncate">{currentOrg.name}</span>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1">

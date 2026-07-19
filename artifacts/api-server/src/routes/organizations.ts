@@ -57,6 +57,50 @@ router.get("/organizations/:orgId", async (req, res): Promise<void> => {
   res.json(org);
 });
 
+// Get public organization profile (with stats and recent activity)
+router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
+  const parsed = GetOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
+  if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const orgId = parsed.data.orgId;
+
+  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  if (!org) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [electionsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(eq(electionsTable.orgId, orgId));
+  const [eventsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(eq(eventsTable.orgId, orgId));
+  const [campaignsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(eq(campaignsTable.orgId, orgId));
+  const [activeElections] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.status} = 'active'`);
+  const [upcomingEvents] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.status} = 'published'`);
+  const [activeCampaigns] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.status} = 'active'`);
+
+  const recentElections = await db.select().from(electionsTable)
+    .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public'`)
+    .orderBy(sql`${electionsTable.createdAt} DESC`).limit(3);
+  const recentEvents = await db.select().from(eventsTable)
+    .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public'`)
+    .orderBy(sql`${eventsTable.createdAt} DESC`).limit(3);
+  const recentCampaigns = await db.select().from(campaignsTable)
+    .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
+    .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3);
+
+  res.json({
+    ...org,
+    stats: {
+      electionsCount: electionsCount?.count ?? 0,
+      eventsCount: eventsCount?.count ?? 0,
+      campaignsCount: campaignsCount?.count ?? 0,
+      totalParticipants: 0,
+      activeElectionsCount: activeElections?.count ?? 0,
+      upcomingEventsCount: upcomingEvents?.count ?? 0,
+      activeCampaignsCount: activeCampaigns?.count ?? 0,
+    },
+    recentElections: recentElections.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, positionsCount: 0, candidatesCount: 0, totalVotes: 0 })),
+    recentEvents: recentEvents.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, attendeesCount: 0, ticketTypesCount: 0 })),
+    recentCampaigns: recentCampaigns.map(c => ({ ...c, organizationName: org.name, organizationLogoUrl: org.logoUrl, submissionsCount: 0, currentAmount: c.currentAmount ?? "0" })),
+  });
+});
+
 // Update organization
 router.patch("/organizations/:orgId", requireAuth, async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;

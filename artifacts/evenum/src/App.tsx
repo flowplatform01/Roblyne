@@ -30,6 +30,9 @@ import CampaignParticipate from '@/pages/CampaignParticipate';
 import Settings from '@/pages/Settings';
 import AdminDashboard from '@/pages/AdminDashboard';
 
+import OrganizationPublic from '@/pages/OrganizationPublic';
+import CandidateProfile from '@/pages/CandidateProfile';
+
 const queryClient = new QueryClient();
 
 function Router() {
@@ -44,12 +47,14 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/organizations/new" component={CreateOrganization} />
       <Route path="/organizations/:id" component={OrganizationWorkspace} />
+      <Route path="/organizations/:id/public" component={OrganizationPublic} />
       
       {/* Election Routes */}
       <Route path="/elections/new" component={CreateElection} />
       <Route path="/elections/:id" component={ElectionDetail} />
       <Route path="/elections/:id/vote" component={ElectionVote} />
       <Route path="/elections/:id/results" component={ElectionResults} />
+      <Route path="/candidates/:electionId/:candidateId" component={CandidateProfile} />
 
       {/* Event Routes */}
       <Route path="/events/new" component={CreateEvent} />

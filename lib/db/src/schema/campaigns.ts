@@ -9,6 +9,9 @@ export const campaignsTable = pgTable("campaigns", {
   title: text("title").notNull(),
   description: text("description"),
   coverImageUrl: text("cover_image_url"),
+  heroImageUrl: text("hero_image_url"),
+  accentColor: text("accent_color"),
+  theme: text("theme").notNull().default("evenum"), // evenum | light | dark
   type: text("type").notNull().default("custom"), // registration|contribution|donation|application|membership|merchandise|custom
   status: text("status").notNull().default("draft"), // draft | active | ended
   visibility: text("visibility").notNull().default("public"), // public | private

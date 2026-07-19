@@ -32,15 +32,15 @@ router.get("/events", async (req, res): Promise<void> => {
     if (visibility) filters.push(eq(eventsTable.visibility, visibility));
   }
 
-  const rows = await db.select({ event: eventsTable, orgName: organizationsTable.name })
+  const rows = await db.select({ event: eventsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
     .from(eventsTable)
     .leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const events = await Promise.all(rows.map(async ({ event, orgName }) => {
+  const events = await Promise.all(rows.map(async ({ event, orgName, orgLogoUrl }) => {
     const [{ attendeesCount }] = await db.select({ attendeesCount: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, event.id));
     const [{ ticketTypesCount }] = await db.select({ ticketTypesCount: sql<number>`count(*)::int` }).from(ticketTypesTable).where(eq(ticketTypesTable.eventId, event.id));
-    return { ...event, organizationName: orgName ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 };
+    return { ...event, organizationName: orgName ?? null, organizationLogoUrl: orgLogoUrl ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 };
   }));
   res.json(events);
 });
@@ -49,14 +49,14 @@ router.get("/events", async (req, res): Promise<void> => {
 router.post("/events", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { orgId, title, description, coverImageUrl, location, isOnline, onlineUrl, visibility, startsAt, endsAt, capacity } = parsed.data;
+  const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, location, isOnline, onlineUrl, visibility, startsAt, endsAt, capacity } = parsed.data;
   const inviteCode = visibility === "invite_only" ? uuidv4().replace(/-/g, "").substring(0, 10).toUpperCase() : null;
   const [event] = await db.insert(eventsTable).values({
-    orgId, title, description, coverImageUrl, location,
+    orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme: theme ?? "evenum", location,
     isOnline: isOnline ?? false, onlineUrl, visibility: visibility ?? "public",
     inviteCode, startsAt, endsAt, capacity,
   }).returning();
-  res.status(201).json({ ...event, organizationName: null, attendeesCount: 0, ticketTypesCount: 0 });
+  res.status(201).json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
 // Get event
@@ -64,13 +64,13 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = GetEventParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [row] = await db.select({ event: eventsTable, orgName: organizationsTable.name })
+  const [row] = await db.select({ event: eventsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
     .from(eventsTable).leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
     .where(eq(eventsTable.id, parsed.data.eventId)).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const [{ attendeesCount }] = await db.select({ attendeesCount: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, row.event.id));
   const [{ ticketTypesCount }] = await db.select({ ticketTypesCount: sql<number>`count(*)::int` }).from(ticketTypesTable).where(eq(ticketTypesTable.eventId, row.event.id));
-  res.json({ ...row.event, organizationName: row.orgName ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 });
+  res.json({ ...row.event, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 });
 });
 
 // Update event
@@ -82,7 +82,7 @@ router.patch("/events/:eventId", requireAuth, async (req, res): Promise<void> =>
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const [event] = await db.update(eventsTable).set(bodyParsed.data).where(eq(eventsTable.id, paramParsed.data.eventId)).returning();
   if (!event) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...event, organizationName: null, attendeesCount: 0, ticketTypesCount: 0 });
+  res.json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
 // Delete event

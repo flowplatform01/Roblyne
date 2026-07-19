@@ -14,6 +14,7 @@ import {
   Loader2, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck,
   Users, Heart, TrendingUp, Target, Sparkles
 } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { useToast } from '@/hooks/use-toast';
 
 export default function CampaignParticipate() {
@@ -28,6 +29,25 @@ export default function CampaignParticipate() {
   const { data: analytics } = useGetCampaignAnalytics(campaignId);
   const submitMutation = useSubmitCampaignResponse();
   const { toast } = useToast();
+
+  const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
+
+  React.useEffect(() => {
+    if (campaign) {
+      document.title = `${campaign.title} | Evenum`;
+      const setMeta = (name: string, content: string, prop = false) => {
+        const attr = prop ? 'property' : 'name';
+        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+        el.content = content;
+      };
+      setMeta('og:title', campaign.title, true);
+      setMeta('og:description', campaign.description || `Participate in ${campaign.title}`, true);
+      setMeta('og:url', shareUrl, true);
+      setMeta('og:type', 'website', true);
+      if (campaign.coverImageUrl) setMeta('og:image', campaign.coverImageUrl, true);
+    }
+  }, [campaign, shareUrl]);
 
   const handleFieldChange = (id: string, value: any) => {
     setFormData(prev => ({ ...prev, [id]: value }));
@@ -229,10 +249,19 @@ export default function CampaignParticipate() {
             {campaign.title}
           </h1>
           {campaign.description && (
-            <p className="text-xl text-background/65 font-light max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-background/65 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
               {campaign.description}
             </p>
           )}
+
+          <div className="flex justify-center mb-4">
+            <ShareButton
+              url={shareUrl}
+              title={campaign.title}
+              description={campaign.description || `Participate in ${campaign.title}`}
+              className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+            />
+          </div>
 
           {/* Live participation stats */}
           {participantCount !== null && participantCount > 0 && (

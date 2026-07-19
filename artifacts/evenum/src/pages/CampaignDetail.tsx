@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye } from "lucide-react";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
@@ -145,6 +146,12 @@ export default function CampaignDetail() {
                 <ExternalLink className="mr-2 h-4 w-4" /> View Public Form
               </Link>
             </Button>
+            <ShareButton
+              url={`${window.location.origin}/campaigns/${campaign.id}/participate`}
+              title={campaign.title}
+              description={campaign.description || `Participate in ${campaign.title}`}
+              variant="icon"
+            />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

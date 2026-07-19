@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { ShareButton } from "@/components/branding/ShareButton";
 
 function useCountdown(targetDate: string | null | undefined) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
@@ -70,6 +71,25 @@ export default function ElectionVote() {
   const [voterEmail, setVoterEmail] = useState('');
 
   const countdown = useCountdown(election?.endsAt);
+
+  const shareUrl = `${window.location.origin}/elections/${electionId}/vote`;
+
+  useEffect(() => {
+    if (election) {
+      document.title = `${election.title} | Evenum`;
+      const setMeta = (name: string, content: string, prop = false) => {
+        const attr = prop ? 'property' : 'name';
+        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+        el.content = content;
+      };
+      setMeta('og:title', election.title, true);
+      setMeta('og:description', election.description || `Vote in ${election.title}`, true);
+      setMeta('og:url', shareUrl, true);
+      setMeta('og:type', 'website', true);
+      if ((election as any).heroImageUrl) setMeta('og:image', (election as any).heroImageUrl, true);
+    }
+  }, [election, shareUrl]);
 
   const toggleSelection = (positionId: number, candidateId: number, maxSelections: number) => {
     setSelections(prev => {
@@ -228,10 +248,19 @@ export default function ElectionVote() {
             </h1>
 
             {election.description && (
-              <p className="text-xl text-background/60 font-light max-w-2xl mx-auto mb-10 leading-relaxed">
+              <p className="text-xl text-background/60 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
                 {election.description}
               </p>
             )}
+
+            <div className="flex justify-center mb-10">
+              <ShareButton
+                url={shareUrl}
+                title={election.title}
+                description={election.description || `Vote in ${election.title}`}
+                className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+              />
+            </div>
 
             {/* Countdown */}
             {election.endsAt && !countdown.expired && (
@@ -278,7 +307,13 @@ export default function ElectionVote() {
                 {positionList.map((position, idx) => {
                   const positionCandidateCount = allCandidates.filter(c => c.positionId === position.id).length;
                   return (
-                    <div key={position.id} className="flex items-center gap-4 bg-card border border-border/50 rounded-sm px-5 py-4">
+                    <button
+                      key={position.id}
+                      type="button"
+                      className="flex items-center gap-4 bg-card border border-border/50 rounded-sm px-5 py-4 w-full text-left cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                      onClick={() => setStep(idx)}
+                      title={`Vote on ${position.title}`}
+                    >
                       <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
                         <span className="font-serif font-bold text-sm">{idx + 1}</span>
                       </div>
@@ -289,8 +324,8 @@ export default function ElectionVote() {
                           {position.maxSelections > 1 ? ` · Select up to ${position.maxSelections}` : ''}
                         </p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                    </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />
+                    </button>
                   );
                 })}
               </div>

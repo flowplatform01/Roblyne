@@ -22,6 +22,7 @@ import type {
 import type {
   Attendee,
   AuthUser,
+  AuthUserUpdate,
   Campaign,
   CampaignAnalytics,
   CampaignInput,
@@ -63,6 +64,8 @@ import type {
   Position,
   PositionInput,
   PositionUpdate,
+  PositionWithCandidates,
+  PublicOrganization,
   RegisterInput,
   RegistrationInput,
   SearchParams,
@@ -468,6 +471,77 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
 
 
 
+export const getUpdateMeUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * @summary Update current user profile (name, avatar)
+ */
+export const updateMe = async (authUserUpdate: AuthUserUpdate, options?: RequestInit): Promise<AuthUser> => {
+
+  return customFetch<AuthUser>(getUpdateMeUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(authUserUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: BodyType<AuthUserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: BodyType<AuthUserUpdate>}, TContext> => {
+
+const mutationKey = ['updateMe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMe>>, {data: BodyType<AuthUserUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMe(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMe>>>
+    export type UpdateMeMutationBody = BodyType<AuthUserUpdate>
+    export type UpdateMeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update current user profile (name, avatar)
+ */
+export const useUpdateMe = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError,{data: BodyType<AuthUserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMe>>,
+        TError,
+        {data: BodyType<AuthUserUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMeMutationOptions(options));
+    }
+
 export const getListOrganizationsUrl = () => {
 
 
@@ -764,6 +838,83 @@ export const useUpdateOrganization = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateOrganizationMutationOptions(options));
     }
+
+export const getGetPublicOrganizationUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/public`
+}
+
+/**
+ * @summary Get public profile of an organization (with stats)
+ */
+export const getPublicOrganization = async (orgId: number, options?: RequestInit): Promise<PublicOrganization> => {
+
+  return customFetch<PublicOrganization>(getGetPublicOrganizationUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicOrganizationQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/public`
+    ] as const;
+    }
+
+
+export const getGetPublicOrganizationQueryOptions = <TData = Awaited<ReturnType<typeof getPublicOrganization>>, TError = ErrorType<ErrorResponse>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicOrganization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicOrganizationQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicOrganization>>> = ({ signal }) => getPublicOrganization(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicOrganization>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicOrganizationQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicOrganization>>>
+export type GetPublicOrganizationQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get public profile of an organization (with stats)
+ */
+
+export function useGetPublicOrganization<TData = Awaited<ReturnType<typeof getPublicOrganization>>, TError = ErrorType<ErrorResponse>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicOrganization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicOrganizationQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetOrganizationStatsUrl = (orgId: number,) => {
 
@@ -1661,6 +1812,88 @@ export const useCreatePosition = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreatePositionMutationOptions(options));
     }
+
+export const getGetPositionUrl = (electionId: number,
+    positionId: number,) => {
+
+
+
+
+  return `/api/elections/${electionId}/positions/${positionId}`
+}
+
+/**
+ * @summary Get a single position by ID
+ */
+export const getPosition = async (electionId: number,
+    positionId: number, options?: RequestInit): Promise<PositionWithCandidates> => {
+
+  return customFetch<PositionWithCandidates>(getGetPositionUrl(electionId,positionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPositionQueryKey = (electionId: number,
+    positionId: number,) => {
+    return [
+    `/api/elections/${electionId}/positions/${positionId}`
+    ] as const;
+    }
+
+
+export const getGetPositionQueryOptions = <TData = Awaited<ReturnType<typeof getPosition>>, TError = ErrorType<ErrorResponse>>(electionId: number,
+    positionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPosition>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPositionQueryKey(electionId,positionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPosition>>> = ({ signal }) => getPosition(electionId,positionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: electionId !== null && electionId !== undefined && positionId !== null && positionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPosition>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPositionQueryResult = NonNullable<Awaited<ReturnType<typeof getPosition>>>
+export type GetPositionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single position by ID
+ */
+
+export function useGetPosition<TData = Awaited<ReturnType<typeof getPosition>>, TError = ErrorType<ErrorResponse>>(
+ electionId: number,
+    positionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPosition>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPositionQueryOptions(electionId,positionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getUpdatePositionUrl = (electionId: number,
     positionId: number,) => {

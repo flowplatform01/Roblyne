@@ -11,7 +11,9 @@ import {
   useAddOrganizationMember,
   useUpdateOrganizationMember,
   useRemoveOrganizationMember,
+  useUpdateOrganization,
   getListOrganizationMembersQueryKey,
+  getGetOrganizationQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -21,7 +23,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck } from "lucide-react";
+import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck, Settings, Save, Globe } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/ui/image-upload";
+import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
+import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,7 +41,7 @@ export default function OrganizationWorkspace() {
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const tab = searchParams.get('tab');
-    if (tab && ['overview', 'elections', 'events', 'campaigns', 'team'].includes(tab)) {
+    if (tab && ['overview', 'elections', 'events', 'campaigns', 'team', 'settings'].includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
@@ -108,6 +114,9 @@ export default function OrganizationWorkspace() {
           <TabsTrigger value="events" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Events</TabsTrigger>
           <TabsTrigger value="campaigns" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Campaigns</TabsTrigger>
           <TabsTrigger value="team" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Team</TabsTrigger>
+          <TabsTrigger value="settings" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+            <Settings className="h-3.5 w-3.5 mr-1.5" />Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 focus-visible:outline-none">
@@ -237,6 +246,10 @@ export default function OrganizationWorkspace() {
 
         <TabsContent value="team" className="mt-0 focus-visible:outline-none">
           <TeamSection orgId={orgId} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-0 focus-visible:outline-none">
+          <SettingsSection org={org} orgId={orgId} />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
@@ -461,6 +474,186 @@ function TeamSection({ orgId }: { orgId: number }) {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const updateOrg = useUpdateOrganization();
+
+  const [name, setName] = useState(org.name ?? '');
+  const [description, setDescription] = useState(org.description ?? '');
+  const [website, setWebsite] = useState(org.website ?? '');
+  const [logoUrl, setLogoUrl] = useState(org.logoUrl ?? '');
+  const [coverImageUrl, setCoverImageUrl] = useState(org.coverImageUrl ?? '');
+  const [heroImageUrl, setHeroImageUrl] = useState(org.heroImageUrl ?? '');
+  const [accentColor, setAccentColor] = useState(org.accentColor ?? '#4F46E5');
+  const [theme, setTheme] = useState<'evenum' | 'light' | 'dark'>(org.theme ?? 'evenum');
+
+  const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      toast({ title: 'Name is required', variant: 'destructive' });
+      return;
+    }
+    updateOrg.mutate(
+      {
+        orgId,
+        data: {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          website: website.trim() || undefined,
+          logoUrl: logoUrl || undefined,
+          coverImageUrl: coverImageUrl || undefined,
+          heroImageUrl: heroImageUrl || undefined,
+          accentColor,
+          theme,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetOrganizationQueryKey(orgId) });
+          toast({ title: 'Settings saved', description: 'Organization profile updated.' });
+        },
+        onError: () =>
+          toast({ title: 'Save failed', description: 'Could not save settings. Please try again.', variant: 'destructive' }),
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+          <Settings className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-serif font-bold">Organization Settings</h2>
+          <p className="text-sm text-muted-foreground">Manage identity, branding, and appearance</p>
+        </div>
+      </div>
+
+      {/* Identity */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Identity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="org-name">Organization Name</Label>
+            <Input id="org-name" value={name} onChange={e => setName(e.target.value)} placeholder="My Organization" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-description">Description</Label>
+            <Textarea
+              id="org-description"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Briefly describe your organization…"
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="org-website">Website</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="org-website"
+                type="url"
+                value={website}
+                onChange={e => setWebsite(e.target.value)}
+                placeholder="https://yourorg.com"
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Media */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Media</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Logo</Label>
+            <p className="text-xs text-muted-foreground">Square logo shown in sidebar and public profile</p>
+            <ImageUpload value={logoUrl || undefined} onChange={v => setLogoUrl(v ?? '')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Cover Image</Label>
+            <p className="text-xs text-muted-foreground">Wide banner used in cards and previews</p>
+            <ImageUpload value={coverImageUrl || undefined} onChange={v => setCoverImageUrl(v ?? '')} />
+          </div>
+          <div className="space-y-2">
+            <Label>Hero Image</Label>
+            <p className="text-xs text-muted-foreground">Full-width background for your public organization page</p>
+            <ImageUpload value={heroImageUrl || undefined} onChange={v => setHeroImageUrl(v ?? '')} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appearance */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Appearance</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Accent Color</Label>
+            <p className="text-xs text-muted-foreground">Used as the primary color on voting and registration pages</p>
+            <AccentColorPicker value={accentColor} onChange={setAccentColor} />
+          </div>
+          <div className="space-y-2">
+            <Label>Theme</Label>
+            <p className="text-xs text-muted-foreground">Visual theme for public-facing pages</p>
+            <Select value={theme} onValueChange={v => setTheme(v as 'evenum' | 'light' | 'dark')}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="evenum">Evenum (Dark Blue)</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Public Profile */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Public Profile</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">Share your organization page</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{shareUrl}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" asChild>
+              <a href={shareUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-2 h-3.5 w-3.5" /> Preview
+              </a>
+            </Button>
+            <ShareButton url={shareUrl} title={org.name} description={org.description || undefined} variant="icon" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Save */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={updateOrg.isPending} className="h-10 px-8 rounded-sm">
+          {updateOrg.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Save Changes
+        </Button>
+      </div>
     </div>
   );
 }
