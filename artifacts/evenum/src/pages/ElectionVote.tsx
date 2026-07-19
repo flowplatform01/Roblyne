@@ -222,22 +222,32 @@ export default function ElectionVote() {
 
   // ── Landing (Election Identity) ───────────────────────────────────────────
 
+  const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
+
   if (step === 'landing') {
     return (
       <Layout>
         {/* Election hero — dark, ceremonial */}
         <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
-          {((election as any).heroImageUrl || election.coverImageUrl) && (
-            <div
-              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-              style={{ backgroundImage: `url(${(election as any).heroImageUrl || election.coverImageUrl})`, opacity: 0.18 }}
-            />
+          {heroImageUrl ? (
+            <>
+              {/* Full hero image as background */}
+              <div
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${heroImageUrl})` }}
+              />
+              {/* Dark overlay for readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-black/85" />
+            </>
+          ) : (
+            <>
+              {/* Default dark blue with subtle grid */}
+              <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
+              <div className="absolute inset-0 opacity-[0.03]" style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
+              }} />
+            </>
           )}
-          <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
-          {/* Subtle pattern */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{
-            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
-          }} />
           <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
             {election.organizationName && (
               <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
