@@ -1,0 +1,130 @@
+Great work so far. The progress is very encouraging.
+
+The next objective is not to build new features, but to create a complete showcase environment that demonstrates the full capabilities of Evenum.
+
+I want you to carefully review everything that already exists in the application and populate it to its maximum potential.
+
+### Objective
+
+Transform the current development environment into a realistic, fully enriched demo environment that feels like a mature production platform.
+
+Do not create empty or placeholder content. Every piece of data should feel intentional, realistic, connected, and professionally presented.
+
+### Existing Data
+
+Do not randomly delete data.
+
+If the current data is useful, improve and enrich it.
+
+If the existing demo data is poor, inconsistent, duplicated, or incomplete, clean it up and replace it with high-quality data.
+
+Preserve the administrator account.
+
+At the end, provide all login credentials for every populated account so I can explore every role in the system.
+
+### Populate Every Major Capability
+
+Create realistic organizations.
+
+Create realistic users.
+
+Create organizers.
+
+Create attendees.
+
+Create complete user profiles.
+
+Upload appropriate profile photos.
+
+Use realistic cover images and event banners.
+
+Populate organizations with logos, branding, descriptions, and settings.
+
+Populate events with realistic information.
+
+Populate schedules.
+
+Populate speakers.
+
+Populate venues.
+
+Populate ticket types.
+
+Populate registrations.
+
+Populate attendees.
+
+Populate voting events.
+
+Populate candidates/options.
+
+Populate realistic voting results where appropriate.
+
+Populate collections, ticket purchases, donations, transactions, and financial history where applicable.
+
+Wherever analytics exist, populate enough realistic data so charts, statistics, dashboards, and summaries become meaningful.
+
+### Make Every Screen Feel Alive
+
+I do not want empty states unless an empty state is intentionally designed.
+
+Every page should demonstrate its purpose.
+
+Every feature should have meaningful data.
+
+Every workflow should be connected to another workflow where appropriate.
+
+When I navigate through the application, I should continuously discover capabilities instead of wondering whether a feature exists.
+
+### Showcase the Entire Product
+
+Review the entire application feature by feature.
+
+Do not leave hidden capabilities unconfigured simply because they were implemented earlier.
+
+If a feature exists, configure it.
+
+If a workflow exists, demonstrate it.
+
+If there is a setting, configure it realistically.
+
+If there are permissions or roles, populate them meaningfully.
+
+The objective is that I should experience the complete potential of Evenum without having to manually create data myself.
+
+### Media Quality
+
+Use high-quality images wherever appropriate.
+
+Avoid generic placeholders whenever possible.
+
+Profile photos, organization logos, banners, covers, and event images should all contribute to making the application feel real and polished.
+
+### Demo Quality
+
+The populated environment should resemble a platform that has already been actively used.
+
+It should feel believable.
+
+It should not feel like generated sample data.
+
+Relationships between users, organizations, events, voting, ticketing, collections, and analytics should all make logical sense.
+
+### Final Verification
+
+Before considering this task complete:
+
+- Review every page.
+- Review every dashboard.
+- Review every workflow.
+- Verify that populated data appears correctly.
+- Verify that navigation exposes all implemented capabilities.
+- Use Playwright (or equivalent browser automation) to inspect the application and ensure that all populated content renders correctly and that there are no broken screens or incomplete user flows.
+
+Finally, provide:
+
+- Administrator login credentials.
+- All additional populated demo accounts with their roles.
+- A brief summary of what was populated so I know which accounts to use to explore different parts of the platform.
+
+The goal is simple: when I log into Evenum, I want to experience the application exactly as a real customer or investor would experience a mature, production-quality platform with all of its capabilities fully demonstrated.
