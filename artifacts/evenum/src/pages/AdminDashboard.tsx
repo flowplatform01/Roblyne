@@ -14,10 +14,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   Users, Building2, Vote, CalendarDays, Megaphone,
   ShieldCheck, Trash2, Loader2, ShieldOff, Shield, Search, X,
+  TrendingUp, Activity, AlertCircle, BarChart3
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -69,13 +70,12 @@ export default function AdminDashboard() {
     const q = userSearch.toLowerCase().trim();
     if (!q) return users;
     return users.filter((u: any) =>
-      u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
     );
   }, [users, userSearch]);
 
   const deleteUser = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`${API_BASE}/api/admin/users/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => customFetch(`${API_BASE}/api/admin/users/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
@@ -85,8 +85,7 @@ export default function AdminDashboard() {
   });
 
   const deleteOrg = useMutation({
-    mutationFn: (id: number) =>
-      customFetch(`${API_BASE}/api/admin/organizations/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => customFetch(`${API_BASE}/api/admin/organizations/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'organizations'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
@@ -110,8 +109,7 @@ export default function AdminDashboard() {
   });
 
   const bootstrap = useMutation({
-    mutationFn: () =>
-      customFetch(`${API_BASE}/api/admin/bootstrap`, { method: 'POST' }),
+    mutationFn: () => customFetch(`${API_BASE}/api/admin/bootstrap`, { method: 'POST' }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({ title: 'Welcome, Administrator', description: 'You now have platform admin access.' });
@@ -119,7 +117,6 @@ export default function AdminDashboard() {
     onError: (e: any) => toast({ variant: 'destructive', title: 'Access denied', description: e?.data?.error || 'Bootstrap failed' }),
   });
 
-  // While auth is loading, show a minimal spinner inside the layout shell
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -130,7 +127,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Authenticated but not yet admin — offer bootstrap or explain denial
   if (isAuthenticated && !user?.isPlatformAdmin) {
     return (
       <DashboardLayout>
@@ -165,16 +161,12 @@ export default function AdminDashboard() {
                     <AlertDialogTitle>Become Platform Administrator?</AlertDialogTitle>
                     <AlertDialogDescription>
                       This grants your account full platform admin privileges — visibility into all
-                      organizations, users, and content. This is only possible when no other admin
-                      exists.
+                      organizations, users, and content. This is only possible when no other admin exists.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => bootstrap.mutate()}
-                      disabled={bootstrap.isPending}
-                    >
+                    <AlertDialogAction onClick={() => bootstrap.mutate()} disabled={bootstrap.isPending}>
                       {bootstrap.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Yes, make me admin
                     </AlertDialogAction>
@@ -188,68 +180,135 @@ export default function AdminDashboard() {
     );
   }
 
-  const statCards = [
-    { label: 'Users', value: stats?.total_users, icon: Users, sub: `+${stats?.new_users_7d ?? 0} this week` },
-    { label: 'Organizations', value: stats?.total_organizations, icon: Building2, sub: `+${stats?.new_orgs_7d ?? 0} this week` },
-    { label: 'Elections', value: stats?.total_elections, icon: Vote, sub: 'all time' },
-    { label: 'Events', value: stats?.total_events, icon: CalendarDays, sub: 'all time' },
-    { label: 'Campaigns', value: stats?.total_campaigns, icon: Megaphone, sub: 'all time' },
+  const kpiCards = [
+    {
+      label: 'Total Users',
+      value: stats?.total_users,
+      sub: `+${stats?.new_users_7d ?? 0} this week`,
+      icon: Users,
+      accent: 'text-blue-600',
+      bg: 'bg-blue-50',
+      trend: (stats?.new_users_7d ?? 0) > 0,
+    },
+    {
+      label: 'Organizations',
+      value: stats?.total_organizations,
+      sub: `+${stats?.new_orgs_7d ?? 0} this week`,
+      icon: Building2,
+      accent: 'text-violet-600',
+      bg: 'bg-violet-50',
+      trend: (stats?.new_orgs_7d ?? 0) > 0,
+    },
+    {
+      label: 'Elections',
+      value: stats?.total_elections,
+      sub: 'all time',
+      icon: Vote,
+      accent: 'text-primary',
+      bg: 'bg-primary/5',
+      trend: false,
+    },
+    {
+      label: 'Events',
+      value: stats?.total_events,
+      sub: 'all time',
+      icon: CalendarDays,
+      accent: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      trend: false,
+    },
+    {
+      label: 'Campaigns',
+      value: stats?.total_campaigns,
+      sub: 'all time',
+      icon: Megaphone,
+      accent: 'text-amber-600',
+      bg: 'bg-amber-50',
+      trend: false,
+    },
   ];
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+      <div className="max-w-6xl mx-auto space-y-10">
+
+        {/* Command center header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-sm bg-foreground flex items-center justify-center shrink-0 shadow-md">
+              <ShieldCheck className="h-6 w-6 text-background" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <h1 className="text-2xl font-serif font-bold">Platform Admin</h1>
+                <Badge variant="outline" className="text-xs font-bold uppercase tracking-widest border-primary/40 text-primary">
+                  Command Center
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Full operational visibility across all organizations, users, and content
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-serif font-bold">Platform Admin</h1>
-            <p className="text-sm text-muted-foreground">Full visibility across all organizations and users</p>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/50 px-4 py-2 rounded-sm">
+            <Activity className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
+            System Operational
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Platform KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {statCards.map(({ label, value, icon: Icon, sub }) => (
-            <Card key={label} className="border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</span>
-                  <Icon className="h-4 w-4 text-muted-foreground/60" />
+          {kpiCards.map(({ label, value, icon: Icon, sub, accent, bg, trend }) => (
+            <Card key={label} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 ${bg} rounded-sm flex items-center justify-center`}>
+                    <Icon className={`h-4.5 w-4.5 ${accent}`} />
+                  </div>
+                  {trend && (
+                    <div className="flex items-center gap-1 text-emerald-600">
+                      <TrendingUp className="h-3 w-3" />
+                    </div>
+                  )}
                 </div>
-                <p className="text-3xl font-serif font-bold">
+                <p className="text-3xl font-serif font-bold tabular-nums">
                   {statsLoading
-                    ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
-                    : (value ?? '—')
-                  }
+                    ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40 inline-block" />
+                    : (value ?? '—')}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+                <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">{label}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-0.5">{sub}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Tables */}
+        {/* Data tables */}
         <Tabs defaultValue="organizations">
-          <TabsList>
-            <TabsTrigger value="organizations">
-              Organizations {orgs && <span className="ml-1.5 text-xs text-muted-foreground">({orgs.length})</span>}
+          <TabsList className="mb-1">
+            <TabsTrigger value="organizations" className="gap-2">
+              <Building2 className="h-3.5 w-3.5" />
+              Organizations
+              {orgs && <span className="ml-1 text-xs opacity-60">({orgs.length})</span>}
             </TabsTrigger>
-            <TabsTrigger value="users">
-              Users {users && <span className="ml-1.5 text-xs text-muted-foreground">({users.length})</span>}
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="h-3.5 w-3.5" />
+              Users
+              {users && <span className="ml-1 text-xs opacity-60">({users.length})</span>}
             </TabsTrigger>
           </TabsList>
 
-          {/* Organizations Tab */}
+          {/* Organizations */}
           <TabsContent value="organizations" className="mt-4">
-            <Card className="border-border/50">
-              <CardHeader className="pb-3">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/40">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base font-serif">All Organizations</CardTitle>
-                    <CardDescription>Every organization on the platform.</CardDescription>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-base font-serif">All Organizations</CardTitle>
+                    </div>
+                    <CardDescription className="mt-0.5">Every organization registered on the platform.</CardDescription>
                   </div>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -257,13 +316,10 @@ export default function AdminDashboard() {
                       placeholder="Search by name or slug…"
                       value={orgSearch}
                       onChange={(e) => setOrgSearch(e.target.value)}
-                      className="pl-9 pr-8"
+                      className="pl-9 pr-8 h-9 text-sm"
                     />
                     {orgSearch && (
-                      <button
-                        onClick={() => setOrgSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={() => setOrgSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -272,44 +328,53 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {orgsLoading ? (
-                  <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                  <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
                 ) : filteredOrgs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                    <Building2 className="h-10 w-10 mb-3 opacity-30" />
-                    <p className="font-medium">
-                      {orgSearch ? `No organizations match "${orgSearch}"` : 'No organizations yet'}
-                    </p>
+                  <div className="flex flex-col items-center justify-center p-14 text-center text-muted-foreground">
+                    <Building2 className="h-10 w-10 mb-3 opacity-20" />
+                    <p className="font-medium">{orgSearch ? `No organizations match "${orgSearch}"` : 'No organizations yet'}</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="hidden sm:table-cell">Slug</TableHead>
-                        <TableHead className="text-center">Members</TableHead>
-                        <TableHead className="text-center hidden md:table-cell">Elections</TableHead>
-                        <TableHead className="text-center hidden md:table-cell">Events</TableHead>
-                        <TableHead className="text-center hidden md:table-cell">Campaigns</TableHead>
-                        <TableHead className="hidden lg:table-cell">Created</TableHead>
+                      <TableRow className="bg-muted/20">
+                        <TableHead className="font-bold">Organization</TableHead>
+                        <TableHead className="text-center hidden md:table-cell font-bold">Members</TableHead>
+                        <TableHead className="text-center hidden md:table-cell font-bold">Elections</TableHead>
+                        <TableHead className="text-center hidden md:table-cell font-bold">Events</TableHead>
+                        <TableHead className="text-center hidden md:table-cell font-bold">Campaigns</TableHead>
+                        <TableHead className="hidden lg:table-cell font-bold">Created</TableHead>
                         <TableHead className="w-12" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredOrgs.map((org: any) => (
-                        <TableRow key={org.id}>
-                          <TableCell className="font-medium">{org.name}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-muted-foreground text-sm font-mono">{org.slug}</TableCell>
-                          <TableCell className="text-center">{org.member_count}</TableCell>
+                        <TableRow key={org.id} className="hover:bg-muted/20 transition-colors">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0 font-serif font-bold text-sm border border-primary/20">
+                                {org.name?.charAt(0) || '?'}
+                              </div>
+                              <div>
+                                <p className="font-medium">{org.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{org.slug}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center hidden md:table-cell">
+                            <span className="font-bold">{org.member_count}</span>
+                          </TableCell>
                           <TableCell className="text-center hidden md:table-cell">{org.election_count}</TableCell>
                           <TableCell className="text-center hidden md:table-cell">{org.event_count}</TableCell>
                           <TableCell className="text-center hidden md:table-cell">{org.campaign_count}</TableCell>
-                          <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                            {format(new Date(org.created_at), 'MMM d, yyyy')}
+                          <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                            <div>{format(new Date(org.created_at), 'MMM d, yyyy')}</div>
+                            <div className="text-xs opacity-60">{formatDistanceToNow(new Date(org.created_at), { addSuffix: true })}</div>
                           </TableCell>
                           <TableCell>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -341,14 +406,17 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Users Tab */}
+          {/* Users */}
           <TabsContent value="users" className="mt-4">
-            <Card className="border-border/50">
-              <CardHeader className="pb-3">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/40">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base font-serif">All Users</CardTitle>
-                    <CardDescription>Everyone registered on the platform.</CardDescription>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-base font-serif">All Users</CardTitle>
+                    </div>
+                    <CardDescription className="mt-0.5">Everyone registered on the platform.</CardDescription>
                   </div>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -356,13 +424,10 @@ export default function AdminDashboard() {
                       placeholder="Search by name or email…"
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
-                      className="pl-9 pr-8"
+                      className="pl-9 pr-8 h-9 text-sm"
                     />
                     {userSearch && (
-                      <button
-                        onClick={() => setUserSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -371,45 +436,63 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {usersLoading ? (
-                  <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                  <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
                 ) : filteredUsers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                    <Users className="h-10 w-10 mb-3 opacity-30" />
-                    <p className="font-medium">
-                      {userSearch ? `No users match "${userSearch}"` : 'No users registered yet'}
-                    </p>
+                  <div className="flex flex-col items-center justify-center p-14 text-center text-muted-foreground">
+                    <Users className="h-10 w-10 mb-3 opacity-20" />
+                    <p className="font-medium">{userSearch ? `No users match "${userSearch}"` : 'No users registered yet'}</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="hidden sm:table-cell">Email</TableHead>
-                        <TableHead className="text-center">Orgs</TableHead>
-                        <TableHead className="hidden md:table-cell">Role</TableHead>
-                        <TableHead className="hidden lg:table-cell">Joined</TableHead>
-                        <TableHead className="w-24" />
+                      <TableRow className="bg-muted/20">
+                        <TableHead className="font-bold">User</TableHead>
+                        <TableHead className="text-center hidden md:table-cell font-bold">Orgs</TableHead>
+                        <TableHead className="hidden md:table-cell font-bold">Role</TableHead>
+                        <TableHead className="hidden lg:table-cell font-bold">Joined</TableHead>
+                        <TableHead className="w-24 text-right font-bold">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredUsers.map((u: any) => (
-                        <TableRow key={u.id} className={u.id === user?.id ? 'bg-primary/5' : ''}>
-                          <TableCell className="font-medium">
-                            {u.name}
-                            {u.id === user?.id && (
-                              <span className="ml-2 text-xs text-muted-foreground font-normal">(you)</span>
-                            )}
+                        <TableRow key={u.id} className={`hover:bg-muted/20 transition-colors ${u.id === user?.id ? 'bg-primary/[0.03]' : ''}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm border ${
+                                u.is_platform_admin
+                                  ? 'bg-primary/10 text-primary border-primary/20'
+                                  : 'bg-muted text-muted-foreground border-border/50'
+                              }`}>
+                                {(u.name || u.email || '?').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{u.name}</p>
+                                  {u.id === user?.id && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">You</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">{u.email}</p>
+                              </div>
+                            </div>
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{u.email}</TableCell>
-                          <TableCell className="text-center">{u.org_count}</TableCell>
+                          <TableCell className="text-center hidden md:table-cell">
+                            <span className="font-bold">{u.org_count}</span>
+                          </TableCell>
                           <TableCell className="hidden md:table-cell">
                             {u.is_platform_admin
-                              ? <Badge variant="default" className="gap-1 text-xs"><ShieldCheck className="h-3 w-3" /> Admin</Badge>
-                              : <Badge variant="outline" className="text-xs">User</Badge>
+                              ? (
+                                <div className="flex items-center gap-1.5">
+                                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-bold text-primary uppercase tracking-wide">Admin</span>
+                                </div>
+                              )
+                              : <span className="text-xs text-muted-foreground">User</span>
                             }
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                            {format(new Date(u.created_at), 'MMM d, yyyy')}
+                          <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                            <div>{format(new Date(u.created_at), 'MMM d, yyyy')}</div>
+                            <div className="text-xs opacity-60">{formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}</div>
                           </TableCell>
                           <TableCell>
                             {u.id !== user?.id && (
@@ -417,7 +500,7 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground' : 'text-muted-foreground hover:text-primary'}`}
+                                  className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground hover:bg-muted' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/10'}`}
                                   title={u.is_platform_admin ? 'Remove admin access' : 'Grant admin access'}
                                   onClick={() => toggleAdmin.mutate({ id: u.id, isPlatformAdmin: !u.is_platform_admin })}
                                   disabled={toggleAdmin.isPending}
@@ -426,7 +509,7 @@ export default function AdminDashboard() {
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </AlertDialogTrigger>
@@ -460,6 +543,15 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Platform health notice */}
+        <div className="flex items-center gap-3 p-4 bg-muted/30 border border-border/40 rounded-sm text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+          <span>
+            Administrative actions are permanent. Deleting organizations or users cannot be undone.
+            Grant admin access only to trusted team members.
+          </span>
+        </div>
       </div>
     </DashboardLayout>
   );

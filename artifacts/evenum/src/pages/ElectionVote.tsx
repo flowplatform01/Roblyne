@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Loader2, Vote as VoteIcon, AlertCircle, CheckCircle2, Key, Mail,
-  ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2, ChevronRight
+  ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2,
+  ChevronRight, Users, ChevronDown, Info, Lock
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -19,7 +20,6 @@ function useCountdown(targetDate: string | null | undefined) {
   useEffect(() => {
     if (!targetDate) return;
     const target = new Date(targetDate).getTime();
-
     const tick = () => {
       const now = Date.now();
       const diff = target - now;
@@ -27,13 +27,14 @@ function useCountdown(targetDate: string | null | undefined) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
         return;
       }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      setTimeLeft({ days, hours, minutes, seconds, expired: false });
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+        expired: false,
+      });
     };
-
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -42,10 +43,16 @@ function useCountdown(targetDate: string | null | undefined) {
   return timeLeft;
 }
 
-// Step 0: Election landing / identity
-// Step 1–N: One position per step (ballot)
-// Step confirm: Review before casting
-// Step success: Voted
+function CountdownBlock({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex flex-col items-center bg-background/10 backdrop-blur-md border border-background/20 rounded-sm px-5 py-3.5 min-w-[72px]">
+      <span className="text-3xl font-serif font-bold tabular-nums leading-none mb-1 text-background">
+        {String(value).padStart(2, '0')}
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-background/50">{label}</span>
+    </div>
+  );
+}
 
 export default function ElectionVote() {
   const [, params] = useRoute("/elections/:id/vote");
@@ -67,15 +74,9 @@ export default function ElectionVote() {
   const toggleSelection = (positionId: number, candidateId: number, maxSelections: number) => {
     setSelections(prev => {
       const cur = prev[positionId] || [];
-      if (cur.includes(candidateId)) {
-        return { ...prev, [positionId]: cur.filter(id => id !== candidateId) };
-      }
+      if (cur.includes(candidateId)) return { ...prev, [positionId]: cur.filter(id => id !== candidateId) };
       if (cur.length >= maxSelections) {
-        toast({
-          title: 'Selection limit reached',
-          description: `You can only select up to ${maxSelections} candidate(s) for this position.`,
-          variant: 'destructive',
-        });
+        toast({ title: 'Selection limit reached', description: `You may select up to ${maxSelections} candidate(s) for this position.`, variant: 'destructive' });
         return prev;
       }
       return { ...prev, [positionId]: [...cur, candidateId] };
@@ -83,16 +84,14 @@ export default function ElectionVote() {
   };
 
   const submitBallot = () => {
-    const selectionsPayload = Object.entries(selections).map(([positionId, candidateIds]) => ({
-      positionId: parseInt(positionId, 10),
-      candidateIds,
-    }));
-
     submitVote.mutate(
       {
         electionId,
         data: {
-          selections: selectionsPayload,
+          selections: Object.entries(selections).map(([positionId, candidateIds]) => ({
+            positionId: parseInt(positionId, 10),
+            candidateIds,
+          })),
           inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
           voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
         },
@@ -101,12 +100,7 @@ export default function ElectionVote() {
         onSuccess: () => setStep('success'),
         onError: (error: any) => {
           setStep('review');
-          const msg = error?.data?.error;
-          toast({
-            variant: 'destructive',
-            title: 'Ballot submission failed',
-            description: msg || 'There was an error submitting your ballot. Please try again.',
-          });
+          toast({ variant: 'destructive', title: 'Ballot submission failed', description: error?.data?.error || 'There was an error submitting your ballot. Please try again.' });
         },
       }
     );
@@ -115,8 +109,9 @@ export default function ElectionVote() {
   if (isElectionLoading || isPositionsLoading || isCandidatesLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
+          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Election</p>
         </div>
       </Layout>
     );
@@ -128,16 +123,17 @@ export default function ElectionVote() {
   const needsVoterEmail = election.eligibilityMode === 'allowlist';
   const positionList = positions || [];
   const totalPositions = positionList.length;
+  const allCandidates = candidates || [];
 
-  // ── Draft / Ended guards ──────────────────────────────────────────────────
+  // ── Guards ────────────────────────────────────────────────────────────────
 
   if (election.status === 'draft') {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
-          <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Polls Not Yet Open</h1>
-          <p className="text-xl text-muted-foreground font-light">This election is in draft mode and has not opened for voting yet.</p>
+          <p className="text-xl text-muted-foreground font-light">This election is in draft mode and has not opened for voting.</p>
         </div>
       </Layout>
     );
@@ -146,11 +142,11 @@ export default function ElectionVote() {
   if (election.status === 'ended') {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
-          <FileSignature className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <FileSignature className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Polls Have Closed</h1>
           <p className="text-xl text-muted-foreground font-light mb-8">Voting for this election has concluded.</p>
-          <Button asChild variant="outline" className="h-12 px-8">
+          <Button asChild variant="outline" className="h-12 px-8 rounded-sm">
             <Link href={`/elections/${electionId}/results`}>View Official Results <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
@@ -165,25 +161,31 @@ export default function ElectionVote() {
       <Layout>
         <div className="min-h-[80vh] flex items-center justify-center">
           <div className="container mx-auto px-4 py-24 text-center max-w-2xl animate-in zoom-in-95 fade-in duration-700">
-            <div className="relative inline-flex mb-12">
-              <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="h-14 w-14 text-primary animate-in zoom-in duration-500 delay-200" />
+            {/* Seal */}
+            <div className="relative inline-flex mb-12 justify-center">
+              <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-primary/5 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border-2 border-primary/30 bg-primary/8 flex items-center justify-center">
+                  <CheckCircle2 className="h-12 w-12 text-primary" />
+                </div>
               </div>
             </div>
-            <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6 tracking-tight">Ballot Cast</h1>
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-6">
+              <ShieldCheck className="h-4 w-4" /> Ballot Recorded
+            </div>
+            <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6 tracking-tight">Vote Cast</h1>
             <p className="text-xl text-muted-foreground font-light leading-relaxed mb-4">
               Your vote has been securely recorded in{' '}
               <span className="font-medium text-foreground">{election.organizationName || 'this election'}</span>.
             </p>
-            <p className="text-base text-muted-foreground mb-12">
+            <p className="text-sm text-muted-foreground mb-10">
               Submitted {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
             </p>
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground bg-muted/60 px-5 py-2.5 rounded-sm border border-border/60 mb-12">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              Verifiable &amp; Anonymous
+            <div className="inline-flex items-center gap-3 text-sm font-medium text-muted-foreground bg-muted/50 px-6 py-3 rounded-sm border border-border/60 mb-12">
+              <Lock className="h-4 w-4 text-primary shrink-0" />
+              Your vote is cryptographically anonymous and immutable
             </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild variant="outline" className="h-12 px-8">
+              <Button asChild variant="outline" className="h-12 px-8 rounded-sm">
                 <Link href={`/elections/${electionId}/results`}>View Results</Link>
               </Button>
             </div>
@@ -193,84 +195,134 @@ export default function ElectionVote() {
     );
   }
 
-  // ── Landing (Step 0 — Election Identity) ──────────────────────────────────
+  // ── Landing (Election Identity) ───────────────────────────────────────────
 
   if (step === 'landing') {
     return (
       <Layout>
-        {/* Hero */}
+        {/* Election hero — dark, ceremonial */}
         <div className="relative bg-foreground text-background overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-foreground/60 to-foreground/95" />
-          <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
+          {/* Subtle pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
+          }} />
+          <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
             {election.organizationName && (
-              <div className="flex items-center justify-center gap-2 text-background/60 text-sm font-medium uppercase tracking-widest mb-6">
-                <Building2 className="h-4 w-4" />
+              <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
+                <Building2 className="h-3.5 w-3.5" />
                 {election.organizationName}
               </div>
             )}
-            <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight mb-6">
+
+            {/* Active badge */}
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Polls Open
+              </div>
+            </div>
+
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight mb-6 text-background">
               {election.title}
             </h1>
+
             {election.description && (
-              <p className="text-xl text-background/70 font-light max-w-2xl mx-auto mb-10 leading-relaxed">
+              <p className="text-xl text-background/60 font-light max-w-2xl mx-auto mb-10 leading-relaxed">
                 {election.description}
               </p>
             )}
 
-            {/* Status & countdown */}
-            <div className="inline-flex items-center gap-2 bg-background/10 backdrop-blur-md px-5 py-2.5 rounded-full border border-background/20 text-sm font-bold uppercase tracking-widest mb-10">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Polls Open
-            </div>
-
+            {/* Countdown */}
             {election.endsAt && !countdown.expired && (
-              <div className="mb-12">
-                <p className="text-background/50 text-xs font-bold uppercase tracking-widest mb-4">Polls close in</p>
-                <div className="flex items-center justify-center gap-3">
-                  {[
-                    { value: countdown.days, label: 'Days' },
-                    { value: countdown.hours, label: 'Hours' },
-                    { value: countdown.minutes, label: 'Min' },
-                    { value: countdown.seconds, label: 'Sec' },
-                  ].map(({ value, label }) => (
-                    <div key={label} className="flex flex-col items-center bg-background/10 backdrop-blur-md border border-background/20 rounded-sm px-4 py-3 min-w-[60px]">
-                      <span className="text-3xl font-serif font-bold tabular-nums leading-none mb-1">
-                        {String(value).padStart(2, '0')}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-background/50">{label}</span>
-                    </div>
-                  ))}
+              <div className="mb-10">
+                <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-4">Polls close in</p>
+                <div className="flex items-center justify-center gap-2">
+                  <CountdownBlock value={countdown.days} label="Days" />
+                  <CountdownBlock value={countdown.hours} label="Hours" />
+                  <CountdownBlock value={countdown.minutes} label="Min" />
+                  <CountdownBlock value={countdown.seconds} label="Sec" />
                 </div>
               </div>
             )}
 
-            {/* Election meta */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-12 text-sm">
-              <Badge variant="secondary" className="bg-background/10 text-background border-background/20 capitalize">
-                {election.visibility?.replace('_', ' ')}
-              </Badge>
-              <Badge variant="secondary" className="bg-background/10 text-background border-background/20">
-                {totalPositions} {totalPositions === 1 ? 'Position' : 'Positions'}
-              </Badge>
-              {election.eligibilityMode && (
-                <Badge variant="secondary" className="bg-background/10 text-background border-background/20 capitalize">
-                  {election.eligibilityMode}
-                </Badge>
+            {/* Dates */}
+            <div className="flex flex-wrap items-center justify-center gap-6 text-background/40 text-sm mb-4">
+              {election.startsAt && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Opened {format(new Date(election.startsAt), 'MMM d, yyyy')}
+                </div>
+              )}
+              {election.endsAt && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Closes {format(new Date(election.endsAt), 'MMM d, yyyy · h:mm a')}
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Access verification (if needed) + CTA */}
-        <div className="container mx-auto px-4 py-16 max-w-2xl paper-grain">
+        {/* What you'll vote on */}
+        {totalPositions > 0 && (
+          <div className="border-b border-border/50 bg-muted/20">
+            <div className="container mx-auto px-4 py-12 max-w-3xl">
+              <div className="flex items-center gap-3 mb-6">
+                <VoteIcon className="h-5 w-5 text-primary shrink-0" />
+                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                  What You'll Vote On · {totalPositions} {totalPositions === 1 ? 'Position' : 'Positions'}
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {positionList.map((position, idx) => {
+                  const positionCandidateCount = allCandidates.filter(c => c.positionId === position.id).length;
+                  return (
+                    <div key={position.id} className="flex items-center gap-4 bg-card border border-border/50 rounded-sm px-5 py-4">
+                      <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span className="font-serif font-bold text-sm">{idx + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-serif font-bold truncate">{position.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {positionCandidateCount} {positionCandidateCount === 1 ? 'candidate' : 'candidates'}
+                          {position.maxSelections > 1 ? ` · Select up to ${position.maxSelections}` : ''}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Election credentials + CTA */}
+        <div className="container mx-auto px-4 py-16 max-w-2xl">
+
+          {/* Election integrity notice */}
+          <div className="flex items-start gap-4 bg-primary/5 border border-primary/15 rounded-sm p-5 mb-8">
+            <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-foreground mb-1">About This Election</p>
+              <p className="text-sm text-muted-foreground font-light leading-relaxed">
+                This is a {election.visibility?.replace('_', ' ')} election managed by{' '}
+                {election.organizationName || 'the organizing body'}. Each eligible voter may cast one ballot.
+                Votes are recorded anonymously and cannot be changed after submission.
+              </p>
+            </div>
+          </div>
+
+          {/* Voter verification */}
           {(needsInviteCode || needsVoterEmail) && (
-            <div className="bg-card border border-border rounded-sm shadow-lg overflow-hidden mb-10">
-              <div className="bg-muted/40 px-8 py-5 border-b flex items-center gap-3">
+            <div className="bg-card border border-border rounded-sm shadow-sm overflow-hidden mb-8">
+              <div className="bg-foreground/5 px-8 py-5 border-b flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <h3 className="font-serif font-bold text-lg">Voter Verification</h3>
               </div>
               <div className="p-8 space-y-6">
-                <p className="text-muted-foreground font-light text-sm">
+                <p className="text-sm text-muted-foreground font-light">
                   Authentication is required to participate in this election.
                 </p>
                 {needsInviteCode && (
@@ -283,7 +335,7 @@ export default function ElectionVote() {
                       placeholder="Enter the code provided by the organizer"
                       value={inviteCode}
                       onChange={e => setInviteCode(e.target.value)}
-                      className="font-mono h-12 text-base"
+                      className="font-mono h-12 text-base rounded-sm"
                     />
                   </div>
                 )}
@@ -298,7 +350,7 @@ export default function ElectionVote() {
                       placeholder="your@email.com"
                       value={voterEmail}
                       onChange={e => setVoterEmail(e.target.value)}
-                      className="h-12 text-base"
+                      className="h-12 text-base rounded-sm"
                     />
                   </div>
                 )}
@@ -306,27 +358,30 @@ export default function ElectionVote() {
             </div>
           )}
 
-          <div className="text-center">
-            <Button
-              size="lg"
-              className="h-16 px-12 text-lg shadow-xl hover:shadow-2xl transition-all"
-              disabled={
-                (needsInviteCode && !inviteCode.trim()) ||
-                (needsVoterEmail && !voterEmail.trim()) ||
-                totalPositions === 0
-              }
-              onClick={() => setStep(0)}
-            >
-              <VoteIcon className="mr-3 h-5 w-5" />
-              Enter the Ballot
-              <ArrowRight className="ml-3 h-5 w-5" />
-            </Button>
-            {totalPositions > 0 && (
-              <p className="text-sm text-muted-foreground mt-4">
-                You will vote on {totalPositions} {totalPositions === 1 ? 'position' : 'positions'} one at a time.
+          {totalPositions === 0 ? (
+            <div className="text-center py-12 border border-dashed rounded-sm text-muted-foreground">
+              No positions have been added to this election yet.
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <Button
+                size="lg"
+                className="h-16 px-14 text-lg shadow-xl hover:shadow-2xl transition-all rounded-sm"
+                disabled={
+                  (needsInviteCode && !inviteCode.trim()) ||
+                  (needsVoterEmail && !voterEmail.trim())
+                }
+                onClick={() => setStep(0)}
+              >
+                <VoteIcon className="mr-3 h-5 w-5" />
+                Enter the Ballot
+                <ArrowRight className="ml-3 h-5 w-5" />
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                You'll vote on {totalPositions} {totalPositions === 1 ? 'position' : 'positions'}, one at a time.
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Layout>
     );
@@ -337,117 +392,157 @@ export default function ElectionVote() {
   if (typeof step === 'number') {
     const position = positionList[step];
     if (!position) return null;
-    const posCandidates = (candidates || []).filter(c => c.positionId === position.id);
+    const posCandidates = allCandidates.filter(c => c.positionId === position.id);
     const currentSelections = selections[position.id] || [];
     const isLast = step === totalPositions - 1;
+    const progressPct = ((step + 1) / totalPositions) * 100;
 
     return (
       <Layout>
-        {/* Sticky progress header */}
+        {/* Sticky ballot header */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm">
-          <div className="container mx-auto px-4 max-w-3xl py-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-sm">
-              <span className="font-bold text-primary font-mono">
-                {step + 1} / {totalPositions}
-              </span>
-              <span className="text-muted-foreground hidden sm:block">{election.title}</span>
-            </div>
-            {/* Progress bar */}
-            <div className="flex-1 max-w-48 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${((step + 1) / totalPositions) * 100}%` }}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground hidden sm:block">
-              {currentSelections.length} / {position.maxSelections} selected
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="py-3 flex items-center gap-4">
+              <span className="text-xs font-bold text-muted-foreground hidden sm:block truncate">{election.title}</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <div className="shrink-0 flex items-center gap-3">
+                <span className="text-xs font-bold tabular-nums text-primary">
+                  {step + 1} <span className="text-muted-foreground font-normal">/ {totalPositions}</span>
+                </span>
+                <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  {currentSelections.length}/{position.maxSelections} selected
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-14 max-w-3xl">
+        <div className="container mx-auto px-4 py-14 max-w-4xl">
           {/* Position header */}
-          <div className="mb-12 animate-in fade-in duration-500">
+          <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-xs font-bold uppercase tracking-widest text-primary mb-3">
               Position {step + 1} of {totalPositions}
             </div>
-            <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight mb-3">
+            <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight mb-3 leading-tight">
               {position.title}
             </h1>
             {position.description && (
-              <p className="text-lg text-muted-foreground font-light">{position.description}</p>
+              <p className="text-lg text-muted-foreground font-light max-w-2xl">{position.description}</p>
             )}
-            <div className="mt-4 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-3">
               Select{' '}
-              <span className="font-bold text-foreground">
+              <span className="font-semibold text-foreground">
                 {position.maxSelections === 1 ? 'one candidate' : `up to ${position.maxSelections} candidates`}
-              </span>
-            </div>
+              </span>{' '}
+              for this position
+            </p>
           </div>
 
-          {/* Candidate cards */}
+          {/* Candidates — contestant cards */}
           {posCandidates.length === 0 ? (
             <div className="text-center py-16 bg-card border border-dashed rounded-sm text-muted-foreground">
               No candidates listed for this position.
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-6">
               {posCandidates.map((candidate, idx) => {
                 const isSelected = currentSelections.includes(candidate.id);
                 return (
                   <div
                     key={candidate.id}
                     onClick={() => toggleSelection(position.id, candidate.id, position.maxSelections)}
-                    className={`relative group rounded-sm border-2 overflow-hidden cursor-pointer transition-all duration-200 shadow-sm
+                    className={`group relative rounded-sm overflow-hidden cursor-pointer transition-all duration-200
                       ${isSelected
-                        ? 'border-primary ring-4 ring-primary/10 shadow-md'
-                        : 'border-border/60 bg-card hover:border-primary/40 hover:shadow-md'
+                        ? 'ring-2 ring-primary ring-offset-2 shadow-lg'
+                        : 'border border-border/60 hover:border-primary/30 hover:shadow-md bg-card'
                       }`}
-                    style={{ animationDelay: `${idx * 80}ms` }}
+                    style={{ animationDelay: `${idx * 60}ms` }}
                   >
+                    {/* Selected accent bar */}
+                    {isSelected && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary z-10" />
+                    )}
+
                     <div className="flex flex-col sm:flex-row">
-                      {/* Photo */}
-                      <div className="sm:w-40 h-36 sm:h-auto bg-muted shrink-0 overflow-hidden">
+                      {/* Candidate portrait */}
+                      <div className={`sm:w-52 sm:min-h-full min-h-48 bg-muted shrink-0 overflow-hidden relative`}>
                         {candidate.photoUrl ? (
                           <img
                             src={candidate.photoUrl}
                             alt={candidate.name}
-                            className={`w-full h-full object-cover object-top transition-all duration-300
-                              ${isSelected ? 'scale-105' : 'grayscale-[30%] group-hover:grayscale-0'}`}
+                            className={`w-full h-full object-cover object-top absolute inset-0 transition-all duration-500
+                              ${isSelected ? 'scale-105' : 'group-hover:scale-102 grayscale-[20%] group-hover:grayscale-0'}`}
                           />
                         ) : (
-                          <div className={`w-full h-full flex items-center justify-center transition-colors
-                            ${isSelected ? 'bg-primary/15' : 'bg-muted'}`}>
-                            <span className="font-serif font-bold text-5xl text-muted-foreground/40">
+                          <div className={`w-full h-full absolute inset-0 flex items-center justify-center transition-colors
+                            ${isSelected ? 'bg-primary/10' : 'bg-muted'}`}>
+                            <span className="font-serif font-bold text-6xl text-muted-foreground/30">
                               {candidate.name.charAt(0)}
                             </span>
                           </div>
                         )}
+                        {/* Position overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent h-16 hidden sm:block" />
                       </div>
 
-                      {/* Content */}
-                      <div className={`flex-1 p-6 transition-colors ${isSelected ? 'bg-primary/5' : 'bg-card'}`}>
-                        <div className="flex items-start justify-between gap-4 mb-3">
-                          <h3 className={`font-serif font-bold text-2xl leading-tight ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                            {candidate.name}
-                          </h3>
+                      {/* Candidate content */}
+                      <div className={`flex-1 p-7 transition-colors ${isSelected ? 'bg-primary/[0.04]' : 'bg-card'}`}>
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div>
+                            <h3 className={`font-serif font-bold text-2xl leading-tight mb-1 ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                              {candidate.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              {isSelected && (
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Selected
+                                </div>
+                              )}
+                            </div>
+                          </div>
                           {/* Selection indicator */}
-                          <div className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all mt-0.5
+                          <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all mt-0.5
                             ${isSelected
-                              ? 'bg-primary border-primary text-primary-foreground scale-110'
-                              : 'border-muted-foreground/30 bg-background'
+                              ? 'bg-primary border-primary text-primary-foreground shadow-md'
+                              : 'border-border/50 bg-background group-hover:border-primary/50'
                             }`}>
-                            {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                            {isSelected ? <CheckCircle2 className="w-4 h-4" /> : null}
                           </div>
                         </div>
 
+                        {/* Bio */}
                         {candidate.bio && (
-                          <p className="text-muted-foreground font-light text-sm leading-relaxed mb-4">{candidate.bio}</p>
+                          <p className="text-sm text-muted-foreground font-light leading-relaxed mb-5 max-w-prose">
+                            {candidate.bio}
+                          </p>
                         )}
 
+                        {/* Platform / Manifesto — featured prominently */}
                         {candidate.platform && (
-                          <div className="relative pl-4 border-l-2 border-primary/30 mt-3">
-                            <p className="text-sm italic text-foreground/70 font-medium">"{candidate.platform}"</p>
+                          <div className={`mt-4 border-l-[3px] pl-5 py-1 transition-colors
+                            ${isSelected ? 'border-primary' : 'border-border/40 group-hover:border-primary/30'}`}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                              Platform
+                            </p>
+                            <p className={`text-sm leading-relaxed font-medium italic
+                              ${isSelected ? 'text-foreground' : 'text-foreground/70'}`}>
+                              "{candidate.platform}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Select prompt — shows when not selected */}
+                        {!isSelected && (
+                          <div className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
+                            <div className="w-4 h-4 rounded-full border-2 border-current" />
+                            Click to select
                           </div>
                         )}
                       </div>
@@ -459,11 +554,11 @@ export default function ElectionVote() {
           )}
 
           {/* Navigation */}
-          <div className="mt-14 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <div className="mt-14 flex flex-col sm:flex-row gap-4 justify-between items-center border-t border-border/40 pt-10">
             <Button
               variant="outline"
               size="lg"
-              className="w-full sm:w-auto h-13 px-8"
+              className="w-full sm:w-auto h-13 px-8 rounded-sm"
               onClick={() => setStep(step === 0 ? 'landing' : step - 1)}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -472,7 +567,7 @@ export default function ElectionVote() {
 
             <Button
               size="lg"
-              className="w-full sm:w-auto h-13 px-10 shadow-lg"
+              className="w-full sm:w-auto h-13 px-10 shadow-lg rounded-sm"
               onClick={() => setStep(isLast ? 'review' : step + 1)}
             >
               {isLast ? (
@@ -498,51 +593,79 @@ export default function ElectionVote() {
               <ShieldCheck className="h-4 w-4" /> Final Review
             </div>
             <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight mb-4">Review Your Ballot</h1>
-            <p className="text-lg text-muted-foreground font-light">
-              Once submitted, your vote cannot be changed.
+            <p className="text-muted-foreground font-light text-lg">
+              Please verify each selection before casting your official vote.
+              Once submitted, your ballot cannot be changed.
             </p>
           </div>
 
-          {/* Official ballot card */}
+          {/* Official ballot */}
           <div className="bg-card border-2 border-border rounded-sm shadow-2xl overflow-hidden mb-10">
-            <div className="bg-foreground text-background px-8 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <VoteIcon className="h-5 w-5 text-background/70" />
-                <span className="font-serif font-bold text-lg">Official Ballot</span>
+            {/* Ballot header */}
+            <div className="bg-foreground text-background px-8 py-6 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.04]" style={{
+                backgroundImage: 'repeating-linear-gradient(45deg, currentColor, currentColor 1px, transparent 0, transparent 50%)',
+                backgroundSize: '8px 8px',
+              }} />
+              <div className="relative z-10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-sm bg-background/10 flex items-center justify-center border border-background/20">
+                    <VoteIcon className="h-5 w-5 text-background/70" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-background/40 mb-0.5">Official Ballot</p>
+                    <p className="font-serif font-bold text-lg text-background leading-tight">{election.title}</p>
+                  </div>
+                </div>
+                {election.organizationName && (
+                  <p className="text-xs text-background/40 hidden sm:block text-right max-w-[140px] leading-tight">{election.organizationName}</p>
+                )}
               </div>
-              <span className="text-xs text-background/50 font-mono">{election.title}</span>
             </div>
 
-            <div className="divide-y divide-border/50">
+            {/* Ballot body */}
+            <div className="divide-y divide-border/40">
               {positionList.map((position, idx) => {
                 const selectedIds = selections[position.id] || [];
-                const selectedCandidates = (candidates || []).filter(c => selectedIds.includes(c.id));
+                const selectedCandidates = allCandidates.filter(c => selectedIds.includes(c.id));
 
                 return (
-                  <div key={position.id} className="px-8 py-6">
-                    <div className="flex items-start justify-between gap-4 mb-3">
+                  <div key={position.id} className="px-8 py-7">
+                    <div className="flex items-start justify-between gap-4 mb-4">
                       <div>
-                        <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
                           Position {idx + 1}
                         </div>
                         <h4 className="font-serif font-bold text-xl">{position.title}</h4>
                       </div>
                       <button
                         onClick={() => setStep(idx)}
-                        className="text-xs text-primary hover:underline font-medium shrink-0 mt-1"
+                        className="text-xs text-primary hover:underline font-bold shrink-0 mt-1 uppercase tracking-wide"
                       >
                         Edit
                       </button>
                     </div>
 
                     {selectedCandidates.length === 0 ? (
-                      <p className="text-muted-foreground italic font-light text-sm">Abstained</p>
+                      <div className="flex items-center gap-3 py-2 text-sm text-muted-foreground italic">
+                        <div className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                        Abstained
+                      </div>
                     ) : (
-                      <div className="space-y-2 mt-3">
+                      <div className="space-y-2">
                         {selectedCandidates.map(c => (
-                          <div key={c.id} className="flex items-center gap-3 bg-primary/5 border border-primary/20 px-4 py-3 rounded-sm">
-                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                            <span className="font-bold text-primary">{c.name}</span>
+                          <div key={c.id} className="flex items-center gap-4 bg-primary/5 border border-primary/20 px-5 py-3.5 rounded-sm">
+                            {c.photoUrl ? (
+                              <img src={c.photoUrl} alt={c.name} className="w-9 h-9 rounded-sm object-cover object-top border border-primary/20 shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                                <span className="font-serif font-bold text-sm text-primary">{c.name.charAt(0)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                              <span className="font-serif font-bold text-primary truncate">{c.name}</span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -551,15 +674,21 @@ export default function ElectionVote() {
                 );
               })}
             </div>
+
+            {/* Ballot footer */}
+            <div className="px-8 py-4 bg-muted/20 border-t border-border/40 flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
+              Once submitted, this ballot is sealed and cannot be modified.
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <Button variant="outline" size="lg" className="h-14 px-8" onClick={() => setStep(totalPositions - 1)}>
+            <Button variant="outline" size="lg" className="h-14 px-8 rounded-sm" onClick={() => setStep(totalPositions - 1)}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Ballot
             </Button>
             <Button
               size="lg"
-              className="h-14 px-12 text-base shadow-xl hover:shadow-2xl transition-all"
+              className="h-14 px-12 text-base shadow-xl hover:shadow-2xl transition-all rounded-sm"
               onClick={submitBallot}
               disabled={submitVote.isPending}
             >

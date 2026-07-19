@@ -10,7 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Megaphone, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck, Users } from "lucide-react";
+import {
+  Loader2, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck,
+  Users, Heart, TrendingUp, Target, Sparkles
+} from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 export default function CampaignParticipate() {
@@ -65,8 +68,9 @@ export default function CampaignParticipate() {
   if (isCampaignLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-amber-600/50" />
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-amber-600/40" />
+          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Campaign</p>
         </div>
       </Layout>
     );
@@ -77,8 +81,8 @@ export default function CampaignParticipate() {
   if (campaign.status !== 'active') {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
-          <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Campaign Unavailable</h1>
           <p className="text-xl text-muted-foreground font-light">This campaign is not currently accepting submissions.</p>
         </div>
@@ -93,8 +97,15 @@ export default function CampaignParticipate() {
       <Layout>
         <div className="min-h-[80vh] flex items-center justify-center">
           <div className="container mx-auto px-4 py-24 text-center max-w-xl animate-in zoom-in-95 fade-in duration-700">
-            <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-10 shadow-inner">
-              <CheckCircle2 className="h-12 w-12" />
+            <div className="relative inline-flex mb-12 justify-center">
+              <div className="w-32 h-32 rounded-full border-4 border-amber-200 bg-amber-50 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border-2 border-amber-300 bg-amber-100 flex items-center justify-center">
+                  <Heart className="h-12 w-12 text-amber-500 fill-amber-300" />
+                </div>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-600 mb-6">
+              <Sparkles className="h-4 w-4" /> Contribution Recorded
             </div>
             <h1 className="text-5xl font-serif font-bold mb-5 tracking-tight">Thank You</h1>
             <p className="text-xl text-muted-foreground font-light mb-4 leading-relaxed">
@@ -102,12 +113,12 @@ export default function CampaignParticipate() {
               <span className="font-medium text-foreground">{campaign.organizationName || 'this campaign'}</span> has been recorded.
             </p>
             <p className="text-sm text-muted-foreground mb-12">
-              A copy of your submission has been sent to <strong>{baseData.email}</strong>.
+              A copy has been noted for <strong>{baseData.email}</strong>.
             </p>
             <Button
               size="lg"
               variant="outline"
-              className="h-12 px-8"
+              className="h-12 px-8 rounded-sm"
               onClick={() => {
                 setIsSuccess(false);
                 setFormData({});
@@ -122,11 +133,16 @@ export default function CampaignParticipate() {
     );
   }
 
-  // ── Field renderer ────────────────────────────────────────────────────────
+  // ── Analytics-derived stats ───────────────────────────────────────────────
+  const participantCount = analytics?.submissionsCount ?? null;
+  const goalProgress = analytics?.goalProgress ?? null;
+  const totalRevenue = analytics?.totalRevenue ?? null;
+  const hasGoal = !!campaign.goalAmount;
+  const goalProgressPct = goalProgress != null ? Math.min(Math.round(goalProgress * 100), 100) : null;
 
+  // ── Field renderer ────────────────────────────────────────────────────────
   const renderField = (field: any) => {
     const value = formData[field.id] || '';
-
     switch (field.type) {
       case 'textarea':
         return (
@@ -136,13 +152,13 @@ export default function CampaignParticipate() {
             required={field.required}
             value={value}
             onChange={e => handleFieldChange(field.id, e.target.value)}
-            className="min-h-[120px] bg-background border-border/60 focus:border-amber-500 text-base p-4 resize-none rounded-sm"
+            className="min-h-[120px] bg-background border-border/60 text-base p-4 resize-none rounded-sm"
           />
         );
       case 'select':
         return (
           <Select value={value} onValueChange={val => handleFieldChange(field.id, val)} required={field.required}>
-            <SelectTrigger className="h-12 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4">
+            <SelectTrigger className="h-12 bg-background border-border/60 rounded-sm text-base px-4">
               <SelectValue placeholder={field.placeholder || 'Select an option'} />
             </SelectTrigger>
             <SelectContent>
@@ -175,7 +191,7 @@ export default function CampaignParticipate() {
             required={field.required}
             value={value}
             onChange={e => handleFieldChange(field.id, e.target.value)}
-            className="h-12 bg-background border-border/60 focus:border-amber-500 rounded-sm text-base px-4"
+            className="h-12 bg-background border-border/60 rounded-sm text-base px-4"
           />
         );
     }
@@ -183,11 +199,9 @@ export default function CampaignParticipate() {
 
   // ── Main page ─────────────────────────────────────────────────────────────
 
-  const participantCount = analytics?.submissionsCount ?? null;
-
   return (
     <Layout>
-      {/* Hero */}
+      {/* Campaign hero */}
       <div className="relative bg-foreground text-background overflow-hidden">
         {campaign.coverImageUrl && (
           <div
@@ -196,14 +210,18 @@ export default function CampaignParticipate() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-foreground/60 to-foreground/95" />
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, currentColor, currentColor 1px, transparent 0, transparent 50%)',
+          backgroundSize: '24px 24px',
+        }} />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-3xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           {campaign.organizationName && (
-            <p className="text-background/50 text-sm font-medium uppercase tracking-widest mb-4">
+            <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-5">
               {campaign.organizationName}
             </p>
           )}
           <div className="flex justify-center mb-5">
-            <Badge className="bg-amber-600/20 text-amber-300 border-amber-500/30 font-bold uppercase tracking-widest text-xs capitalize">
+            <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30 font-bold uppercase tracking-widest text-xs capitalize">
               {campaign.type?.replace('_', ' ')}
             </Badge>
           </div>
@@ -211,35 +229,80 @@ export default function CampaignParticipate() {
             {campaign.title}
           </h1>
           {campaign.description && (
-            <p className="text-xl text-background/70 font-light max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-background/65 font-light max-w-2xl mx-auto leading-relaxed">
               {campaign.description}
             </p>
           )}
 
-          {/* Participation momentum */}
+          {/* Live participation stats */}
           {participantCount !== null && participantCount > 0 && (
-            <div className="mt-10 inline-flex items-center gap-3 bg-background/10 backdrop-blur-md border border-background/20 px-6 py-3 rounded-full">
+            <div className="mt-10 inline-flex items-center gap-3 bg-background/10 backdrop-blur-md border border-background/20 px-6 py-3.5 rounded-full">
               <Users className="h-4 w-4 text-amber-400" />
-              <span className="text-sm font-bold">
-                <span className="text-amber-400 font-serif text-lg">{participantCount}</span>
-                {' '}people have participated
+              <span className="text-sm font-bold text-background">
+                <span className="text-amber-400 font-serif text-xl">{participantCount.toLocaleString()}</span>
+                {' '}people have already participated
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Form section */}
-      <div className="container mx-auto px-4 py-16 max-w-2xl paper-grain">
+      {/* Goal progress */}
+      {hasGoal && (goalProgressPct !== null || totalRevenue !== null) && (
+        <div className="border-b border-border/50 bg-amber-50/30">
+          <div className="container mx-auto px-4 py-10 max-w-3xl">
+            <div className="flex items-center gap-3 mb-5">
+              <Target className="h-5 w-5 text-amber-600 shrink-0" />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Campaign Progress</h2>
+              {goalProgressPct !== null && (
+                <span className="ml-auto text-2xl font-serif font-bold text-amber-700">{goalProgressPct}%</span>
+              )}
+            </div>
 
-        {/* "Why your participation matters" callout */}
-        <div className="bg-amber-50/60 border border-amber-200/60 rounded-sm p-6 mb-10 flex items-start gap-4">
-          <Megaphone className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bold text-amber-900 text-sm mb-1">Why your participation matters</p>
-            <p className="text-amber-800/80 text-sm font-light leading-relaxed">
+            {goalProgressPct !== null && (
+              <div className="relative h-3 bg-amber-100 rounded-full overflow-hidden border border-amber-200/60 mb-4">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${goalProgressPct}%` }}
+                />
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-6 text-sm">
+              {totalRevenue != null && (
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-amber-600" />
+                  <span className="text-muted-foreground">Raised:</span>
+                  <span className="font-serif font-bold text-amber-700">${totalRevenue.toLocaleString()}</span>
+                </div>
+              )}
+              {campaign.goalAmount && (
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Goal:</span>
+                  <span className="font-bold">${campaign.goalAmount.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form section */}
+      <div className="container mx-auto px-4 py-16 max-w-2xl">
+
+        {/* Why your participation matters */}
+        <div className="rounded-sm overflow-hidden border border-amber-200/60 mb-10">
+          <div className="bg-amber-600 px-6 py-3 flex items-center gap-2">
+            <Heart className="h-4 w-4 text-white/80 fill-white/30" />
+            <p className="text-xs font-bold uppercase tracking-widest text-white">Why Your Participation Matters</p>
+          </div>
+          <div className="bg-amber-50/60 px-6 py-5">
+            <p className="text-amber-900/80 text-sm font-light leading-relaxed">
               Every response directly shapes the outcome of this campaign. Your contribution is recorded,
               counted, and reviewed by the organizing team.
+              {campaign.goalAmount && ` Together, participants are working toward a goal of $${campaign.goalAmount.toLocaleString()}.`}
+              {' '}Your voice matters — participate with confidence.
             </p>
           </div>
         </div>
@@ -340,7 +403,7 @@ export default function CampaignParticipate() {
               disabled={submitMutation.isPending}
             >
               {submitMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit Response'}
+              {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit My Response'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
