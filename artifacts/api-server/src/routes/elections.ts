@@ -43,18 +43,20 @@ router.get("/elections", async (req, res): Promise<void> => {
     .select({
       election: electionsTable,
       orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
     })
     .from(electionsTable)
     .leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const elections = await Promise.all(rows.map(async ({ election, orgName }) => {
+  const elections = await Promise.all(rows.map(async ({ election, orgName, orgLogoUrl }) => {
     const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, election.id));
     const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, election.id));
     const [{ voteCount }] = await db.select({ voteCount: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, election.id));
     return {
       ...election,
       organizationName: orgName ?? null,
+      organizationLogoUrl: orgLogoUrl ?? null,
       positionsCount: posCount ?? 0,
       candidatesCount: candCount ?? 0,
       totalVotes: voteCount ?? 0,
@@ -83,7 +85,7 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
   const parsed = GetElectionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [row] = await db.select({ election: electionsTable, orgName: organizationsTable.name })
+  const [row] = await db.select({ election: electionsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
     .from(electionsTable)
     .leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
     .where(eq(electionsTable.id, parsed.data.electionId)).limit(1);
@@ -93,7 +95,7 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
   const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, row.election.id));
   const [{ voteCount }] = await db.select({ voteCount: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, row.election.id));
 
-  res.json({ ...row.election, organizationName: row.orgName ?? null, positionsCount: posCount ?? 0, candidatesCount: candCount ?? 0, totalVotes: voteCount ?? 0 });
+  res.json({ ...row.election, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, positionsCount: posCount ?? 0, candidatesCount: candCount ?? 0, totalVotes: voteCount ?? 0 });
 });
 
 // Update election

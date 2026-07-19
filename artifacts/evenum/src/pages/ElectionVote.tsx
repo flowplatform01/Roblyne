@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Loader2, Vote as VoteIcon, AlertCircle, CheckCircle2, Key, Mail,
   ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2,
-  ChevronRight, Users, ChevronDown, Info, Lock
+  ChevronRight, Users, ChevronDown, Info, Lock, ExternalLink, Share2
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -241,7 +241,15 @@ export default function ElectionVote() {
           <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
             {election.organizationName && (
               <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
-                <Building2 className="h-3.5 w-3.5" />
+                {(election as any).organizationLogoUrl ? (
+                  <img
+                    src={(election as any).organizationLogoUrl}
+                    alt={election.organizationName}
+                    className="w-5 h-5 rounded object-cover border border-background/20"
+                  />
+                ) : (
+                  <Building2 className="h-3.5 w-3.5" />
+                )}
                 {election.organizationName}
               </div>
             )}
@@ -584,13 +592,26 @@ export default function ElectionVote() {
                           </div>
                         )}
 
-                        {/* Select prompt — shows when not selected */}
-                        {!isSelected && (
-                          <div className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
-                            <div className="w-4 h-4 rounded-full border-2 border-current" />
-                            Click to select
-                          </div>
-                        )}
+                        <div className="mt-5 flex items-center justify-between gap-3">
+                          {/* Select prompt — shows when not selected */}
+                          {!isSelected ? (
+                            <div className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
+                              <div className="w-4 h-4 rounded-full border-2 border-current" />
+                              Click to select
+                            </div>
+                          ) : (
+                            <div />
+                          )}
+                          {/* Candidate profile link */}
+                          <Link
+                            href={`/candidates/${electionId}/${candidate.id}`}
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors shrink-0"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            View Profile
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>

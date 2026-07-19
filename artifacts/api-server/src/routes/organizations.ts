@@ -84,17 +84,16 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
     .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
     .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3);
 
+  // Flatten stats at top level so frontend can read them directly (e.g. org.electionsCount)
   res.json({
     ...org,
-    stats: {
-      electionsCount: electionsCount?.count ?? 0,
-      eventsCount: eventsCount?.count ?? 0,
-      campaignsCount: campaignsCount?.count ?? 0,
-      totalParticipants: 0,
-      activeElectionsCount: activeElections?.count ?? 0,
-      upcomingEventsCount: upcomingEvents?.count ?? 0,
-      activeCampaignsCount: activeCampaigns?.count ?? 0,
-    },
+    electionsCount: electionsCount?.count ?? 0,
+    eventsCount: eventsCount?.count ?? 0,
+    campaignsCount: campaignsCount?.count ?? 0,
+    totalParticipants: 0,
+    activeElectionsCount: activeElections?.count ?? 0,
+    upcomingEventsCount: upcomingEvents?.count ?? 0,
+    activeCampaignsCount: activeCampaigns?.count ?? 0,
     recentElections: recentElections.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, positionsCount: 0, candidatesCount: 0, totalVotes: 0 })),
     recentEvents: recentEvents.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, attendeesCount: 0, ticketTypesCount: 0 })),
     recentCampaigns: recentCampaigns.map(c => ({ ...c, organizationName: org.name, organizationLogoUrl: org.logoUrl, submissionsCount: 0, currentAmount: c.currentAmount ?? "0" })),
