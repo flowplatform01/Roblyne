@@ -356,30 +356,30 @@ export default function ElectionDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 min-w-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-6 border-b rounded-none bg-transparent p-0 w-full justify-start h-auto">
+            <TabsList className="mb-6 border-b rounded-none bg-transparent p-0 w-full justify-start h-auto overflow-x-auto scrollbar-none">
               <TabsTrigger 
                 value="positions" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
               >
                 Positions & Candidates
               </TabsTrigger>
               {election.eligibilityMode === 'allowlist' && (
                 <TabsTrigger 
                   value="voters" 
-                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
                 >
                   Voter Allowlist
                 </TabsTrigger>
               )}
               <TabsTrigger 
                 value="analytics" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
               >
                 Analytics & Results
               </TabsTrigger>
               <TabsTrigger 
                 value="branding" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
               >
                 Branding
               </TabsTrigger>
