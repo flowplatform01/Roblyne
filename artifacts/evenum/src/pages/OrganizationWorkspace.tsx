@@ -79,23 +79,25 @@ export default function OrganizationWorkspace() {
   return (
     <DashboardLayout orgId={orgId.toString()}>
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-start gap-4">
+          <div className="shrink-0">
             {org.logoUrl ? (
-              <img src={org.logoUrl} alt={org.name} className="w-10 h-10 rounded bg-muted object-cover" />
+              <img src={org.logoUrl} alt={org.name} className="w-16 h-16 rounded bg-muted object-cover border border-border/60" />
             ) : (
-              <div className="w-10 h-10 rounded bg-primary/10 text-primary flex items-center justify-center">
-                <span className="font-serif font-bold text-xl">{org.name.charAt(0)}</span>
+              <div className="w-16 h-16 rounded bg-primary/10 text-primary flex items-center justify-center border border-border/30">
+                <span className="font-serif font-bold text-2xl">{org.name.charAt(0)}</span>
               </div>
             )}
-            <h1 className="text-3xl font-serif font-bold tracking-tight">{org.name}</h1>
           </div>
-          {org.description && <p className="text-muted-foreground max-w-3xl">{org.description}</p>}
-          {org.website && (
-            <a href={org.website} target="_blank" rel="noreferrer" className="text-sm text-primary flex items-center gap-1 mt-2 hover:underline w-fit">
-              <ExternalLink className="h-3 w-3" /> Visit Website
-            </a>
-          )}
+          <div className="min-w-0">
+            <h1 className="text-3xl font-serif font-bold tracking-tight leading-tight">{org.name}</h1>
+            {org.description && <p className="text-muted-foreground max-w-2xl mt-1">{org.description}</p>}
+            {org.website && (
+              <a href={org.website} target="_blank" rel="noreferrer" className="text-sm text-primary flex items-center gap-1 mt-2 hover:underline w-fit">
+                <ExternalLink className="h-3 w-3" /> {org.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
