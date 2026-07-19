@@ -801,17 +801,20 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-serif">Media</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label>Hero Image</Label>
-            <p className="text-xs text-muted-foreground">Full-width background shown on the voting page header</p>
-            <ImageUpload value={heroImageUrl || undefined} onChange={v => setHeroImageUrl(v ?? '')} />
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <ImageUpload
+              label="Hero Image"
+              value={heroImageUrl || undefined}
+              onChange={v => setHeroImageUrl(v ?? '')}
+            />
+            <ImageUpload
+              label="Cover Image"
+              value={coverImageUrl || undefined}
+              onChange={v => setCoverImageUrl(v ?? '')}
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Cover Image</Label>
-            <p className="text-xs text-muted-foreground">Used in cards, previews, and social sharing</p>
-            <ImageUpload value={coverImageUrl || undefined} onChange={v => setCoverImageUrl(v ?? '')} />
-          </div>
+          <p className="text-xs text-muted-foreground">Hero: full-width background on the public voting page. Cover: cards and social sharing.</p>
         </CardContent>
       </Card>
 
