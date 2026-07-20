@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, uniqueIndex, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -19,6 +19,9 @@ export const electionsTable = pgTable("elections", {
   inviteCode: text("invite_code"),
   startsAt: timestamp("starts_at"),
   endsAt: timestamp("ends_at"),
+  requiresPayment: boolean("requires_payment").notNull().default(false),
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
+  currency: text("currency").notNull().default("USD"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

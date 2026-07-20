@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save } from "lucide-react";
+import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, DollarSign, CreditCard } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";

@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import {
   Loader2, Vote as VoteIcon, AlertCircle, CheckCircle2, Key, Mail,
   ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2,
-  ChevronRight, Users, ChevronDown, Info, Lock, ExternalLink, Share2
+  ChevronRight, Users, ChevronDown, Info, Lock, ExternalLink, Share2,
+  CreditCard, Wallet, BadgeCheck
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -66,10 +67,13 @@ export default function ElectionVote() {
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
   const submitVote = useSubmitVote();
 
-  const [step, setStep] = useState<'landing' | number | 'review' | 'success'>('landing');
+  const [step, setStep] = useState<'landing' | 'payment' | number | 'review' | 'success'>('landing');
   const [selections, setSelections] = useState<Record<number, number[]>>({});
   const [inviteCode, setInviteCode] = useState('');
   const [voterEmail, setVoterEmail] = useState('');
+  const [hasPaid, setHasPaid] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '', name: '' });
 
   const countdown = useCountdown(election?.endsAt);
 
@@ -186,7 +190,6 @@ export default function ElectionVote() {
       <Layout>
         <div className="min-h-[80vh] flex items-center justify-center">
           <div className="container mx-auto px-4 py-24 text-center max-w-2xl animate-in zoom-in-95 fade-in duration-700">
-            {/* Seal */}
             <div className="relative inline-flex mb-12 justify-center">
               <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-primary/5 flex items-center justify-center">
                 <div className="w-24 h-24 rounded-full border-2 border-primary/30 bg-primary/8 flex items-center justify-center">
@@ -220,9 +223,143 @@ export default function ElectionVote() {
     );
   }
 
-  // ── Landing (Election Identity) ───────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
+  const feeRequired = !!(election as any).requiresPayment && !!(election as any).paymentAmount;
+  const feeAmt = feeRequired ? parseFloat((election as any).paymentAmount) : 0;
+  const feeCur = (election as any).currency || 'USD';
+  const symMap: Record<string, string> = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', NGN: '\u20a6', KES: 'KSh ', ZAR: 'R ', CAD: 'CA$', AUD: 'A$', GHS: '\u20b5' };
+  const feeSym = symMap[feeCur] ?? (feeCur + ' ');
+
+  // ── Payment gate ──────────────────────────────────────────────────────────
+
+  if (step === 'payment') {
+    const handlePay = () => {
+      if (!cardDetails.name.trim() || cardDetails.number.replace(/\s/g, '').length < 12 || !cardDetails.expiry || !cardDetails.cvv) {
+        toast({ title: 'Please fill in all payment details', variant: 'destructive' });
+        return;
+      }
+      setPaymentProcessing(true);
+      setTimeout(() => {
+        setHasPaid(true);
+        setPaymentProcessing(false);
+        setStep(0);
+        toast({ title: 'Payment confirmed', description: `${feeSym}${feeAmt.toFixed(2)} \u2014 you may now cast your ballot.` });
+      }, 1800);
+    };
+
+    return (
+      <Layout>
+        <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
+          {heroImageUrl ? (
+            <>
+              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/75 to-black/90" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 39px,currentColor 39px,currentColor 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,currentColor 39px,currentColor 40px)' }} />
+            </>
+          )}
+          <div className="relative z-10 container mx-auto px-4 pt-14 pb-10 max-w-xl text-center animate-in fade-in duration-500">
+            <div className="inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-6">
+              <CreditCard className="h-3.5 w-3.5" /> Participation Fee
+            </div>
+            <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
+              {feeSym}{feeAmt.toFixed(2)}
+            </div>
+            <p className="text-background/55 font-light">{feeCur} &middot; One-time entry fee to access the ballot</p>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-12 max-w-md" style={primaryStyle}>
+          <button
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+            onClick={() => setStep('landing')}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to election
+          </button>
+
+          <div className="bg-card border border-border rounded-sm shadow-xl overflow-hidden mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-foreground/5 px-7 py-5 border-b border-border/60 flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <h3 className="font-serif font-bold text-lg">Payment Details</h3>
+              <span className="ml-auto text-muted-foreground">&#128274;</span>
+            </div>
+            <div className="p-7 space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Name on Card</Label>
+                <Input
+                  placeholder="Full name"
+                  value={cardDetails.name}
+                  onChange={e => setCardDetails(p => ({ ...p, name: e.target.value }))}
+                  className="h-11 rounded-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Card Number</Label>
+                <Input
+                  placeholder="1234 5678 9012 3456"
+                  value={cardDetails.number}
+                  maxLength={19}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '').slice(0, 16);
+                    setCardDetails(p => ({ ...p, number: raw.replace(/(.{4})/g, '$1 ').trim() }));
+                  }}
+                  className="h-11 rounded-sm font-mono tracking-widest"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expiry</Label>
+                  <Input
+                    placeholder="MM/YY"
+                    value={cardDetails.expiry}
+                    maxLength={5}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setCardDetails(p => ({ ...p, expiry: raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw }));
+                    }}
+                    className="h-11 rounded-sm font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">CVV</Label>
+                  <Input
+                    placeholder="123"
+                    value={cardDetails.cvv}
+                    maxLength={4}
+                    onChange={e => setCardDetails(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                    className="h-11 rounded-sm font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="px-7 pb-7">
+              <Button
+                className="w-full h-12 text-base rounded-sm"
+                onClick={handlePay}
+                disabled={paymentProcessing}
+              >
+                {paymentProcessing ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing&hellip;</>
+                ) : (
+                  <><Wallet className="mr-2 h-5 w-5" /> Pay {feeSym}{feeAmt.toFixed(2)} &middot; Enter Ballot</>
+                )}
+              </Button>
+            </div>
+          </div>
+          <p className="text-center text-xs text-muted-foreground/50">
+            &#128274; Secured &mdash; demo environment, no real charge is made
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ── Landing (Election Identity) ───────────────────────────────────────────
 
   if (step === 'landing') {
     return (
@@ -282,7 +419,7 @@ export default function ElectionVote() {
               </p>
             )}
 
-            <div className="flex justify-center mb-10">
+            <div className="flex justify-center mb-6">
               <ShareButton
                 url={shareUrl}
                 title={election.title}
@@ -290,6 +427,16 @@ export default function ElectionVote() {
                 className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
               />
             </div>
+
+            {/* Fee badge — shown when entry fee is required */}
+            {feeRequired && (
+              <div className="flex justify-center mb-6">
+                <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  {feeCur} {feeAmt.toFixed(2)} entry fee required
+                </div>
+              </div>
+            )}
 
             {/* Countdown */}
             {election.endsAt && !countdown.expired && (
@@ -329,7 +476,7 @@ export default function ElectionVote() {
               <div className="flex items-center gap-3 mb-6">
                 <VoteIcon className="h-5 w-5 text-primary shrink-0" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  What You'll Vote On · {totalPositions} {totalPositions === 1 ? 'Position' : 'Positions'}
+                  What You'll Vote On &middot; {totalPositions} {totalPositions === 1 ? 'Position' : 'Positions'}
                 </h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -340,7 +487,7 @@ export default function ElectionVote() {
                       key={position.id}
                       type="button"
                       className="flex items-center gap-4 bg-card border border-border/50 rounded-sm px-5 py-4 w-full text-left cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group"
-                      onClick={() => setStep(idx)}
+                      onClick={() => setStep(feeRequired && !hasPaid ? 'payment' : idx)}
                       title={`Vote on ${position.title}`}
                     >
                       <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -435,14 +582,19 @@ export default function ElectionVote() {
                   (needsInviteCode && !inviteCode.trim()) ||
                   (needsVoterEmail && !voterEmail.trim())
                 }
-                onClick={() => setStep(0)}
+                onClick={() => setStep(feeRequired && !hasPaid ? 'payment' : 0)}
               >
-                <VoteIcon className="mr-3 h-5 w-5" />
-                Enter the Ballot
-                <ArrowRight className="ml-3 h-5 w-5" />
+                {feeRequired && !hasPaid ? (
+                  <><CreditCard className="mr-3 h-5 w-5" /> Pay {feeSym}{feeAmt.toFixed(2)} &middot; Enter Ballot</>
+                ) : (
+                  <><VoteIcon className="mr-3 h-5 w-5" /> Enter the Ballot <ArrowRight className="ml-3 h-5 w-5" /></>
+                )}
               </Button>
               <p className="text-sm text-muted-foreground">
-                You'll vote on {totalPositions} {totalPositions === 1 ? 'position' : 'positions'}, one at a time.
+                {feeRequired && !hasPaid
+                  ? `Entry fee of ${feeSym}${feeAmt.toFixed(2)} ${feeCur} required before voting`
+                  : `You'll vote on ${totalPositions} ${totalPositions === 1 ? 'position' : 'positions'}, one at a time.`
+                }
               </p>
             </div>
           )}
@@ -588,7 +740,7 @@ export default function ElectionVote() {
                           </p>
                         )}
 
-                        {/* Platform / Manifesto — featured prominently */}
+                        {/* Platform / Manifesto */}
                         {candidate.platform && (
                           <div className={`mt-4 border-l-[3px] pl-5 py-1 transition-colors
                             ${isSelected ? 'border-primary' : 'border-border/40 group-hover:border-primary/30'}`}>
@@ -597,13 +749,12 @@ export default function ElectionVote() {
                             </p>
                             <p className={`text-sm leading-relaxed font-medium italic
                               ${isSelected ? 'text-foreground' : 'text-foreground/70'}`}>
-                              "{candidate.platform}"
+                              &ldquo;{candidate.platform}&rdquo;
                             </p>
                           </div>
                         )}
 
                         <div className="mt-5 flex items-center justify-between gap-3">
-                          {/* Select prompt — shows when not selected */}
                           {!isSelected ? (
                             <div className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
                               <div className="w-4 h-4 rounded-full border-2 border-current" />
@@ -612,7 +763,6 @@ export default function ElectionVote() {
                           ) : (
                             <div />
                           )}
-                          {/* Candidate profile link */}
                           <Link
                             href={`/candidates/${electionId}/${candidate.id}`}
                             onClick={e => e.stopPropagation()}
