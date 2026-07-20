@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, Download, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Medal } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { useToast } from '@/hooks/use-toast';
+import { hexToHsl } from "@/lib/branding";
 import { format } from 'date-fns';
 
 export default function ElectionResults() {
@@ -80,6 +81,12 @@ export default function ElectionResults() {
   const turnoutPct = analytics?.turnoutRate != null ? Math.round(analytics.turnoutRate * 100) : null;
   const isEnded = election.status === 'ended';
 
+  // Branding
+  const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
+  const primaryStyle: React.CSSProperties = (election as any).accentColor
+    ? { "--primary": hexToHsl((election as any).accentColor) } as React.CSSProperties
+    : {};
+
   // Build votesByHour chart data
   const votesByHour = analytics?.votesByHour ?? [];
   const maxHourCount = Math.max(...votesByHour.map(h => h.count), 1);
@@ -87,11 +94,20 @@ export default function ElectionResults() {
   return (
     <Layout>
       {/* Hero */}
-      <div className="bg-foreground text-background relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground to-primary/30" />
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
-        }} />
+      <div className="bg-foreground text-background relative overflow-hidden" style={primaryStyle}>
+        {heroImageUrl ? (
+          <>
+            <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/70 to-black/90" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground to-primary/30" />
+            <div className="absolute inset-0 opacity-[0.03]" style={{
+              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
+            }} />
+          </>
+        )}
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="inline-flex items-center gap-2 bg-background/10 backdrop-blur-md border border-background/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
