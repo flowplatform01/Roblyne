@@ -23,6 +23,8 @@ export interface AuthUser {
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
+  /** Whether this user has platform-level admin privileges */
+  isPlatformAdmin?: boolean;
   createdAt: string;
 }
 
@@ -153,6 +155,15 @@ export interface Election {
   startsAt?: string | null;
   /** @nullable */
   endsAt?: string | null;
+  /** Whether a participation fee is required to vote */
+  requiresPayment?: boolean;
+  /**
+     * Fee amount required to participate (null if free)
+     * @nullable
+     */
+  paymentAmount?: number | null;
+  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  currency?: string;
   totalVotes?: number;
   positionsCount?: number;
   candidatesCount?: number;
@@ -456,6 +467,12 @@ export interface ElectionInput {
   eligibilityMode?: ElectionInputEligibilityMode;
   startsAt?: string;
   endsAt?: string;
+  /** Whether a participation fee is required to vote */
+  requiresPayment?: boolean;
+  /** Fee amount required to participate */
+  paymentAmount?: number;
+  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  currency?: string;
 }
 
 export type ElectionUpdateTheme = typeof ElectionUpdateTheme[keyof typeof ElectionUpdateTheme];
@@ -507,6 +524,12 @@ export interface ElectionUpdate {
   eligibilityMode?: ElectionUpdateEligibilityMode;
   startsAt?: string;
   endsAt?: string;
+  /** Whether a participation fee is required to vote */
+  requiresPayment?: boolean;
+  /** Fee amount required to participate */
+  paymentAmount?: number;
+  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  currency?: string;
 }
 
 export interface EligibleVoter {

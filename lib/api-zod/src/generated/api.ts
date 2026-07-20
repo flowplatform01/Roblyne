@@ -34,6 +34,7 @@ export const RegisterResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "avatarUrl": zod.string().nullish(),
+  "isPlatformAdmin": zod.boolean().optional().describe('Whether this user has platform-level admin privileges'),
   "createdAt": zod.coerce.date()
 })
 
@@ -51,6 +52,7 @@ export const LoginResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "avatarUrl": zod.string().nullish(),
+  "isPlatformAdmin": zod.boolean().optional().describe('Whether this user has platform-level admin privileges'),
   "createdAt": zod.coerce.date()
 })
 
@@ -71,6 +73,7 @@ export const GetMeResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "avatarUrl": zod.string().nullish(),
+  "isPlatformAdmin": zod.boolean().optional().describe('Whether this user has platform-level admin privileges'),
   "createdAt": zod.coerce.date()
 })
 
@@ -91,6 +94,7 @@ export const UpdateMeResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "avatarUrl": zod.string().nullish(),
+  "isPlatformAdmin": zod.boolean().optional().describe('Whether this user has platform-level admin privileges'),
   "createdAt": zod.coerce.date()
 })
 
@@ -262,6 +266,9 @@ export const GetPublicOrganizationResponse = zod.object({
   "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -451,6 +458,9 @@ export const ListElectionsResponseItem = zod.object({
   "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -466,6 +476,8 @@ export const ListElectionsResponse = zod.array(ListElectionsResponseItem)
 export const createElectionBodyVisibilityDefault = `public`;
 export const createElectionBodyRequiresAuthDefault = false;
 export const createElectionBodyEligibilityModeDefault = `open`;
+export const createElectionBodyRequiresPaymentDefault = false;
+export const createElectionBodyCurrencyDefault = `USD`;
 
 export const CreateElectionBody = zod.object({
   "orgId": zod.number(),
@@ -479,7 +491,10 @@ export const CreateElectionBody = zod.object({
   "requiresAuth": zod.boolean().default(createElectionBodyRequiresAuthDefault),
   "eligibilityMode": zod.enum(['open', 'allowlist']).default(createElectionBodyEligibilityModeDefault),
   "startsAt": zod.coerce.date().optional(),
-  "endsAt": zod.coerce.date().optional()
+  "endsAt": zod.coerce.date().optional(),
+  "requiresPayment": zod.boolean().default(createElectionBodyRequiresPaymentDefault).describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().optional().describe('Fee amount required to participate'),
+  "currency": zod.string().default(createElectionBodyCurrencyDefault).describe('ISO 4217 currency code e.g. USD, EUR, GBP')
 })
 
 export const CreateElectionResponse = zod.object({
@@ -500,6 +515,9 @@ export const CreateElectionResponse = zod.object({
   "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -532,6 +550,9 @@ export const GetElectionResponse = zod.object({
   "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -561,7 +582,10 @@ export const UpdateElectionBody = zod.object({
   "requiresAuth": zod.boolean().optional(),
   "eligibilityMode": zod.enum(['open', 'allowlist']).optional(),
   "startsAt": zod.coerce.date().optional(),
-  "endsAt": zod.coerce.date().optional()
+  "endsAt": zod.coerce.date().optional(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().optional().describe('Fee amount required to participate'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP')
 })
 
 export const UpdateElectionResponse = zod.object({
@@ -582,6 +606,9 @@ export const UpdateElectionResponse = zod.object({
   "inviteCode": zod.string().nullish(),
   "startsAt": zod.coerce.date().nullish(),
   "endsAt": zod.coerce.date().nullish(),
+  "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
+  "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
+  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),

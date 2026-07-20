@@ -23,8 +23,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ArrowLeft, Vote } from "lucide-react";
+import { Loader2, ArrowLeft, Vote, CreditCard } from "lucide-react";
 import { Link } from "wouter";
+
+const CURRENCIES = [
+  { value: "USD", label: "USD — US Dollar" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "GBP", label: "GBP — British Pound" },
+  { value: "CAD", label: "CAD — Canadian Dollar" },
+  { value: "AUD", label: "AUD — Australian Dollar" },
+  { value: "NGN", label: "NGN — Nigerian Naira" },
+  { value: "KES", label: "KES — Kenyan Shilling" },
+  { value: "ZAR", label: "ZAR — South African Rand" },
+  { value: "GHS", label: "GHS — Ghanaian Cedi" },
+];
 
 const electionSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
@@ -35,6 +47,9 @@ const electionSchema = z.object({
   requiresAuth: z.boolean().default(false),
   startsAt: z.string().optional().or(z.literal("")),
   endsAt: z.string().optional().or(z.literal("")),
+  requiresPayment: z.boolean().default(false),
+  paymentAmount: z.string().optional().or(z.literal("")),
+  currency: z.string().default("USD"),
 });
 
 export default function CreateElection() {
@@ -58,6 +73,9 @@ export default function CreateElection() {
       requiresAuth: false,
       startsAt: "",
       endsAt: "",
+      requiresPayment: false,
+      paymentAmount: "",
+      currency: "USD",
     },
   });
 
@@ -73,6 +91,9 @@ export default function CreateElection() {
           requiresAuth: values.requiresAuth,
           startsAt: values.startsAt ? new Date(values.startsAt).toISOString() : undefined,
           endsAt: values.endsAt ? new Date(values.endsAt).toISOString() : undefined,
+          requiresPayment: values.requiresPayment,
+          paymentAmount: values.requiresPayment && values.paymentAmount ? parseFloat(values.paymentAmount) : undefined,
+          currency: values.currency || "USD",
         } 
       },
       {
@@ -292,6 +313,90 @@ export default function CreateElection() {
                         </FormItem>
                       )}
                     />
+                  </div>
+                </div>
+
+                {/* Participation & Fees */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-serif font-medium">Participation & Fees</h3>
+                  <div className="grid gap-6 p-4 border rounded-lg bg-muted/20">
+                    <FormField
+                      control={form.control}
+                      name="requiresPayment"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between space-y-0">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base flex items-center gap-2">
+                              <CreditCard className="h-4 w-4 text-primary" />
+                              Require Participation Fee
+                            </FormLabel>
+                            <FormDescription>
+                              Voters must pay an entry fee before casting their ballot
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch("requiresPayment") && (
+                      <>
+                        <div className="border-t border-border/50" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="paymentAmount"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Fee Amount</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="e.g. 10.00"
+                                    className="h-11"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormDescription>Amount each voter must pay</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="currency"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Currency</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-11">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {CURRENCIES.map(c => (
+                                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 rounded-md px-3 py-2">
+                          Voters will be shown the fee and must complete payment before accessing the ballot. Fee configuration can be updated any time before the election goes live.
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
 

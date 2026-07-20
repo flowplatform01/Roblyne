@@ -760,6 +760,18 @@ export default function ElectionDetail() {
   );
 }
 
+const CURRENCIES = [
+  { value: "USD", label: "USD — US Dollar" },
+  { value: "EUR", label: "EUR — Euro" },
+  { value: "GBP", label: "GBP — British Pound" },
+  { value: "CAD", label: "CAD — Canadian Dollar" },
+  { value: "AUD", label: "AUD — Australian Dollar" },
+  { value: "NGN", label: "NGN — Nigerian Naira" },
+  { value: "KES", label: "KES — Kenyan Shilling" },
+  { value: "ZAR", label: "ZAR — South African Rand" },
+  { value: "GHS", label: "GHS — Ghanaian Cedi" },
+];
+
 function ElectionBrandingSection({ election, electionId }: { election: any; electionId: number }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -767,9 +779,15 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
   const [coverImageUrl, setCoverImageUrl] = useState<string>(election.coverImageUrl ?? '');
   const [accentColor, setAccentColor] = useState<string>(election.accentColor ?? '#4F46E5');
   const [theme, setTheme] = useState<'evenum' | 'light' | 'dark'>(election.theme ?? 'evenum');
+
+  // Monetization state
+  const [requiresPayment, setRequiresPayment] = useState<boolean>(election.requiresPayment ?? false);
+  const [paymentAmount, setPaymentAmount] = useState<string>(election.paymentAmount ? String(election.paymentAmount) : '');
+  const [currency, setCurrency] = useState<string>(election.currency ?? 'USD');
+
   const updateElection = useUpdateElection();
 
-  const handleSave = () => {
+  const handleSaveBranding = () => {
     updateElection.mutate(
       {
         electionId,
@@ -790,6 +808,30 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
     );
   };
 
+  const handleSaveFees = () => {
+    if (requiresPayment && (!paymentAmount || parseFloat(paymentAmount) <= 0)) {
+      toast({ title: 'Invalid fee amount', description: 'Please enter a fee amount greater than 0.', variant: 'destructive' });
+      return;
+    }
+    updateElection.mutate(
+      {
+        electionId,
+        data: {
+          requiresPayment,
+          paymentAmount: requiresPayment && paymentAmount ? parseFloat(paymentAmount) : undefined,
+          currency,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
+          toast({ title: 'Fees saved', description: requiresPayment ? `Entry fee set to ${currency} ${parseFloat(paymentAmount).toFixed(2)}.` : 'Participation is now free.' });
+        },
+        onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
+      }
+    );
+  };
+
   return (
     <div className="space-y-8 max-w-2xl">
       <div>
@@ -797,6 +839,86 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
         <p className="text-sm text-muted-foreground">These settings override the organization theme for this election's public voting page.</p>
       </div>
 
+      {/* Participation & Fees */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base font-serif">Participation & Fees</CardTitle>
+          </div>
+          <CardDescription>Configure whether voters must pay an entry fee before accessing the ballot.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-primary" />
+                Require Participation Fee
+              </Label>
+              <p className="text-xs text-muted-foreground">Voters must pay before accessing the ballot</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={requiresPayment}
+              onChange={e => setRequiresPayment(e.target.checked)}
+              className="w-4 h-4 rounded accent-primary cursor-pointer"
+            />
+          </div>
+
+          {requiresPayment && (
+            <>
+              <div className="border-t border-border/50" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="fee-amount" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fee Amount</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
+                      {({ USD: '$', EUR: '€', GBP: '£' } as Record<string, string>)[currency] ?? currency}
+                    </span>
+                    <input
+                      id="fee-amount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="10.00"
+                      value={paymentAmount}
+                      onChange={e => setPaymentAmount(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="currency" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Currency</Label>
+                  <Select value={currency} onValueChange={setCurrency}>
+                    <SelectTrigger id="currency" className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map(c => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                <div className="flex items-center gap-2 text-sm bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded-md px-3 py-2">
+                  <CreditCard className="h-4 w-4 shrink-0" />
+                  Voters will be charged <strong className="ml-1">{currency} {parseFloat(paymentAmount).toFixed(2)}</strong> before accessing this ballot.
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-end">
+          <Button onClick={handleSaveFees} disabled={updateElection.isPending} size="sm" className="rounded-sm">
+            {updateElection.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Fees
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Media */}
       <Card className="border-border/50">
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-serif">Media</CardTitle>
@@ -818,6 +940,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
         </CardContent>
       </Card>
 
+      {/* Appearance */}
       <Card className="border-border/50">
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-serif">Appearance</CardTitle>
@@ -846,7 +969,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={updateElection.isPending} className="h-10 px-8 rounded-sm">
+        <Button onClick={handleSaveBranding} disabled={updateElection.isPending} className="h-10 px-8 rounded-sm">
           {updateElection.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Save Branding
         </Button>

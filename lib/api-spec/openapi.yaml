@@ -1540,6 +1540,9 @@ components:
           type: string
         avatarUrl:
           type: ["string", "null"]
+        isPlatformAdmin:
+          type: boolean
+          description: Whether this user has platform-level admin privileges
         createdAt:
           type: string
           format: date-time
@@ -1753,6 +1756,15 @@ components:
         endsAt:
           type: ["string", "null"]
           format: date-time
+        requiresPayment:
+          type: boolean
+          description: Whether a participation fee is required to vote
+        paymentAmount:
+          type: ["number", "null"]
+          description: Fee amount required to participate (null if free)
+        currency:
+          type: string
+          description: ISO 4217 currency code e.g. USD, EUR, GBP
         totalVotes:
           type: integer
         positionsCount:
@@ -1821,6 +1833,17 @@ components:
         endsAt:
           type: string
           format: date-time
+        requiresPayment:
+          type: boolean
+          default: false
+          description: Whether a participation fee is required to vote
+        paymentAmount:
+          type: number
+          description: Fee amount required to participate
+        currency:
+          type: string
+          default: USD
+          description: ISO 4217 currency code e.g. USD, EUR, GBP
 
     ElectionUpdate:
       type: object
@@ -1856,6 +1879,15 @@ components:
         endsAt:
           type: string
           format: date-time
+        requiresPayment:
+          type: boolean
+          description: Whether a participation fee is required to vote
+        paymentAmount:
+          type: number
+          description: Fee amount required to participate
+        currency:
+          type: string
+          description: ISO 4217 currency code e.g. USD, EUR, GBP
 
     EligibleVoter:
       type: object

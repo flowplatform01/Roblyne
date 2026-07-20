@@ -105,12 +105,7 @@ router.patch("/elections/:electionId", requireAuth, async (req, res): Promise<vo
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateElectionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  // Monetization fields are not in the generated OpenAPI body — handle them separately
-  const monetization: Record<string, unknown> = {};
-  if ('requiresPayment' in req.body) monetization.requiresPayment = Boolean(req.body.requiresPayment);
-  if ('paymentAmount' in req.body) monetization.paymentAmount = req.body.paymentAmount ?? null;
-  if ('currency' in req.body) monetization.currency = req.body.currency ?? 'USD';
-  const [election] = await db.update(electionsTable).set({ ...bodyParsed.data, ...monetization }).where(eq(electionsTable.id, paramParsed.data.electionId)).returning();
+  const [election] = await db.update(electionsTable).set(bodyParsed.data).where(eq(electionsTable.id, paramParsed.data.electionId)).returning();
   if (!election) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
