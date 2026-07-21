@@ -1,0 +1,241 @@
+Evenum — Platform Integrity, Navigation & Data Isolation Refinement
+Context
+This refinement is not introducing new features.
+The objective is to review and strengthen the integrity of the existing production application.
+Before adding additional functionality, verify that every implemented feature behaves correctly, consistently, and independently.
+Do not assume the current implementation is correct simply because pages render successfully.
+Investigate the entire application for regressions, routing issues, incorrect data binding, stale state, caching mistakes, entity resolution errors, permission leaks, organization isolation problems, and broken navigation.
+This refinement is primarily about correctness, reliability, and production stability.
+
+Mission
+The application must behave predictably.
+Every interaction should resolve to the correct resource.
+Every organization should only see its own data.
+Every public page should display the correct entity.
+Navigation should always resolve to the intended destination.
+Business rules should always be enforced.
+There should never be situations where unrelated entities appear because of stale routing, incorrect queries, or improperly scoped data.
+
+1. Review Every Navigation Flow
+Audit every clickable component across the application.
+Cards
+Images
+Titles
+Buttons
+Badges
+Featured sections
+Organization cards
+Voting cards
+Campaign cards
+Event cards
+Search results
+Recent items
+Popular items
+Recommended items
+Every visible card should behave consistently.
+The entire card should be clickable where appropriate.
+Users should never need to discover hidden clickable areas.
+Interaction should feel natural.
+
+2. Investigate Incorrect Entity Routing
+A critical issue has been observed.
+Selecting an Event sometimes opens a Voting page.
+Selecting a Campaign opens a Voting page.
+Different content resolves to the same resource.
+This indicates either:
+Incorrect route generation
+Broken entity lookup
+Shared identifiers
+Improper query logic
+Cached entity references
+Incorrect slug resolution
+Improper component reuse
+Or another architectural issue.
+Do not patch symptoms.
+Trace the entire navigation flow from click to rendered page.
+Identify the root cause.
+Correct the architecture.
+Every entity must always resolve to itself.
+Events must open Events.
+Campaigns must open Campaigns.
+Voting experiences must open Voting experiences.
+Organizations must open Organizations.
+There should never be cross-resolution between different entity types.
+
+3. Validate Entity Identity
+Review how IDs are generated, stored, queried, and resolved.
+Ensure:
+Unique identifiers
+Proper route parameters
+Correct slug generation
+Correct database lookups
+Correct API responses
+Correct frontend caching
+Correct state management
+No accidental reuse of identifiers
+Every resource should have one canonical identity.
+
+4. Review Organization Isolation
+Every organization must remain fully isolated.
+Review:
+Events
+Campaigns
+Voting
+Candidates
+Participants
+Financial records
+Reports
+Analytics
+Organization settings
+Uploads
+Media
+Branding
+Transactions
+Permissions
+Organizations must never accidentally view or operate on another organization's resources.
+All queries should always be scoped correctly.
+
+5. Verify Homepage Data Integrity
+Review homepage feeds.
+Featured content
+Trending
+Latest
+Popular
+Recommendations
+Recent additions
+Ensure every displayed item links to the exact resource represented on its card.
+No placeholder links.
+No shared links.
+No duplicated routing.
+No fallback entity reuse.
+
+6. Review Lifecycle Rules
+Business rules must always be enforced.
+For Voting:
+Start date
+End date
+Voting availability
+Result visibility
+Locked states
+Completion
+Expired state
+For Events:
+Registration deadline
+Event completion
+Ticket availability
+Capacity
+Check-in availability
+Expired events
+For Campaigns:
+Goal completion
+Deadline
+Contribution availability
+Campaign status
+Closed campaigns
+The UI and backend must agree.
+If an activity has expired, participation must stop.
+No client-side bypasses.
+No backend bypasses.
+
+7. Validate Time-Based Logic
+Investigate scheduling.
+Review:
+Timezone handling
+Server time
+Client time
+UTC conversion
+Expiration checks
+Scheduled jobs
+Real-time updates
+Automatic status transitions
+Expired entities should automatically change state.
+Voting should close.
+Registration should close.
+Campaigns should complete.
+The platform should never continue accepting actions after expiration.
+
+8. Review State Synchronization
+Ensure changes immediately propagate throughout the application.
+Examples:
+Organization profile updates
+Branding updates
+Settings
+Published status
+Visibility
+Voting state
+Campaign progress
+Event updates
+Avoid stale caches.
+Avoid outdated UI.
+Avoid inconsistent rendering.
+The application should always reflect current platform state.
+
+9. Review Public Experience
+Audit every public page.
+Confirm:
+Correct resource
+Correct organization
+Correct branding
+Correct media
+Correct participants
+Correct metadata
+Correct navigation
+Correct share links
+Public experiences must always represent the intended resource.
+
+10. Audit Permissions
+Review every permission boundary.
+Platform Admin
+Organization
+Public Participant
+Authenticated Participant
+Anonymous Participant
+Ensure permissions remain isolated.
+No accidental privilege escalation.
+No unintended access.
+
+11. Improve Error Detection
+Introduce defensive validation.
+Instead of silently rendering incorrect data,
+detect inconsistencies early.
+Examples:
+Missing entity
+Wrong entity type
+Broken reference
+Invalid organization
+Missing ownership
+Expired resource
+Duplicate identifiers
+Invalid routes
+Return meaningful errors instead of rendering incorrect experiences.
+
+12. Production Quality Review
+Perform a platform-wide integrity audit.
+Look for:
+Broken navigation
+Dead links
+Incorrect redirects
+Entity mismatches
+Duplicate rendering
+Stale caches
+Incorrect relationships
+Regression bugs
+Routing inconsistencies
+Business rule violations
+Permission leaks
+Do not assume that because something renders, it is correct.
+Validate every workflow from beginning to end.
+
+Final Objective
+This refinement is about making Evenum trustworthy.
+After implementation:
+* Every click should open the correct resource.
+* Every organization should only access its own data.
+* Every public page should represent the intended entity.
+* Navigation should be predictable and consistent.
+* Time-based rules should be enforced automatically.
+* Expired activities should no longer accept participation.
+* Homepage feeds should always point to the correct content.
+* State changes should propagate immediately across the platform.
+* Routing, data isolation, permissions, and business rules should behave as a production-grade system.
+Do not apply superficial fixes. Investigate root causes, eliminate architectural inconsistencies, and strengthen the platform so that future features are built on a reliable foundation.
