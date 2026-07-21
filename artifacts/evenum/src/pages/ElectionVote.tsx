@@ -62,9 +62,13 @@ export default function ElectionVote() {
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
   const { toast } = useToast();
 
-  // Read ?positionId=X from URL to deep-link from candidate profile
+  // Read ?positionId=X&candidateId=Y from URL to deep-link from candidate profile
   const directPositionId = (() => {
     const raw = new URLSearchParams(window.location.search).get('positionId');
+    return raw ? parseInt(raw, 10) : null;
+  })();
+  const directCandidateId = (() => {
+    const raw = new URLSearchParams(window.location.search).get('candidateId');
     return raw ? parseInt(raw, 10) : null;
   })();
 
@@ -75,18 +79,26 @@ export default function ElectionVote() {
 
   const [step, setStep] = useState<'landing' | 'payment' | number | 'review' | 'success'>('landing');
 
-  // When coming from a candidate profile with ?positionId=X, jump straight to that position step
+  // When coming from a candidate profile, jump straight to that position and pre-select the candidate
   useEffect(() => {
     if (!directPositionId || !positions || positions.length === 0) return;
     const idx = positions.findIndex(p => p.id === directPositionId);
     if (idx !== -1) {
+      // Pre-select the candidate for this position
+      if (directCandidateId) {
+        setSelections(prev => ({
+          ...prev,
+          [directPositionId]: [directCandidateId],
+        }));
+      }
       setStep(idx);
-      // Clean up the URL param so back-navigation doesn't re-apply it
+      // Clean up URL params so back-navigation doesn't re-apply them
       const url = new URL(window.location.href);
       url.searchParams.delete('positionId');
+      url.searchParams.delete('candidateId');
       window.history.replaceState({}, '', url.toString());
     }
-  }, [positions, directPositionId]);
+  }, [positions, directPositionId, directCandidateId]);
   const [selections, setSelections] = useState<Record<number, number[]>>({});
   const [inviteCode, setInviteCode] = useState('');
   const [voterEmail, setVoterEmail] = useState('');
