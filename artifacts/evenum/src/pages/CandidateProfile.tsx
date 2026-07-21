@@ -70,7 +70,7 @@ export default function CandidateProfile() {
           <>
             {isActive && (
               <Button asChild size="lg" className="h-12 px-8 rounded-sm shadow-lg">
-                <Link href={`/elections/${electionId}/vote`}>
+                <Link href={`/elections/${electionId}/vote${candidate.positionId ? `?positionId=${candidate.positionId}` : ''}`}>
                   <Vote className="mr-2 h-4 w-4" />
                   Cast Your Vote
                 </Link>
@@ -93,6 +93,7 @@ export default function CandidateProfile() {
             Back to Election
           </Link>
         </Button>
+
 
         <div className="grid gap-10">
           {/* Photo + basic info */}
@@ -169,7 +170,7 @@ export default function CandidateProfile() {
                 <p className="text-sm text-muted-foreground">This election is open. Cast your official ballot now.</p>
               </div>
               <Button asChild size="lg" className="shrink-0 rounded-sm h-12 px-8">
-                <Link href={`/elections/${electionId}/vote`}>
+                <Link href={`/elections/${electionId}/vote${candidate.positionId ? `?positionId=${candidate.positionId}` : ''}`}>
                   <Vote className="mr-2 h-4 w-4" />
                   Vote Now
                 </Link>

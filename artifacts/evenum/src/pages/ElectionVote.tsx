@@ -62,12 +62,31 @@ export default function ElectionVote() {
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
   const { toast } = useToast();
 
+  // Read ?positionId=X from URL to deep-link from candidate profile
+  const directPositionId = (() => {
+    const raw = new URLSearchParams(window.location.search).get('positionId');
+    return raw ? parseInt(raw, 10) : null;
+  })();
+
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
   const submitVote = useSubmitVote();
 
   const [step, setStep] = useState<'landing' | 'payment' | number | 'review' | 'success'>('landing');
+
+  // When coming from a candidate profile with ?positionId=X, jump straight to that position step
+  useEffect(() => {
+    if (!directPositionId || !positions || positions.length === 0) return;
+    const idx = positions.findIndex(p => p.id === directPositionId);
+    if (idx !== -1) {
+      setStep(idx);
+      // Clean up the URL param so back-navigation doesn't re-apply it
+      const url = new URL(window.location.href);
+      url.searchParams.delete('positionId');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [positions, directPositionId]);
   const [selections, setSelections] = useState<Record<number, number[]>>({});
   const [inviteCode, setInviteCode] = useState('');
   const [voterEmail, setVoterEmail] = useState('');
