@@ -432,14 +432,6 @@ export default function ElectionVote() {
               </div>
             )}
 
-            {/* Active badge */}
-            <div className="flex justify-center mb-6">
-              <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Polls Open
-              </div>
-            </div>
-
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight mb-6 text-background">
               {election.title}
             </h1>
