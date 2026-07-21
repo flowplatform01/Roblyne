@@ -104,7 +104,6 @@ export default function ElectionVote() {
   const [voterEmail, setVoterEmail] = useState('');
   const [hasPaid, setHasPaid] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '', name: '' });
 
   const countdown = useCountdown(election?.endsAt);
 
@@ -263,25 +262,22 @@ export default function ElectionVote() {
   const symMap: Record<string, string> = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', NGN: '\u20a6', KES: 'KSh ', ZAR: 'R ', CAD: 'CA$', AUD: 'A$', GHS: '\u20b5' };
   const feeSym = symMap[feeCur] ?? (feeCur + ' ');
 
-  // ── Payment gate ──────────────────────────────────────────────────────────
+  // ── FlowPay gate (after review, before submit) ───────────────────────────
 
   if (step === 'payment') {
-    const handlePay = () => {
-      if (!cardDetails.name.trim() || cardDetails.number.replace(/\s/g, '').length < 12 || !cardDetails.expiry || !cardDetails.cvv) {
-        toast({ title: 'Please fill in all payment details', variant: 'destructive' });
-        return;
-      }
+    const handleFlowPay = () => {
       setPaymentProcessing(true);
+      // Simulate redirect to FlowPay and return — will be replaced with real gateway redirect
       setTimeout(() => {
         setHasPaid(true);
         setPaymentProcessing(false);
-        setStep(0);
-        toast({ title: 'Payment confirmed', description: `${feeSym}${feeAmt.toFixed(2)} \u2014 you may now cast your ballot.` });
-      }, 1800);
+        submitBallot();
+      }, 2000);
     };
 
     return (
       <Layout>
+        {/* Hero with fee amount */}
         <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
           {heroImageUrl ? (
             <>
@@ -294,97 +290,66 @@ export default function ElectionVote() {
               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 39px,currentColor 39px,currentColor 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,currentColor 39px,currentColor 40px)' }} />
             </>
           )}
-          <div className="relative z-10 container mx-auto px-4 pt-14 pb-10 max-w-xl text-center animate-in fade-in duration-500">
-            <div className="inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-6">
-              <CreditCard className="h-3.5 w-3.5" /> Participation Fee
-            </div>
+          <div className="relative z-10 container mx-auto px-4 pt-16 pb-12 max-w-xl text-center animate-in fade-in duration-500">
+            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">Participation Fee</p>
             <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
               {feeSym}{feeAmt.toFixed(2)}
             </div>
-            <p className="text-background/55 font-light">{feeCur} &middot; One-time entry fee to access the ballot</p>
+            <p className="text-background/50 font-light">{feeCur} · One-time entry fee</p>
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-12 max-w-md" style={primaryStyle}>
+        <div className="container mx-auto px-4 py-10 max-w-md" style={primaryStyle}>
           <button
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
-            onClick={() => setStep('landing')}
+            onClick={() => setStep('review')}
           >
-            <ArrowLeft className="h-4 w-4" /> Back to election
+            <ArrowLeft className="h-4 w-4" /> Back to review
           </button>
 
-          <div className="bg-card border border-border rounded-sm shadow-xl overflow-hidden mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-foreground/5 px-7 py-5 border-b border-border/60 flex items-center gap-3">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <h3 className="font-serif font-bold text-lg">Payment Details</h3>
-              <span className="ml-auto text-muted-foreground">&#128274;</span>
-            </div>
-            <div className="p-7 space-y-5">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Name on Card</Label>
-                <Input
-                  placeholder="Full name"
-                  value={cardDetails.name}
-                  onChange={e => setCardDetails(p => ({ ...p, name: e.target.value }))}
-                  className="h-11 rounded-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Card Number</Label>
-                <Input
-                  placeholder="1234 5678 9012 3456"
-                  value={cardDetails.number}
-                  maxLength={19}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/\D/g, '').slice(0, 16);
-                    setCardDetails(p => ({ ...p, number: raw.replace(/(.{4})/g, '$1 ').trim() }));
-                  }}
-                  className="h-11 rounded-sm font-mono tracking-widest"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expiry</Label>
-                  <Input
-                    placeholder="MM/YY"
-                    value={cardDetails.expiry}
-                    maxLength={5}
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      setCardDetails(p => ({ ...p, expiry: raw.length > 2 ? raw.slice(0, 2) + '/' + raw.slice(2) : raw }));
-                    }}
-                    className="h-11 rounded-sm font-mono"
-                  />
+          {/* Ballot summary */}
+          <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Your Selections</p>
+            {positionList.map(position => {
+              const selected = allCandidates.filter(c => (selections[position.id] || []).includes(c.id));
+              return (
+                <div key={position.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground truncate">{position.title}</span>
+                  <span className="font-medium shrink-0">
+                    {selected.length === 0 ? <span className="text-muted-foreground/50 italic">Abstain</span> : selected.map(c => c.name).join(', ')}
+                  </span>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">CVV</Label>
-                  <Input
-                    placeholder="123"
-                    value={cardDetails.cvv}
-                    maxLength={4}
-                    onChange={e => setCardDetails(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                    className="h-11 rounded-sm font-mono"
-                  />
-                </div>
+              );
+            })}
+          </div>
+
+          {/* FlowPay CTA */}
+          <div className="rounded-sm border border-border overflow-hidden shadow-xl mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-foreground/5 px-6 py-4 border-b border-border/60 flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-serif font-bold">Complete Payment</p>
+                <p className="text-xs text-muted-foreground">You'll be redirected to FlowPay</p>
               </div>
+              <span className="ml-auto text-lg">🔒</span>
             </div>
-            <div className="px-7 pb-7">
+            <div className="p-6">
               <Button
-                className="w-full h-12 text-base rounded-sm"
-                onClick={handlePay}
+                className="w-full h-14 text-base rounded-sm"
+                onClick={handleFlowPay}
                 disabled={paymentProcessing}
               >
                 {paymentProcessing ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing&hellip;</>
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Redirecting to FlowPay…</>
                 ) : (
-                  <><Wallet className="mr-2 h-5 w-5" /> Pay {feeSym}{feeAmt.toFixed(2)} &middot; Enter Ballot</>
+                  <><Wallet className="mr-2 h-5 w-5" /> Pay {feeSym}{feeAmt.toFixed(2)} with FlowPay</>
                 )}
               </Button>
+              <p className="text-center text-xs text-muted-foreground/50 mt-4">
+                Your ballot is locked and will be submitted automatically after payment confirmation.
+              </p>
             </div>
           </div>
-          <p className="text-center text-xs text-muted-foreground/50">
-            &#128274; Secured &mdash; demo environment, no real charge is made
-          </p>
         </div>
       </Layout>
     );
@@ -451,15 +416,6 @@ export default function ElectionVote() {
               />
             </div>
 
-            {/* Fee badge — shown when entry fee is required */}
-            {feeRequired && (
-              <div className="flex justify-center mb-6">
-                <div className="inline-flex items-center gap-2 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full">
-                  <CreditCard className="h-3.5 w-3.5" />
-                  {feeCur} {feeAmt.toFixed(2)} entry fee required
-                </div>
-              </div>
-            )}
 
             {/* Countdown */}
             {election.endsAt && !countdown.expired && (
@@ -510,7 +466,7 @@ export default function ElectionVote() {
                       key={position.id}
                       type="button"
                       className="flex items-center gap-4 bg-card border border-border/50 rounded-sm px-5 py-4 w-full text-left cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group"
-                      onClick={() => setStep(feeRequired && !hasPaid ? 'payment' : idx)}
+                      onClick={() => setStep(idx)}
                       title={`Vote on ${position.title}`}
                     >
                       <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -605,11 +561,9 @@ export default function ElectionVote() {
                   (needsInviteCode && !inviteCode.trim()) ||
                   (needsVoterEmail && !voterEmail.trim())
                 }
-                onClick={() => setStep(feeRequired && !hasPaid ? 'payment' : 0)}
+                onClick={() => setStep(0)}
               >
-                {feeRequired && !hasPaid ? (
-                  <><CreditCard className="mr-3 h-5 w-5" /> Pay {feeSym}{feeAmt.toFixed(2)} &middot; Enter Ballot</>
-                ) : (
+                {(
                   <><VoteIcon className="mr-3 h-5 w-5" /> Enter the Ballot <ArrowRight className="ml-3 h-5 w-5" /></>
                 )}
               </Button>
@@ -939,15 +893,17 @@ export default function ElectionVote() {
             <Button
               size="lg"
               className="h-14 px-12 text-base shadow-xl hover:shadow-2xl transition-all rounded-sm"
-              onClick={submitBallot}
+              onClick={() => feeRequired && !hasPaid ? setStep('payment') : submitBallot()}
               disabled={submitVote.isPending}
             >
               {submitVote.isPending ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : feeRequired && !hasPaid ? (
+                <Wallet className="mr-2 h-5 w-5" />
               ) : (
                 <ShieldCheck className="mr-2 h-5 w-5" />
               )}
-              Cast Official Vote
+              {feeRequired && !hasPaid ? `Pay ${feeSym}${feeAmt.toFixed(2)} & Submit` : 'Cast Official Vote'}
             </Button>
           </div>
         </div>
