@@ -51,6 +51,9 @@ export const candidatesTable = pgTable("candidates", {
   bio: text("bio"),
   photoUrl: text("photo_url"),
   platform: text("platform"),
+  requiresPayment: boolean("requires_payment").notNull().default(false),
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
+  currency: text("currency").notNull().default("USD"),
 });
 
 export const votesTable = pgTable("votes", {

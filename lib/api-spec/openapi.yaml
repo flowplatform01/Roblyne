@@ -2017,6 +2017,12 @@ components:
           type: ["string", "null"]
         voteCount:
           type: ["integer", "null"]
+        requiresPayment:
+          type: ["boolean", "null"]
+        paymentAmount:
+          type: ["string", "null"]
+        currency:
+          type: ["string", "null"]
 
     CandidateInput:
       type: object
@@ -2033,6 +2039,12 @@ components:
           type: string
         platform:
           type: string
+        requiresPayment:
+          type: boolean
+        paymentAmount:
+          type: string
+        currency:
+          type: string
 
     CandidateUpdate:
       type: object
@@ -2045,6 +2057,12 @@ components:
         photoUrl:
           type: string
         platform:
+          type: string
+        requiresPayment:
+          type: boolean
+        paymentAmount:
+          type: string
+        currency:
           type: string
 
     VoteInput:

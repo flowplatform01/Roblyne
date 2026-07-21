@@ -697,7 +697,10 @@ export const GetPositionResponse = zod.object({
   "bio": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "platform": zod.string().nullish(),
-  "voteCount": zod.number().nullish()
+  "voteCount": zod.number().nullish(),
+  "requiresPayment": zod.boolean().nullish(),
+  "paymentAmount": zod.string().nullish(),
+  "currency": zod.string().nullish()
 }))
 })
 
@@ -763,7 +766,10 @@ export const ListCandidatesResponseItem = zod.object({
   "bio": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "platform": zod.string().nullish(),
-  "voteCount": zod.number().nullish()
+  "voteCount": zod.number().nullish(),
+  "requiresPayment": zod.boolean().nullish(),
+  "paymentAmount": zod.string().nullish(),
+  "currency": zod.string().nullish()
 })
 export const ListCandidatesResponse = zod.array(ListCandidatesResponseItem)
 
@@ -783,7 +789,10 @@ export const CreateCandidateBody = zod.object({
   "name": zod.string().min(1),
   "bio": zod.string().optional(),
   "photoUrl": zod.string().optional(),
-  "platform": zod.string().optional()
+  "platform": zod.string().optional(),
+  "requiresPayment": zod.boolean().optional(),
+  "paymentAmount": zod.string().optional(),
+  "currency": zod.string().optional()
 })
 
 export const CreateCandidateResponse = zod.object({
@@ -795,7 +804,10 @@ export const CreateCandidateResponse = zod.object({
   "bio": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "platform": zod.string().nullish(),
-  "voteCount": zod.number().nullish()
+  "voteCount": zod.number().nullish(),
+  "requiresPayment": zod.boolean().nullish(),
+  "paymentAmount": zod.string().nullish(),
+  "currency": zod.string().nullish()
 })
 
 
@@ -816,7 +828,10 @@ export const GetCandidateResponse = zod.object({
   "bio": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "platform": zod.string().nullish(),
-  "voteCount": zod.number().nullish()
+  "voteCount": zod.number().nullish(),
+  "requiresPayment": zod.boolean().nullish(),
+  "paymentAmount": zod.string().nullish(),
+  "currency": zod.string().nullish()
 })
 
 
@@ -835,7 +850,10 @@ export const UpdateCandidateBody = zod.object({
   "name": zod.string().min(1).optional(),
   "bio": zod.string().optional(),
   "photoUrl": zod.string().optional(),
-  "platform": zod.string().optional()
+  "platform": zod.string().optional(),
+  "requiresPayment": zod.boolean().optional(),
+  "paymentAmount": zod.string().optional(),
+  "currency": zod.string().optional()
 })
 
 export const UpdateCandidateResponse = zod.object({
@@ -847,7 +865,10 @@ export const UpdateCandidateResponse = zod.object({
   "bio": zod.string().nullish(),
   "photoUrl": zod.string().nullish(),
   "platform": zod.string().nullish(),
-  "voteCount": zod.number().nullish()
+  "voteCount": zod.number().nullish(),
+  "requiresPayment": zod.boolean().nullish(),
+  "paymentAmount": zod.string().nullish(),
+  "currency": zod.string().nullish()
 })
 
 

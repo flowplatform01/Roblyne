@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
-import { useGetElection, useGetElectionResults, useGetElectionAnalytics, exportElectionResults } from "@workspace/api-client-react";
+import { useGetElection, useGetElectionResults, useGetElectionAnalytics } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trophy, Download, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Medal } from "lucide-react";
+import { Loader2, Trophy, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Medal } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
-import { useToast } from '@/hooks/use-toast';
 import { hexToHsl } from "@/lib/branding";
 import { format } from 'date-fns';
 
 export default function ElectionResults() {
   const [, params] = useRoute("/elections/:id/results");
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
-  const { toast } = useToast();
-  const [isExporting, setIsExporting] = useState(false);
   const [barsVisible, setBarsVisible] = useState(false);
 
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
@@ -44,26 +41,6 @@ export default function ElectionResults() {
     }
   }, [election, shareUrl]);
 
-  const handleExportCSV = async () => {
-    setIsExporting(true);
-    try {
-      const csvText = await exportElectionResults(electionId);
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `election-${electionId}-results.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: 'CSV exported successfully' });
-    } catch {
-      toast({ title: 'Failed to export CSV', variant: 'destructive' });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   if (isElectionLoading || isResultsLoading) {
     return (
@@ -146,15 +123,6 @@ export default function ElectionResults() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap justify-center">
-            <Button
-              variant="outline"
-              onClick={handleExportCSV}
-              disabled={isExporting}
-              className="h-12 px-8 bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background transition-all rounded-sm"
-            >
-              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              Export Certified CSV
-            </Button>
             <ShareButton
               url={`${window.location.origin}/elections/${electionId}/results`}
               title={election.title + ' — Results'}
@@ -168,47 +136,74 @@ export default function ElectionResults() {
       <div className="container mx-auto px-4 py-20 max-w-4xl space-y-20">
 
         {/* Voting Activity Chart */}
-        {votesByHour.length > 1 && (
-          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="flex items-center gap-3 mb-6">
-              <Activity className="h-5 w-5 text-primary shrink-0" />
-              <h2 className="text-2xl font-serif font-bold">Voting Activity</h2>
-              <Badge variant="outline" className="ml-auto text-xs">By Hour</Badge>
-            </div>
-            <div className="bg-card border border-border/50 rounded-sm p-6 shadow-sm">
-              <div className="flex items-end gap-1 h-32">
-                {votesByHour.map((h, i) => {
-                  const heightPct = (h.count / maxHourCount) * 100;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 group" title={`${h.hour}: ${h.count} votes`}>
+        {votesByHour.length >= 1 && (() => {
+          // Aggregate to daily buckets when span > 2 days (> 48 hourly points)
+          // so bars remain wide enough to be visible
+          const useDaily = votesByHour.length > 48;
+          type Bucket = { label: string; count: number };
+          let buckets: Bucket[];
+          if (useDaily) {
+            const dailyMap: Record<string, number> = {};
+            for (const h of votesByHour) {
+              const day = h.hour.slice(0, 10);
+              dailyMap[day] = (dailyMap[day] || 0) + h.count;
+            }
+            buckets = Object.entries(dailyMap)
+              .sort((a, b) => a[0].localeCompare(b[0]))
+              .map(([day, count]) => ({ label: day, count }));
+          } else {
+            buckets = votesByHour.map(h => ({ label: h.hour, count: h.count }));
+          }
+          const maxCount = Math.max(...buckets.map(b => b.count), 1);
+          const peakCount = Math.max(...votesByHour.map(h => h.count));
+          const firstHour = votesByHour[0]?.hour;
+          const lastHour = votesByHour[votesByHour.length - 1]?.hour;
+
+          return (
+            <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="flex items-center gap-3 mb-6">
+                <Activity className="h-5 w-5 text-primary shrink-0" />
+                <h2 className="text-2xl font-serif font-bold">Voting Activity</h2>
+                <Badge variant="outline" className="ml-auto text-xs">{useDaily ? 'By Day' : 'By Hour'}</Badge>
+              </div>
+              <div className="bg-card border border-border/50 rounded-sm p-6 shadow-sm">
+                <div className="relative h-32 flex items-end gap-[2px]">
+                  {buckets.map((b, i) => {
+                    const pct = Math.max((b.count / maxCount) * 100, b.count > 0 ? 8 : 2);
+                    return (
                       <div
-                        className="w-full bg-primary/20 rounded-sm group-hover:bg-primary/40 transition-all duration-700 ease-out relative overflow-hidden"
-                        style={{ height: barsVisible ? `${Math.max(heightPct, 2)}%` : '2%' }}
+                        key={i}
+                        className="flex-1 flex flex-col justify-end group cursor-default"
+                        style={{ height: '100%' }}
+                        title={`${b.count} vote${b.count !== 1 ? 's' : ''}`}
                       >
                         <div
-                          className="absolute bottom-0 left-0 right-0 bg-primary rounded-sm transition-all duration-700 ease-out"
-                          style={{ height: barsVisible ? '100%' : '0%' }}
+                          className={`w-full rounded-sm transition-all duration-700 ease-out ${b.count > 0 ? 'bg-primary/40 group-hover:bg-primary/70' : 'bg-muted/30'}`}
+                          style={{
+                            height: barsVisible ? `${pct}%` : '2%',
+                            transitionDelay: `${Math.min(i * 8, 300)}ms`,
+                          }}
                         />
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between mt-3">
-                <p className="text-xs text-muted-foreground">
-                  {votesByHour[0]?.hour && format(new Date(votesByHour[0].hour), 'MMM d, h a')}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  Peak: {Math.max(...votesByHour.map(h => h.count))} votes/hr
+                    );
+                  })}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {votesByHour[votesByHour.length - 1]?.hour && format(new Date(votesByHour[votesByHour.length - 1].hour), 'MMM d, h a')}
-                </p>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-xs text-muted-foreground">
+                    {firstHour && format(new Date(firstHour), useDaily ? 'MMM d' : 'MMM d, h a')}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    Peak: {peakCount} {useDaily ? 'votes/day' : 'votes/hr'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {lastHour && format(new Date(lastHour), useDaily ? 'MMM d' : 'MMM d, h a')}
+                  </p>
+                </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
         {/* Results by position */}
         {(!results.positions || results.positions.length === 0) ? (

@@ -414,6 +414,12 @@ export interface Candidate {
   platform?: string | null;
   /** @nullable */
   voteCount?: number | null;
+  /** @nullable */
+  requiresPayment?: boolean | null;
+  /** @nullable */
+  paymentAmount?: string | null;
+  /** @nullable */
+  currency?: string | null;
 }
 
 export interface PositionWithCandidates {
@@ -622,6 +628,9 @@ export interface CandidateInput {
   bio?: string;
   photoUrl?: string;
   platform?: string;
+  requiresPayment?: boolean;
+  paymentAmount?: string;
+  currency?: string;
 }
 
 export interface CandidateUpdate {
@@ -630,6 +639,9 @@ export interface CandidateUpdate {
   bio?: string;
   photoUrl?: string;
   platform?: string;
+  requiresPayment?: boolean;
+  paymentAmount?: string;
+  currency?: string;
 }
 
 export type VoteInputSelectionsItem = {
