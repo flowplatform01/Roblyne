@@ -302,7 +302,7 @@ export default function AdminDashboard() {
 
         {/* Data tables */}
         <Tabs defaultValue="organizations">
-          <TabsList className="mb-1">
+          <TabsList className="mb-1 w-full justify-start overflow-x-auto scrollbar-none flex-nowrap">
             <TabsTrigger value="organizations" className="gap-2">
               <Building2 className="h-3.5 w-3.5" />
               Organizations
