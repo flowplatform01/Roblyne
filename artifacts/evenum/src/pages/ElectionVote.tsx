@@ -106,7 +106,9 @@ export default function ElectionVote() {
       if (directCandidateId) {
         setSelections(prev => ({ ...prev, [directPositionId]: [directCandidateId] }));
       }
-      setStep(idx);
+      // Keep the voter in the full guided ballot flow. The candidate remains
+      // preselected, but the voter must still review every position.
+      setStep(0);
       const url = new URL(window.location.href);
       url.searchParams.delete('positionId');
       url.searchParams.delete('candidateId');
@@ -147,6 +149,10 @@ export default function ElectionVote() {
   };
 
   const submitBallot = () => {
+    if (selectedCandidateCount === 0) {
+      toast({ title: 'Select at least one candidate', description: 'Choose a candidate before submitting your ballot.', variant: 'destructive' });
+      return;
+    }
     submitVote.mutate(
       {
         electionId,
@@ -192,6 +198,7 @@ export default function ElectionVote() {
   const positionList = positions || [];
   const totalPositions = positionList.length;
   const allCandidates = candidates || [];
+  const selectedCandidateCount = Object.values(selections).reduce((total, ids) => total + ids.length, 0);
 
   // ── Guards ────────────────────────────────────────────────────────────────
 
@@ -269,13 +276,16 @@ export default function ElectionVote() {
   const feeCur = 'XAF';
   const feeSym = 'XAF ';
   const pricePerVote = Number(election.paymentAmount || 0);
-  const amountInput = paymentAmountInput === '' ? pricePerVote : Number(paymentAmountInput);
+  const amountInput = paymentAmountInput === ''
+    ? pricePerVote * Math.max(selectedCandidateCount, 1)
+    : Number(paymentAmountInput);
   const amountToPay = paymentMode === 'amount_first'
     ? Math.max(0, amountInput || 0)
-    : pricePerVote * voteQuantity;
+    : pricePerVote * selectedCandidateCount * voteQuantity;
   const computedQuantity = paymentMode === 'amount_first' && pricePerVote > 0
-    ? Math.floor(amountToPay / pricePerVote)
+    ? Math.floor(amountToPay / (pricePerVote * Math.max(selectedCandidateCount, 1)))
     : voteQuantity;
+  const totalVoteUnits = selectedCandidateCount * computedQuantity;
 
   // ── Payment gate (after review, before submit) ─────────────────────────────
 
@@ -308,7 +318,7 @@ export default function ElectionVote() {
             <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
               {feeSym}{amountToPay.toLocaleString('en-US')}
             </div>
-            <p className="text-background/50 font-light">{feeCur} · {computedQuantity} vote{computedQuantity === 1 ? '' : 's'}</p>
+            <p className="text-background/50 font-light">{feeCur} · {totalVoteUnits} vote{totalVoteUnits === 1 ? '' : 's'}</p>
           </div>
         </div>
 
@@ -329,13 +339,14 @@ export default function ElectionVote() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="vote-quantity">Number of votes</Label>
+                <Label htmlFor="vote-quantity">Votes per selected candidate</Label>
                 <Input id="vote-quantity" type="number" min="1" step="1" value={voteQuantity} onChange={e => setVoteQuantity(Math.max(1, parseInt(e.target.value || '1', 10)))} />
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-muted-foreground block">Price per vote</span><strong>{feeSym}{pricePerVote.toLocaleString('en-US')}</strong></div>
-              <div><span className="text-muted-foreground block">Total votes</span><strong>{computedQuantity}</strong></div>
+              <div><span className="text-muted-foreground block">Price per candidate vote</span><strong>{feeSym}{pricePerVote.toLocaleString('en-US')}</strong></div>
+              <div><span className="text-muted-foreground block">Selected candidates</span><strong>{selectedCandidateCount}</strong></div>
+              <div><span className="text-muted-foreground block">Total vote units</span><strong>{totalVoteUnits}</strong></div>
               <div className="col-span-2 pt-3 border-t border-border/40"><span className="text-muted-foreground block">Total payable</span><strong className="text-xl text-primary">{feeSym}{amountToPay.toLocaleString('en-US')}</strong></div>
             </div>
           </div>
@@ -609,8 +620,8 @@ export default function ElectionVote() {
               >
                  <VoteIcon className="mr-3 h-5 w-5" /> Cast Full Ballot <ArrowRight className="ml-3 h-5 w-5" />
               </Button>
-              <p className="text-sm text-muted-foreground">
-                 Vote across all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'} — or select a candidate above to vote independently.
+               <p className="text-sm text-muted-foreground">
+                 Vote through all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'}; each selected candidate counts as a separate vote.
               </p>
             </div>
           )}
@@ -628,8 +639,6 @@ export default function ElectionVote() {
     const currentSelections = selections[position.id] || [];
     const isLast = step === totalPositions - 1;
     const progressPct = ((step + 1) / totalPositions) * 100;
-    const hasAnySelection = Object.values(selections).some(ids => ids.length > 0);
-
     return (
       <Layout>
         {/* Sticky ballot header */}
@@ -816,17 +825,6 @@ export default function ElectionVote() {
               </Button>
             </div>
 
-            {/* Optional: submit early without going through all positions */}
-            {!isLast && hasAnySelection && (
-              <div className="text-center pt-2">
-                <button
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
-                  onClick={() => setStep('review')}
-                >
-                  Skip remaining positions and review my ballot
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </Layout>
@@ -929,7 +927,7 @@ export default function ElectionVote() {
               <div className="px-8 py-4 bg-amber-50/60 border-t border-amber-200/40 flex items-center gap-3">
                 <Wallet className="h-4 w-4 text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-700 font-medium">
-                  Payment required: {feeSym}{amountToPay.toLocaleString('en-US')} for {computedQuantity} vote{computedQuantity === 1 ? '' : 's'}
+                  Payment required: {feeSym}{amountToPay.toLocaleString('en-US')} for {totalVoteUnits} vote{totalVoteUnits === 1 ? '' : 's'}
                 </p>
               </div>
             )}
@@ -948,7 +946,7 @@ export default function ElectionVote() {
               size="lg"
               className="h-14 px-12 text-base shadow-xl hover:shadow-2xl transition-all rounded-sm"
               onClick={() => feeRequired && !hasPaid ? setStep('payment') : submitBallot()}
-              disabled={submitVote.isPending}
+               disabled={submitVote.isPending || selectedCandidateCount === 0 || (feeRequired && computedQuantity < 1)}
             >
               {submitVote.isPending ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -957,7 +955,7 @@ export default function ElectionVote() {
               ) : (
                 <ShieldCheck className="mr-2 h-5 w-5" />
               )}
-              {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
+               {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
             </Button>
           </div>
         </div>

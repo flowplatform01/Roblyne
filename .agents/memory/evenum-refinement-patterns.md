@@ -44,3 +44,10 @@ Paid voting is governed at the platform level: use election/position-level prici
 **Why:** Candidates competing for one position must face identical financial conditions, while participants need a transparent amount-to-entitlement relationship.
 
 **How to apply:** Keep payment presentation mode and supported currencies in platform settings; do not reintroduce per-candidate payment controls into public voting or organization election setup.
+
+## Multi-position vote units
+Each selected candidate is an independent vote unit. A ballot covering three positions with one candidate selected in each position represents three vote units, and paid elections charge against that same count.
+
+**Why:** A ballot is a guided user experience, not one indivisible vote; collapsing multiple position choices into one unit misstates results, entitlements, and payment.
+
+**How to apply:** Guide voters through every position, count selected candidates across positions, and keep payment, stored quantities, results, totals, and analytics aligned with that count.
