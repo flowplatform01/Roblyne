@@ -270,7 +270,7 @@ function DiscoveryCard({ item, featured = false }: { item: any, featured?: boole
   };
 
   return (
-    <Card className={`group overflow-hidden rounded-sm bg-card border border-border/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 flex flex-col ${featured ? 'md:row-span-2' : 'h-full'}`}>
+    <Card className={`relative group overflow-hidden rounded-sm bg-card border border-border/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 flex flex-col ${featured ? 'md:row-span-2' : 'h-full'}`}>
       {item.coverImageUrl ? (
         <div className={`w-full ${featured ? 'h-80' : 'h-52'} overflow-hidden relative`}>
           <div className="absolute inset-0 bg-foreground/10 group-hover:bg-transparent transition-colors z-10 duration-500" />
