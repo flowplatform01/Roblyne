@@ -106,9 +106,7 @@ export default function ElectionVote() {
       if (directCandidateId) {
         setSelections(prev => ({ ...prev, [directPositionId]: [directCandidateId] }));
       }
-      // Keep the voter in the full guided ballot flow. The candidate remains
-      // preselected, but the voter must still review every position.
-      setStep(0);
+      setStep(idx);
       const url = new URL(window.location.href);
       url.searchParams.delete('positionId');
       url.searchParams.delete('candidateId');
@@ -639,6 +637,7 @@ export default function ElectionVote() {
     const currentSelections = selections[position.id] || [];
     const isLast = step === totalPositions - 1;
     const progressPct = ((step + 1) / totalPositions) * 100;
+    const hasAnySelection = Object.values(selections).some(ids => ids.length > 0);
     return (
       <Layout>
         {/* Sticky ballot header */}
@@ -825,6 +824,17 @@ export default function ElectionVote() {
               </Button>
             </div>
 
+            {/* Optional: submit early without going through all positions */}
+            {!isLast && hasAnySelection && (
+              <div className="text-center pt-2">
+                <button
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
+                  onClick={() => setStep('review')}
+                >
+                  Skip remaining positions and review my ballot
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </Layout>
