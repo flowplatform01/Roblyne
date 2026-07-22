@@ -1136,7 +1136,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   
   const { data: settlements, isLoading: isLoadingSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
 
-  const formatCurrency = (amount: number, currency: string = "USD") => {
+  const formatCurrency = (amount: number, currency: string = "XAF") => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
   };
 
@@ -1181,7 +1181,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
           </div>
           <div>
             <h2 className="text-xl font-serif font-bold">Financial Operations</h2>
-            <p className="text-sm text-muted-foreground">Manage revenue, platform commissions, and settlements</p>
+            <p className="text-sm text-muted-foreground">Track the amount available to your organization and settlements</p>
           </div>
         </div>
         <Button onClick={handleExport} variant="outline">
@@ -1189,33 +1189,11 @@ function FinanceSection({ orgId }: { orgId: number }) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card className="border-border/50 shadow-sm">
-          <CardHeader className="pb-2 pt-5">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-              Gross Revenue <DollarSign className="h-3.5 w-3.5" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.totalRevenue || 0)}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-border/50 shadow-sm bg-muted/20">
-          <CardHeader className="pb-2 pt-5">
-            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-              Platform Commission <Receipt className="h-3.5 w-3.5" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-serif font-bold text-muted-foreground">{formatCurrency(summary?.totalCommissionPaid || 0)}</div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-primary/20 shadow-sm bg-primary/5">
           <CardHeader className="pb-2 pt-5">
             <CardTitle className="text-xs font-medium text-primary flex items-center justify-between">
-              Net Earnings <TrendingUp className="h-3.5 w-3.5" />
+              Amount available <TrendingUp className="h-3.5 w-3.5" />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1246,56 +1224,13 @@ function FinanceSection({ orgId }: { orgId: number }) {
         </Card>
       </div>
 
-      <Card className="border-border/50">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base font-serif">Revenue by Pillar</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {['event', 'election', 'campaign'].map(pillar => {
-              const pData = summary?.byPillar?.find((p: any) => p.pillar === pillar) || { revenue: 0, earnings: 0, count: 0 };
-              const icons = {
-                event: <CalendarDays className="h-5 w-5 text-emerald-600" />,
-                election: <Vote className="h-5 w-5 text-blue-600" />,
-                campaign: <Megaphone className="h-5 w-5 text-amber-600" />
-              };
-              
-              return (
-                <div key={pillar} className="p-4 border rounded-xl bg-card">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                      {icons[pillar as keyof typeof icons]}
-                    </div>
-                    <h3 className="font-medium capitalize">{pillar}s</h3>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Revenue:</span>
-                      <span className="font-medium">{formatCurrency(pData.revenue)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Earnings:</span>
-                      <span className="font-medium text-primary">{formatCurrency(pData.earnings)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs mt-2 pt-2 border-t text-muted-foreground">
-                      <span>Transactions:</span>
-                      <span>{pData.count}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <Card className="border-border/50">
             <CardHeader className="pb-4 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-serif">Transaction History</CardTitle>
-                <CardDescription>All financial activity for your organization</CardDescription>
+              <CardTitle className="text-base font-serif">Amount history</CardTitle>
+              <CardDescription>Amounts received by your organization</CardDescription>
               </div>
               <Select value={pillarFilter} onValueChange={setPillarFilter}>
                 <SelectTrigger className="w-36">
@@ -1323,9 +1258,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
                     <TableRow className="bg-muted/20">
                       <TableHead>Date</TableHead>
                       <TableHead>Entity</TableHead>
-                      <TableHead>Gross</TableHead>
-                      <TableHead>Fee</TableHead>
-                      <TableHead>Net</TableHead>
+                      <TableHead>Amount received</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1341,8 +1274,6 @@ function FinanceSection({ orgId }: { orgId: number }) {
                             {tx.pillar} • {tx.transactionType.replace('_', ' ')}
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium text-sm">{formatCurrency(tx.grossAmount, tx.currency)}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">-{formatCurrency(tx.commissionAmount, tx.currency)}</TableCell>
                         <TableCell className="font-medium text-primary text-sm">{formatCurrency(tx.orgEarnings, tx.currency)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1 items-start">

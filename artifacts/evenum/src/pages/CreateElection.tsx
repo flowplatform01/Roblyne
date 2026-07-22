@@ -107,6 +107,9 @@ export default function CreateElection() {
   }
 
   const selectedOrgId = form.watch("orgId");
+  const requiresPayment = form.watch("requiresPayment");
+  const paymentAmount = Number(form.watch("paymentAmount") || 0);
+  const estimatedReceipt = Math.max(0, paymentAmount * 0.95);
 
   return (
     <DashboardLayout orgId={selectedOrgId}>
@@ -334,7 +337,7 @@ export default function CreateElection() {
                       )}
                     />
 
-                    {form.watch("requiresPayment") && (
+                     {requiresPayment && (
                       <>
                         <div className="border-t border-border/50" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -349,41 +352,25 @@ export default function CreateElection() {
                                     type="number"
                                     min="0.01"
                                     step="0.01"
-                                    placeholder="e.g. 10.00"
+                                     placeholder="e.g. 200"
                                     className="h-11"
                                     {...field}
                                   />
                                 </FormControl>
-                                <FormDescription>Amount each voter must pay</FormDescription>
+                                 <FormDescription>Amount each voter must pay in XAF</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          <FormField
-                            control={form.control}
-                            name="currency"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Currency</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger className="h-11">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {CURRENCIES.map(c => (
-                                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                           <div className="rounded-md border border-primary/20 bg-primary/5 p-3 self-end">
+                             <p className="text-xs text-muted-foreground">Estimated amount your organization receives</p>
+                             <p className="text-lg font-semibold text-primary">
+                               XAF {estimatedReceipt.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                             </p>
+                           </div>
                         </div>
                         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 rounded-md px-3 py-2">
-                          Voters will be shown the fee and must complete payment before accessing the ballot. Fee configuration can be updated any time before the election goes live.
+                           Voters will see this amount before voting. Your organization’s estimated receipt is shown above.
                         </p>
                       </>
                     )}

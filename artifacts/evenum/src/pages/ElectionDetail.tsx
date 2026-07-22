@@ -760,18 +760,6 @@ export default function ElectionDetail() {
   );
 }
 
-const CURRENCIES = [
-  { value: "USD", label: "USD — US Dollar" },
-  { value: "EUR", label: "EUR — Euro" },
-  { value: "GBP", label: "GBP — British Pound" },
-  { value: "CAD", label: "CAD — Canadian Dollar" },
-  { value: "AUD", label: "AUD — Australian Dollar" },
-  { value: "NGN", label: "NGN — Nigerian Naira" },
-  { value: "KES", label: "KES — Kenyan Shilling" },
-  { value: "ZAR", label: "ZAR — South African Rand" },
-  { value: "GHS", label: "GHS — Ghanaian Cedi" },
-];
-
 function ElectionBrandingSection({ election, electionId }: { election: any; electionId: number }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -783,7 +771,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
   // Monetization state
   const [requiresPayment, setRequiresPayment] = useState<boolean>(election.requiresPayment ?? false);
   const [paymentAmount, setPaymentAmount] = useState<string>(election.paymentAmount ? String(election.paymentAmount) : '');
-  const [currency, setCurrency] = useState<string>(election.currency ?? 'USD');
+  const [currency] = useState<string>('XAF');
 
   const updateElection = useUpdateElection();
 
@@ -809,7 +797,8 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
   };
 
   const handleSaveFees = () => {
-    if (requiresPayment && (!paymentAmount || parseFloat(paymentAmount) <= 0)) {
+    const amount = Number(paymentAmount);
+    if (requiresPayment && (!Number.isFinite(amount) || amount <= 0)) {
       toast({ title: 'Invalid fee amount', description: 'Please enter a fee amount greater than 0.', variant: 'destructive' });
       return;
     }
@@ -818,14 +807,14 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
         electionId,
         data: {
           requiresPayment,
-          paymentAmount: requiresPayment && paymentAmount ? parseFloat(paymentAmount) : undefined,
-          currency,
+          paymentAmount: requiresPayment ? amount : undefined,
+          currency: 'XAF',
         },
       },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
-          toast({ title: 'Fees saved', description: requiresPayment ? `Entry fee set to ${currency} ${parseFloat(paymentAmount).toFixed(2)}.` : 'Participation is now free.' });
+          toast({ title: 'Fees saved', description: requiresPayment ? `Entry fee set to XAF ${amount.toLocaleString('en-US')}.` : 'Participation is now free.' });
         },
         onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
       }
@@ -872,39 +861,30 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                 <div className="space-y-1.5">
                   <Label htmlFor="fee-amount" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fee Amount</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
-                      {({ USD: '$', EUR: '€', GBP: '£' } as Record<string, string>)[currency] ?? currency}
-                    </span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">XAF</span>
                     <input
                       id="fee-amount"
                       type="number"
-                      min="0.01"
-                      step="0.01"
-                      placeholder="10.00"
+                      min="1"
+                      step="1"
+                      placeholder="200"
                       value={paymentAmount}
                       onChange={e => setPaymentAmount(e.target.value)}
                       className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="currency" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Currency</Label>
-                  <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger id="currency" className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map(c => (
-                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div className="space-y-1.5 rounded-md border border-primary/20 bg-primary/5 p-3">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estimated amount you receive</Label>
+                    <p className="text-lg font-semibold text-primary">
+                      XAF {(Math.max(0, Number(paymentAmount) || 0) * 0.95).toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
               </div>
               {paymentAmount && parseFloat(paymentAmount) > 0 && (
                 <div className="flex items-center gap-2 text-sm bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded-md px-3 py-2">
                   <CreditCard className="h-4 w-4 shrink-0" />
-                  Voters will be charged <strong className="ml-1">{currency} {parseFloat(paymentAmount).toFixed(2)}</strong> before accessing this ballot.
+                  Voters will be charged <strong className="ml-1">XAF {Number(paymentAmount).toLocaleString('en-US')}</strong> before accessing this ballot.
                 </div>
               )}
             </>

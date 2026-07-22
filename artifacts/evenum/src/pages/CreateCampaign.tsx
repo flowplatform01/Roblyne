@@ -80,6 +80,8 @@ export default function CreateCampaign() {
   });
 
   const requiresPayment = form.watch("requiresPayment");
+  const paymentAmount = Number(form.watch("paymentAmount") || 0);
+  const estimatedReceipt = Math.max(0, paymentAmount * 0.95);
 
   function onSubmit(values: z.infer<typeof campaignSchema>) {
     // Transform options string to array for select fields
@@ -304,8 +306,9 @@ export default function CreateCampaign() {
                     name="paymentAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Required Amount (USD)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" min={0.5} placeholder="50.00" className="h-11" {...field} /></FormControl>
+                        <FormLabel>Required Amount (XAF)</FormLabel>
+                        <FormControl><Input type="number" step="1" min={1} placeholder="200" className="h-11" {...field} /></FormControl>
+                        <FormDescription>Estimated amount your organization receives: XAF {estimatedReceipt.toLocaleString('en-US', { maximumFractionDigits: 2 })}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
