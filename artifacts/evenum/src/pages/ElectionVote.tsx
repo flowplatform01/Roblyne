@@ -471,20 +471,6 @@ export default function ElectionVote() {
                 </div>
               )}
             </div>
-            {feeRequired && (
-              <div className="mx-auto mt-6 max-w-md rounded-sm border border-amber-200/40 bg-amber-950/30 px-5 py-4 text-left backdrop-blur-sm">
-                <div className="flex items-start gap-3">
-                  <Wallet className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-                  <div>
-                    <p className="font-semibold text-background">Paid participation</p>
-                    <p className="mt-1 text-sm text-background/70">
-                      Each vote costs <strong className="text-amber-200">XAF {pricePerVote.toLocaleString('en-US')}</strong>.
-                      You will review your ballot first, then confirm payment before it is submitted.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -621,11 +607,10 @@ export default function ElectionVote() {
                 }
                 onClick={() => setStep(0)}
               >
-                 <VoteIcon className="mr-3 h-5 w-5" /> Start Ballot <ArrowRight className="ml-3 h-5 w-5" />
+                 <VoteIcon className="mr-3 h-5 w-5" /> Cast Full Ballot <ArrowRight className="ml-3 h-5 w-5" />
               </Button>
               <p className="text-sm text-muted-foreground">
-                 Vote across all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'}.
-                 {feeRequired ? ' Payment is confirmed after you review your selections.' : ''}
+                 Vote across all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'} — or select a candidate above to vote independently.
               </p>
             </div>
           )}
