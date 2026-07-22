@@ -179,7 +179,7 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
     .where(eq(candidatesTable.positionId, positionId));
 
   const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
       .from(voteSelectionsTable)
       .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
       .where(eq(voteSelectionsTable.candidateId, candidate.id));
@@ -229,7 +229,7 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
     .where(and(...conditions));
 
   const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
       .from(voteSelectionsTable)
       .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
       .where(eq(voteSelectionsTable.candidateId, candidate.id));
@@ -262,7 +262,7 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
     .from(candidatesTable).leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
     .where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId))).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+  const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
     .from(voteSelectionsTable)
     .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
     .where(eq(voteSelectionsTable.candidateId, row.candidate.id));
@@ -424,7 +424,7 @@ router.get("/elections/:electionId/export", requireAuth, requireResourceOrgRole(
   for (const pos of positions) {
     const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
     for (const c of candidates) {
-      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
         .from(voteSelectionsTable)
         .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
         .where(eq(voteSelectionsTable.candidateId, c.id));
@@ -459,7 +459,7 @@ router.get("/elections/:electionId/results", async (req, res): Promise<void> => 
     const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
     const total = totalVotes ?? 0;
     const candidateResults = await Promise.all(candidates.map(async (c) => {
-      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
         .from(voteSelectionsTable)
         .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
         .where(eq(voteSelectionsTable.candidateId, c.id));
@@ -493,7 +493,7 @@ router.get("/elections/:electionId/analytics", requireAuth, requireResourceOrgRo
 
   const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
   const topPositions = await Promise.all(positions.map(async (pos) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` }).from(voteSelectionsTable)
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` }).from(voteSelectionsTable)
       .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
       .where(eq(voteSelectionsTable.positionId, pos.id));
     return { positionId: pos.id, title: pos.title, voteCount: count ?? 0 };
