@@ -16,16 +16,25 @@ import {
   getGetOrganizationQueryKey,
   getListOrganizationsQueryKey,
   getGetPublicOrganizationQueryKey,
+  useGetOrgFinanceSummary,
+  useListOrgTransactions,
+  useListOrgSettlements,
+  useGetOrgAnalytics,
+  getGetOrgFinanceSummaryQueryKey,
+  getListOrgTransactionsQueryKey,
+  getListOrgSettlementsQueryKey,
+  getGetOrgAnalyticsQueryKey,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck, Settings, Save, Globe } from "lucide-react";
+import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck, Settings, Save, Globe, Wallet, DollarSign, Receipt, ArrowUpRight, CheckCircle2, TrendingUp, BarChart3, Activity } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
@@ -43,7 +52,7 @@ export default function OrganizationWorkspace() {
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const tab = searchParams.get('tab');
-    if (tab && ['overview', 'elections', 'events', 'campaigns', 'team', 'settings'].includes(tab)) {
+    if (tab && ['overview', 'elections', 'events', 'campaigns', 'team', 'analytics', 'finance', 'settings'].includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
@@ -115,7 +124,13 @@ export default function OrganizationWorkspace() {
           <TabsTrigger value="elections" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Elections</TabsTrigger>
           <TabsTrigger value="events" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Events</TabsTrigger>
           <TabsTrigger value="campaigns" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Campaigns</TabsTrigger>
-          <TabsTrigger value="team" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Team</TabsTrigger>
+                    <TabsTrigger value="team" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Team</TabsTrigger>
+          <TabsTrigger value="analytics" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+            <BarChart3 className="h-3.5 w-3.5 mr-1.5" />Analytics
+          </TabsTrigger>
+          <TabsTrigger value="finance" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+            <Wallet className="h-3.5 w-3.5 mr-1.5" />Finance
+          </TabsTrigger>
           <TabsTrigger value="settings" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
             <Settings className="h-3.5 w-3.5 mr-1.5" />Settings
           </TabsTrigger>
@@ -248,6 +263,14 @@ export default function OrganizationWorkspace() {
 
         <TabsContent value="team" className="mt-0 focus-visible:outline-none">
           <TeamSection orgId={orgId} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-0 focus-visible:outline-none">
+          <AnalyticsSection orgId={orgId} />
+        </TabsContent>
+
+        <TabsContent value="finance" className="mt-0 focus-visible:outline-none">
+          <FinanceSection orgId={orgId} />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-0 focus-visible:outline-none">
@@ -845,6 +868,541 @@ function EngineList({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AnalyticsSection({ orgId }: { orgId: number }) {
+  const { data: analytics, isLoading } = useGetOrgAnalytics(orgId, {
+    query: { enabled: !!orgId, queryKey: getGetOrgAnalyticsQueryKey(orgId) },
+  });
+
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v || 0);
+
+  const formatPct = (v: number | null | undefined) =>
+    v != null ? `${v.toFixed(1)}%` : '—';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
+        <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  const elections = (analytics?.elections as any[]) || [];
+  const events = (analytics?.events as any[]) || [];
+  const campaigns = (analytics?.campaigns as any[]) || [];
+
+  const totalVotes = elections.reduce((s: number, e: any) => s + (e.totalVotes || 0), 0);
+  const totalTickets = events.reduce((s: number, e: any) => s + (e.ticketsSold || 0), 0);
+  const totalRaised = campaigns.reduce((s: number, c: any) => s + (c.amountRaised || 0), 0);
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+          <BarChart3 className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-serif font-bold">Performance Analytics</h2>
+          <p className="text-sm text-muted-foreground">Insights across elections, events, and campaigns</p>
+        </div>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-blue-50 rounded-sm flex items-center justify-center shrink-0">
+                <Vote className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-3xl font-serif font-bold tabular-nums">{totalVotes.toLocaleString()}</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Total Votes Cast</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">{elections.length} elections</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-emerald-50 rounded-sm flex items-center justify-center shrink-0">
+                <CalendarDays className="h-4 w-4 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-3xl font-serif font-bold tabular-nums">{totalTickets.toLocaleString()}</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Tickets Sold</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">{events.length} events</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-amber-50 rounded-sm flex items-center justify-center shrink-0">
+                <Megaphone className="h-4 w-4 text-amber-600" />
+              </div>
+            </div>
+            <p className="text-3xl font-serif font-bold tabular-nums">{formatCurrency(totalRaised)}</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Total Raised</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">{campaigns.length} campaigns</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Elections analytics */}
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <Vote className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-base font-serif">Elections</CardTitle>
+          </div>
+          <CardDescription>Participation and voting performance</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {elections.length === 0 ? (
+            <div className="p-10 text-center text-muted-foreground text-sm">No elections yet</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20">
+                  <TableHead>Election</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Total Votes</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Paid Votes</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Free Votes</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {elections.map((e: any) => (
+                  <TableRow key={e.id} className="hover:bg-muted/20">
+                    <TableCell>
+                      <Link href={`/elections/${e.id}`} className="font-medium text-sm hover:text-primary transition-colors">{e.title}</Link>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={`capitalize text-xs ${
+                        e.status === 'active' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                        e.status === 'ended' ? 'bg-muted text-muted-foreground' :
+                        'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>{e.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">{(e.totalVotes || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm text-primary">{(e.paidVotes || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm text-muted-foreground">{(e.freeVotes || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(e.revenue || 0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Events analytics */}
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-emerald-600" />
+            <CardTitle className="text-base font-serif">Events</CardTitle>
+          </div>
+          <CardDescription>Attendance, capacity utilization, and check-in rates</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {events.length === 0 ? (
+            <div className="p-10 text-center text-muted-foreground text-sm">No events yet</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20">
+                  <TableHead>Event</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Tickets Sold</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Capacity</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Check-in Rate</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {events.map((ev: any) => (
+                  <TableRow key={ev.id} className="hover:bg-muted/20">
+                    <TableCell>
+                      <Link href={`/events/${ev.id}`} className="font-medium text-sm hover:text-primary transition-colors">{ev.title}</Link>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={`capitalize text-xs ${
+                        ev.status === 'published' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                        ev.status === 'completed' ? 'bg-muted text-muted-foreground' :
+                        'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>{ev.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">{(ev.ticketsSold || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm text-muted-foreground">
+                      {ev.capacity ? ev.capacity.toLocaleString() : '∞'}
+                      {ev.capacityUtilization != null && (
+                        <span className="ml-1 text-xs text-primary">({ev.capacityUtilization}%)</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm">
+                      {formatPct(ev.checkInRate)}
+                      <span className="text-xs text-muted-foreground ml-1">({ev.checkedIn || 0} in)</span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ev.revenue || 0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Campaigns analytics */}
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <Megaphone className="h-4 w-4 text-amber-600" />
+            <CardTitle className="text-base font-serif">Campaigns</CardTitle>
+          </div>
+          <CardDescription>Fundraising progress and contribution insights</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {campaigns.length === 0 ? (
+            <div className="p-10 text-center text-muted-foreground text-sm">No campaigns yet</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20">
+                  <TableHead>Campaign</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Submissions</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Contributors</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Avg. Contribution</TableHead>
+                  <TableHead className="text-right">Amount Raised</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Goal</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {campaigns.map((c: any) => (
+                  <TableRow key={c.id} className="hover:bg-muted/20">
+                    <TableCell>
+                      <Link href={`/campaigns/${c.id}`} className="font-medium text-sm hover:text-primary transition-colors">{c.title}</Link>
+                      {c.goalCompletion != null && (
+                        <div className="mt-1 h-1.5 bg-muted rounded-full overflow-hidden w-24">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.min(c.goalCompletion, 100)}%` }}
+                          />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={`capitalize text-xs ${
+                        c.status === 'active' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                        c.status === 'ended' ? 'bg-muted text-muted-foreground' :
+                        'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>{c.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">{(c.submissionsCount || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm text-primary">{(c.paidContributors || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm">{formatCurrency(c.avgContribution || 0)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium text-primary">{formatCurrency(c.amountRaised || 0)}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell text-sm text-muted-foreground">
+                      {c.goalAmount ? formatCurrency(c.goalAmount) : '—'}
+                      {c.goalCompletion != null && (
+                        <span className="ml-1 text-xs text-primary">({c.goalCompletion.toFixed(1)}%)</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function FinanceSection({ orgId }: { orgId: number }) {
+  const { data: summary, isLoading: isLoadingSummary } = useGetOrgFinanceSummary(orgId, { query: { enabled: !!orgId, queryKey: getGetOrgFinanceSummaryQueryKey(orgId) } });
+  
+  const [pillarFilter, setPillarFilter] = useState<string>("all");
+  const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
+    orgId,
+    { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined },
+    { query: { enabled: !!orgId, queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) } }
+  );
+  
+  const { data: settlements, isLoading: isLoadingSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
+
+  const formatCurrency = (amount: number, currency: string = "USD") => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  };
+
+  const getSettlementBadge = (status: string) => {
+    switch(status) {
+      case 'pending_settlement': return <Badge variant="secondary" className="bg-slate-100 text-slate-800 hover:bg-slate-100">Pending</Badge>;
+      case 'ready': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ready</Badge>;
+      case 'released': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Released</Badge>;
+      case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getTxStatusBadge = (status: string) => {
+    switch(status) {
+      case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
+      case 'refunded': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Refunded</Badge>;
+      case 'disputed': return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Disputed</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const handleExport = () => {
+    const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+    window.open(`${API_BASE}/api/organizations/${orgId}/finance/export`);
+  };
+
+  if (isLoadingSummary) {
+    return (
+      <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
+        <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 text-primary rounded-lg">
+            <Wallet className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-serif font-bold">Financial Operations</h2>
+            <p className="text-sm text-muted-foreground">Manage revenue, platform commissions, and settlements</p>
+          </div>
+        </div>
+        <Button onClick={handleExport} variant="outline">
+          <ArrowUpRight className="mr-2 h-4 w-4" /> Export CSV
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+              Gross Revenue <DollarSign className="h-3.5 w-3.5" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.totalRevenue || 0)}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-border/50 shadow-sm bg-muted/20">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+              Platform Commission <Receipt className="h-3.5 w-3.5" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold text-muted-foreground">{formatCurrency(summary?.totalCommissionPaid || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 shadow-sm bg-primary/5">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-xs font-medium text-primary flex items-center justify-between">
+              Net Earnings <TrendingUp className="h-3.5 w-3.5" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold text-primary">{formatCurrency(summary?.totalOrgEarnings || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+              Pending Balance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.pendingBalance || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+              Released Balance <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.releasedBalance || 0)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-serif">Revenue by Pillar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {['event', 'election', 'campaign'].map(pillar => {
+              const pData = summary?.byPillar?.find((p: any) => p.pillar === pillar) || { revenue: 0, earnings: 0, count: 0 };
+              const icons = {
+                event: <CalendarDays className="h-5 w-5 text-emerald-600" />,
+                election: <Vote className="h-5 w-5 text-blue-600" />,
+                campaign: <Megaphone className="h-5 w-5 text-amber-600" />
+              };
+              
+              return (
+                <div key={pillar} className="p-4 border rounded-xl bg-card">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0">
+                      {icons[pillar as keyof typeof icons]}
+                    </div>
+                    <h3 className="font-medium capitalize">{pillar}s</h3>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Revenue:</span>
+                      <span className="font-medium">{formatCurrency(pData.revenue)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Earnings:</span>
+                      <span className="font-medium text-primary">{formatCurrency(pData.earnings)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-2 pt-2 border-t text-muted-foreground">
+                      <span>Transactions:</span>
+                      <span>{pData.count}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <Card className="border-border/50">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-serif">Transaction History</CardTitle>
+                <CardDescription>All financial activity for your organization</CardDescription>
+              </div>
+              <Select value={pillarFilter} onValueChange={setPillarFilter}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="All Pillars" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Pillars</SelectItem>
+                  <SelectItem value="event">Events</SelectItem>
+                  <SelectItem value="election">Elections</SelectItem>
+                  <SelectItem value="campaign">Campaigns</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoadingTransactions ? (
+                <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+              ) : !transactionsData?.transactions?.length ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <Receipt className="h-8 w-8 mx-auto mb-3 opacity-20" />
+                  <p>No transactions found</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/20">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Entity</TableHead>
+                      <TableHead>Gross</TableHead>
+                      <TableHead>Fee</TableHead>
+                      <TableHead>Net</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactionsData.transactions.map((tx: any) => (
+                      <TableRow key={tx.id} className="hover:bg-muted/20 transition-colors">
+                        <TableCell className="text-xs">
+                          {format(new Date(tx.createdAt), 'MMM d, h:mm a')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-sm">{tx.entityTitle}</div>
+                          <div className="text-xs text-muted-foreground capitalize flex items-center gap-1">
+                            {tx.pillar} • {tx.transactionType.replace('_', ' ')}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium text-sm">{formatCurrency(tx.grossAmount, tx.currency)}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">-{formatCurrency(tx.commissionAmount, tx.currency)}</TableCell>
+                        <TableCell className="font-medium text-primary text-sm">{formatCurrency(tx.orgEarnings, tx.currency)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 items-start">
+                            {getTxStatusBadge(tx.status)}
+                            {tx.status === 'completed' && <span className="text-[10px] text-muted-foreground capitalize">{tx.settlementStatus.replace('_', ' ')}</span>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card className="border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base font-serif">Settlement History</CardTitle>
+              <CardDescription>Payouts to your bank account</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoadingSettlements ? (
+                <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+              ) : !settlements?.length ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  No settlements yet
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/20">
+                      <TableHead>Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {settlements.map((s: any) => (
+                      <TableRow key={s.id} className="hover:bg-muted/20 transition-colors">
+                        <TableCell className="text-xs">
+                          {format(new Date(s.createdAt), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell className="font-medium text-sm">
+                          {formatCurrency(s.amount, s.currency)}
+                          <div className="text-[10px] text-muted-foreground font-normal">{s.transactionCount} txns</div>
+                        </TableCell>
+                        <TableCell>
+                          {getSettlementBadge(s.status)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

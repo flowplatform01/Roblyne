@@ -1,0 +1,248 @@
+Evenum — Financial Infrastructure & Platform Operations Refinement
+Context
+This prompt is an incremental refinement to the existing project.
+Read the original master prompt completely.
+Read every previous refinement prompt completely.
+Do not rebuild the application.
+Do not remove existing functionality.
+Continue evolving the current production codebase while preserving architecture, improving quality, and filling the remaining platform gaps.
+The objective of this refinement is to transform Evenum from an application that supports participation into a platform that can professionally operate a business.
+
+Mission
+The current implementation already supports voting, events, ticketing, campaigns, organizations, and public participation.
+However, the platform still lacks a complete business operations layer.
+This refinement focuses on introducing professional financial infrastructure, commission management, settlement workflows, administrative operations, and business intelligence.
+This is not about adding unnecessary features.
+It is about completing the platform's operational backbone.
+
+Revenue Philosophy
+Do not introduce subscriptions, premium plans, advertisements, verification fees, or unrelated monetization models.
+For now, Evenum earns revenue only through platform commissions collected from supported financial activities.
+Revenue must be generated transparently and automatically through the platform.
+Participants should never feel that the platform exists primarily to charge them.
+Organizations remain the customers.
+Participants remain the users.
+The platform earns by facilitating trusted professional participation.
+
+Platform Commission Engine
+Introduce a centralized Commission Engine.
+No pillar should calculate commissions independently.
+Every financial transaction must pass through this service.
+Supported transaction types include:
+* Paid voting
+* Ticket purchases
+* Campaign contributions
+* Registration payments
+* Any future paid participation experience
+The Commission Engine should:
+* Calculate platform commission
+* Support percentage commissions
+* Support fixed commissions where needed
+* Calculate organization earnings
+* Produce financial records
+* Generate settlement records
+* Generate audit records
+* Remain reusable across every pillar
+This engine becomes the single source of truth for all financial calculations.
+
+Platform Financial Ledger
+Every financial activity must be permanently recorded.
+The ledger should capture:
+* Transaction identifier
+* Organization
+* Related pillar
+* Related entity
+* Gross amount
+* Platform commission
+* Organization earnings
+* Currency
+* Status
+* Payment provider
+* Settlement status
+* Timestamp
+* Audit history
+Financial records must never disappear.
+Every movement must remain traceable.
+
+Organization Financial Workspace
+Each organization should have a dedicated financial workspace.
+This is not just a balance.
+It should include:
+* Current available balance
+* Pending balance
+* Total earnings
+* Total commissions paid
+* Settlement history
+* Transaction history
+* Exportable financial reports
+* Payment history
+* Campaign earnings
+* Event earnings
+* Voting earnings
+* Revenue analytics
+Organizations should clearly understand how money moves through their account.
+
+Settlement Workflow
+Revenue should follow a structured lifecycle.
+Collected
+↓
+Pending Settlement
+↓
+Ready for Settlement
+↓
+Released
+↓
+Completed
+Administrators should have visibility into this pipeline.
+Organizations should always understand the current settlement state.
+Settlement logic should remain extensible for future payment providers.
+
+Commission Configuration
+Platform administrators should configure commission policies without modifying code.
+Configuration should support:
+* Global commission rate
+* Voting commission
+* Event ticket commission
+* Campaign commission
+* Registration commission
+* Currency-aware configuration
+* Future extensibility
+Do not hardcode financial percentages anywhere.
+All financial policies should be centrally managed.
+
+Business Operations Module
+Platform Administration requires a dedicated Business Operations section.
+This becomes the operational heart of Evenum.
+Include areas for:
+Revenue Overview
+Commission Management
+Financial Transactions
+Settlement Management
+Organization Balances
+Payment Monitoring
+Refund Management Architecture
+Financial Reports
+Operational Metrics
+Audit History
+This area should feel like software used to operate a company, not merely observe statistics.
+
+Administrative Financial Dashboard
+Create executive-level dashboards.
+Examples include:
+Total Platform Revenue
+Revenue Today
+Revenue This Week
+Revenue This Month
+Revenue by Pillar
+Revenue by Organization
+Revenue by Campaign
+Revenue by Event
+Revenue by Voting
+Pending Settlements
+Completed Settlements
+Outstanding Balances
+Recent Transactions
+Commission Trends
+Growth Trends
+Transaction Volume
+Present this information professionally.
+Avoid clutter.
+Prioritize clarity and decision-making.
+
+Organization Performance Analytics
+Organizations should receive meaningful insights.
+Examples:
+Voting
+* Votes cast
+* Participation rate
+* Paid versus free participation
+* Revenue generated
+Events
+* Tickets sold
+* Attendance
+* Capacity utilization
+* Revenue
+* Check-in statistics
+Campaigns
+* Amount raised
+* Contributors
+* Goal completion
+* Average contribution
+* Campaign progress
+These insights should help organizations improve outcomes rather than merely review data.
+
+Administrative Oversight
+Platform administrators must be able to monitor platform-wide activity.
+Support:
+Organization health
+Campaign activity
+Event activity
+Voting activity
+Financial anomalies
+Operational alerts
+Platform growth
+Recent activity
+Business performance
+This should extend existing administration rather than replace it.
+
+Reporting & Export
+Professional platforms require professional reporting.
+Support exporting:
+Financial summaries
+Settlement reports
+Revenue reports
+Transaction reports
+Organization reports
+Campaign reports
+Event reports
+Voting reports
+Exports should support common professional formats and preserve data integrity.
+
+Architecture
+Keep financial logic independent from presentation.
+Separate:
+Financial calculations
+Commission policies
+Settlement workflow
+Ledger
+Analytics
+Reporting
+Administrative interfaces
+Public interfaces
+Avoid coupling business rules directly to UI components.
+
+User Experience
+Financial interfaces should communicate trust.
+Use clear terminology.
+Present balances carefully.
+Provide transparent calculations.
+Avoid ambiguous wording.
+Users should always understand:
+* What they paid
+* Why they paid
+* Platform commission (where appropriate)
+* Organization earnings
+* Transaction status
+* Settlement status
+Transparency increases confidence.
+
+Quality Expectations
+Review every existing financial workflow.
+Identify incomplete implementations.
+Identify duplicated logic.
+Identify inconsistent calculations.
+Consolidate them into the new architecture.
+Do not leave temporary implementations behind.
+Do not create parallel financial systems.
+There should be one financial engine powering every pillar.
+
+Final Objective
+This refinement should complete Evenum's operational business foundation.
+By the end of this implementation:
+* Every revenue-generating pillar should use a unified Commission Engine.
+* Financial records should be auditable and traceable.
+* Organizations should have a professional financial workspace.
+* Platform administrators should have a complete Business Operations center.
+* Revenue, commissions, settlements, and reporting should be treated as first-class platform capabilities.
+* The implementation should remain production-ready, scalable, maintainable, and consistent with the overall Evenum architecture established in the previous prompts.
+The goal is not to add more screens. The goal is to make Evenum operate like a real software company behind the scenes, with the same level of professionalism that users experience on the front end.

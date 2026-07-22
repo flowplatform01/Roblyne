@@ -1742,6 +1742,324 @@ export const ExportCampaignSubmissionsResponse = zod.unknown()
 
 
 /**
+ * @summary Get organization financial summary
+ */
+export const GetOrgFinanceSummaryParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const GetOrgFinanceSummaryResponse = zod.object({
+  "orgId": zod.number(),
+  "totalRevenue": zod.number(),
+  "totalCommissionPaid": zod.number(),
+  "totalOrgEarnings": zod.number(),
+  "pendingBalance": zod.number(),
+  "releasedBalance": zod.number(),
+  "transactionCount": zod.number(),
+  "byPillar": zod.array(zod.object({
+  "pillar": zod.string(),
+  "revenue": zod.number(),
+  "earnings": zod.number(),
+  "count": zod.number()
+})),
+  "recentSettlements": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List financial transactions for an organization
+ */
+export const ListOrgTransactionsParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const listOrgTransactionsQueryLimitDefault = 50;
+export const listOrgTransactionsQueryOffsetDefault = 0;
+
+export const ListOrgTransactionsQueryParams = zod.object({
+  "pillar": zod.enum(['event', 'election', 'campaign']).optional(),
+  "limit": zod.coerce.number().default(listOrgTransactionsQueryLimitDefault),
+  "offset": zod.coerce.number().default(listOrgTransactionsQueryOffsetDefault)
+})
+
+export const ListOrgTransactionsResponse = zod.object({
+  "total": zod.number(),
+  "transactions": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "pillar": zod.enum(['event', 'election', 'campaign']),
+  "entityId": zod.number(),
+  "entityTitle": zod.string().nullish(),
+  "transactionType": zod.enum(['ticket', 'vote', 'campaign_response']),
+  "grossAmount": zod.number().describe('Total amount paid by participant'),
+  "commissionRate": zod.number().describe('Commission rate applied (e.g. 0.05 = 5%)'),
+  "commissionAmount": zod.number().describe('Platform commission amount'),
+  "orgEarnings": zod.number().describe('Amount earned by the organization'),
+  "currency": zod.string(),
+  "status": zod.enum(['completed', 'refunded', 'disputed']),
+  "paymentProvider": zod.string().optional(),
+  "settlementStatus": zod.enum(['pending', 'ready', 'released', 'completed']),
+  "settlementId": zod.number().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List settlement records for an organization
+ */
+export const ListOrgSettlementsParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const ListOrgSettlementsResponseItem = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListOrgSettlementsResponse = zod.array(ListOrgSettlementsResponseItem)
+
+
+/**
+ * @summary Export organization transactions as CSV
+ */
+export const ExportOrgTransactionsParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const ExportOrgTransactionsResponse = zod.unknown()
+
+
+/**
+ * @summary Get per-pillar performance analytics for an organization
+ */
+export const GetOrgAnalyticsParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const GetOrgAnalyticsResponse = zod.object({
+  "elections": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  "events": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  "campaigns": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+})
+
+
+/**
+ * @summary Get platform-wide financial statistics
+ */
+export const GetAdminFinanceStatsResponse = zod.object({
+  "total_platform_revenue": zod.number().optional(),
+  "total_commission_collected": zod.number().optional(),
+  "total_org_earnings": zod.number().optional(),
+  "revenue_today": zod.number().optional(),
+  "revenue_this_week": zod.number().optional(),
+  "revenue_this_month": zod.number().optional(),
+  "total_transactions": zod.number().optional(),
+  "orgs_with_revenue": zod.number().optional(),
+  "byPillar": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
+  "pendingSettlements": zod.record(zod.string(), zod.unknown()).optional(),
+  "revenueByDay": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+})
+
+
+/**
+ * @summary List all platform financial transactions
+ */
+export const listAdminTransactionsQueryLimitDefault = 50;
+export const listAdminTransactionsQueryOffsetDefault = 0;
+
+export const ListAdminTransactionsQueryParams = zod.object({
+  "pillar": zod.enum(['event', 'election', 'campaign']).optional(),
+  "orgId": zod.coerce.number().optional(),
+  "limit": zod.coerce.number().default(listAdminTransactionsQueryLimitDefault),
+  "offset": zod.coerce.number().default(listAdminTransactionsQueryOffsetDefault)
+})
+
+export const ListAdminTransactionsResponse = zod.object({
+  "total": zod.number(),
+  "transactions": zod.array(zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "pillar": zod.enum(['event', 'election', 'campaign']),
+  "entityId": zod.number(),
+  "entityTitle": zod.string().nullish(),
+  "transactionType": zod.enum(['ticket', 'vote', 'campaign_response']),
+  "grossAmount": zod.number().describe('Total amount paid by participant'),
+  "commissionRate": zod.number().describe('Commission rate applied (e.g. 0.05 = 5%)'),
+  "commissionAmount": zod.number().describe('Platform commission amount'),
+  "orgEarnings": zod.number().describe('Amount earned by the organization'),
+  "currency": zod.string(),
+  "status": zod.enum(['completed', 'refunded', 'disputed']),
+  "paymentProvider": zod.string().optional(),
+  "settlementStatus": zod.enum(['pending', 'ready', 'released', 'completed']),
+  "settlementId": zod.number().nullish(),
+  "payerName": zod.string().nullish(),
+  "payerEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List all settlement records
+ */
+export const ListAdminSettlementsQueryParams = zod.object({
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']).optional(),
+  "orgId": zod.coerce.number().optional()
+})
+
+export const ListAdminSettlementsResponseItem = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminSettlementsResponse = zod.array(ListAdminSettlementsResponseItem)
+
+
+/**
+ * @summary Create a settlement batch for an organization
+ */
+export const CreateSettlementBody = zod.object({
+  "orgId": zod.number()
+})
+
+export const CreateSettlementResponse = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Advance a settlement through its lifecycle
+ */
+export const UpdateSettlementParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSettlementBody = zod.object({
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed'])
+})
+
+export const UpdateSettlementResponse = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List financial balances for all organizations
+ */
+export const ListOrgBalancesResponseItem = zod.object({
+  "org_id": zod.number().optional(),
+  "org_name": zod.string().optional(),
+  "total_revenue": zod.number().optional(),
+  "total_commission": zod.number().optional(),
+  "total_earnings": zod.number().optional(),
+  "pending_balance": zod.number().optional(),
+  "released_balance": zod.number().optional(),
+  "transaction_count": zod.number().optional()
+})
+export const ListOrgBalancesResponse = zod.array(ListOrgBalancesResponseItem)
+
+
+/**
+ * @summary Get all commission configurations
+ */
+export const ListCommissionConfigsResponseItem = zod.object({
+  "id": zod.number(),
+  "pillar": zod.enum(['global', 'event', 'election', 'campaign']),
+  "rate": zod.number().describe('Commission rate as a decimal fraction (e.g. 0.05 = 5%)'),
+  "currency": zod.string(),
+  "isActive": zod.number(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCommissionConfigsResponse = zod.array(ListCommissionConfigsResponseItem)
+
+
+/**
+ * @summary Update commission rate for a pillar
+ */
+export const UpdateCommissionConfigParams = zod.object({
+  "pillar": zod.enum(['global', 'event', 'election', 'campaign'])
+})
+
+export const updateCommissionConfigBodyRateMin = 0;
+export const updateCommissionConfigBodyRateMax = 1;
+
+
+
+export const UpdateCommissionConfigBody = zod.object({
+  "rate": zod.number().min(updateCommissionConfigBodyRateMin).max(updateCommissionConfigBodyRateMax).optional().describe('Commission rate as a decimal fraction (e.g. 0.05 = 5%)'),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateCommissionConfigResponse = zod.object({
+  "id": zod.number(),
+  "pillar": zod.enum(['global', 'event', 'election', 'campaign']),
+  "rate": zod.number().describe('Commission rate as a decimal fraction (e.g. 0.05 = 5%)'),
+  "currency": zod.string(),
+  "isActive": zod.number(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Export all platform transactions as CSV
+ */
+export const ExportAdminTransactionsResponse = zod.unknown()
+
+
+/**
  * @summary Discover public content across all engines
  */
 export const discoverQueryLimitDefault = 24;

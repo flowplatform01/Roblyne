@@ -335,14 +335,23 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.transaction(async (tx) => {
-    const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier }).returning();
-    for (const selection of bodyParsed.data.selections) {
-      for (const candidateId of selection.candidateIds) {
-        await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
+  try {
+    await db.transaction(async (tx) => {
+      const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier }).returning();
+      for (const selection of bodyParsed.data.selections) {
+        for (const candidateId of selection.candidateIds) {
+          await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
+        }
       }
+    });
+  } catch (err: any) {
+    // Unique constraint violation — two concurrent requests raced past the duplicate check
+    if (err?.code === "23505") {
+      res.status(403).json({ error: "You have already cast a ballot in this election" });
+      return;
     }
-  });
+    throw err;
+  }
 
   res.json({ message: "Vote recorded" });
 });

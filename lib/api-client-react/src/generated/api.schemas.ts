@@ -1101,6 +1101,218 @@ export interface SearchResults {
   items: DiscoveryItem[];
 }
 
+export type FinancialTransactionPillar = typeof FinancialTransactionPillar[keyof typeof FinancialTransactionPillar];
+
+
+export const FinancialTransactionPillar = {
+  event: 'event',
+  election: 'election',
+  campaign: 'campaign',
+} as const;
+
+export type FinancialTransactionTransactionType = typeof FinancialTransactionTransactionType[keyof typeof FinancialTransactionTransactionType];
+
+
+export const FinancialTransactionTransactionType = {
+  ticket: 'ticket',
+  vote: 'vote',
+  campaign_response: 'campaign_response',
+} as const;
+
+export type FinancialTransactionStatus = typeof FinancialTransactionStatus[keyof typeof FinancialTransactionStatus];
+
+
+export const FinancialTransactionStatus = {
+  completed: 'completed',
+  refunded: 'refunded',
+  disputed: 'disputed',
+} as const;
+
+export type FinancialTransactionSettlementStatus = typeof FinancialTransactionSettlementStatus[keyof typeof FinancialTransactionSettlementStatus];
+
+
+export const FinancialTransactionSettlementStatus = {
+  pending: 'pending',
+  ready: 'ready',
+  released: 'released',
+  completed: 'completed',
+} as const;
+
+export interface FinancialTransaction {
+  id: number;
+  orgId: number;
+  /** @nullable */
+  organizationName?: string | null;
+  pillar: FinancialTransactionPillar;
+  entityId: number;
+  /** @nullable */
+  entityTitle?: string | null;
+  transactionType: FinancialTransactionTransactionType;
+  /** Total amount paid by participant */
+  grossAmount: number;
+  /** Commission rate applied (e.g. 0.05 = 5%) */
+  commissionRate: number;
+  /** Platform commission amount */
+  commissionAmount: number;
+  /** Amount earned by the organization */
+  orgEarnings: number;
+  currency: string;
+  status: FinancialTransactionStatus;
+  paymentProvider?: string;
+  settlementStatus: FinancialTransactionSettlementStatus;
+  /** @nullable */
+  settlementId?: number | null;
+  /** @nullable */
+  payerName?: string | null;
+  /** @nullable */
+  payerEmail?: string | null;
+  createdAt: string;
+}
+
+export type SettlementStatus = typeof SettlementStatus[keyof typeof SettlementStatus];
+
+
+export const SettlementStatus = {
+  pending_settlement: 'pending_settlement',
+  ready: 'ready',
+  released: 'released',
+  completed: 'completed',
+} as const;
+
+export interface Settlement {
+  id: number;
+  orgId: number;
+  /** @nullable */
+  organizationName?: string | null;
+  /** Total org earnings included in this settlement */
+  amount: number;
+  currency: string;
+  status: SettlementStatus;
+  transactionCount: number;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  releasedAt?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export type CommissionConfigPillar = typeof CommissionConfigPillar[keyof typeof CommissionConfigPillar];
+
+
+export const CommissionConfigPillar = {
+  global: 'global',
+  event: 'event',
+  election: 'election',
+  campaign: 'campaign',
+} as const;
+
+export interface CommissionConfig {
+  id: number;
+  pillar: CommissionConfigPillar;
+  /** Commission rate as a decimal fraction (e.g. 0.05 = 5%) */
+  rate: number;
+  currency: string;
+  isActive: number;
+  updatedAt: string;
+}
+
+export interface CommissionConfigUpdate {
+  /**
+     * Commission rate as a decimal fraction (e.g. 0.05 = 5%)
+     * @minimum 0
+     * @maximum 1
+     */
+  rate?: number;
+  isActive?: boolean;
+}
+
+export type OrgFinanceSummaryByPillarItem = {
+  pillar: string;
+  revenue: number;
+  earnings: number;
+  count: number;
+};
+
+export interface OrgFinanceSummary {
+  orgId: number;
+  totalRevenue: number;
+  totalCommissionPaid: number;
+  totalOrgEarnings: number;
+  pendingBalance: number;
+  releasedBalance: number;
+  transactionCount: number;
+  byPillar: OrgFinanceSummaryByPillarItem[];
+  recentSettlements: Settlement[];
+}
+
+export interface TransactionList {
+  total: number;
+  transactions: FinancialTransaction[];
+}
+
+export type AdminFinanceStatsByPillarItem = { [key: string]: unknown };
+
+export type AdminFinanceStatsPendingSettlements = { [key: string]: unknown };
+
+export type AdminFinanceStatsRevenueByDayItem = { [key: string]: unknown };
+
+export interface AdminFinanceStats {
+  total_platform_revenue?: number;
+  total_commission_collected?: number;
+  total_org_earnings?: number;
+  revenue_today?: number;
+  revenue_this_week?: number;
+  revenue_this_month?: number;
+  total_transactions?: number;
+  orgs_with_revenue?: number;
+  byPillar?: AdminFinanceStatsByPillarItem[];
+  pendingSettlements?: AdminFinanceStatsPendingSettlements;
+  revenueByDay?: AdminFinanceStatsRevenueByDayItem[];
+}
+
+export interface OrgBalance {
+  org_id?: number;
+  org_name?: string;
+  total_revenue?: number;
+  total_commission?: number;
+  total_earnings?: number;
+  pending_balance?: number;
+  released_balance?: number;
+  transaction_count?: number;
+}
+
+export type OrgAnalyticsElectionsItem = { [key: string]: unknown };
+
+export type OrgAnalyticsEventsItem = { [key: string]: unknown };
+
+export type OrgAnalyticsCampaignsItem = { [key: string]: unknown };
+
+export interface OrgAnalytics {
+  elections?: OrgAnalyticsElectionsItem[];
+  events?: OrgAnalyticsEventsItem[];
+  campaigns?: OrgAnalyticsCampaignsItem[];
+}
+
+export interface CreateSettlementInput {
+  orgId: number;
+}
+
+export type UpdateSettlementInputStatus = typeof UpdateSettlementInputStatus[keyof typeof UpdateSettlementInputStatus];
+
+
+export const UpdateSettlementInputStatus = {
+  pending_settlement: 'pending_settlement',
+  ready: 'ready',
+  released: 'released',
+  completed: 'completed',
+} as const;
+
+export interface UpdateSettlementInput {
+  status: UpdateSettlementInputStatus;
+}
+
 export type ListElectionsParams = {
 orgId?: number;
 status?: ListElectionsStatus;
@@ -1189,6 +1401,52 @@ export type ListCampaignsVisibility = typeof ListCampaignsVisibility[keyof typeo
 export const ListCampaignsVisibility = {
   public: 'public',
   private: 'private',
+} as const;
+
+export type ListOrgTransactionsParams = {
+pillar?: ListOrgTransactionsPillar;
+limit?: number;
+offset?: number;
+};
+
+export type ListOrgTransactionsPillar = typeof ListOrgTransactionsPillar[keyof typeof ListOrgTransactionsPillar];
+
+
+export const ListOrgTransactionsPillar = {
+  event: 'event',
+  election: 'election',
+  campaign: 'campaign',
+} as const;
+
+export type ListAdminTransactionsParams = {
+pillar?: ListAdminTransactionsPillar;
+orgId?: number;
+limit?: number;
+offset?: number;
+};
+
+export type ListAdminTransactionsPillar = typeof ListAdminTransactionsPillar[keyof typeof ListAdminTransactionsPillar];
+
+
+export const ListAdminTransactionsPillar = {
+  event: 'event',
+  election: 'election',
+  campaign: 'campaign',
+} as const;
+
+export type ListAdminSettlementsParams = {
+status?: ListAdminSettlementsStatus;
+orgId?: number;
+};
+
+export type ListAdminSettlementsStatus = typeof ListAdminSettlementsStatus[keyof typeof ListAdminSettlementsStatus];
+
+
+export const ListAdminSettlementsStatus = {
+  pending_settlement: 'pending_settlement',
+  ready: 'ready',
+  released: 'released',
+  completed: 'completed',
 } as const;
 
 export type DiscoverParams = {

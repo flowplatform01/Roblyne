@@ -3,3 +3,4 @@ export * from "./organizations";
 export * from "./elections";
 export * from "./events";
 export * from "./campaigns";
+export * from "./financial";

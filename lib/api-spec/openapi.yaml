@@ -22,6 +22,10 @@ tags:
     description: Campaigns engine
   - name: discover
     description: Public discovery & search
+  - name: finance
+    description: Organization financial workspace
+  - name: admin-finance
+    description: Platform financial administration & business operations
 
 paths:
   /healthz:
@@ -1448,6 +1452,303 @@ paths:
               schema:
                 type: string
 
+  # ── ORGANIZATION FINANCE ──────────────────────────────────────────────────
+  /organizations/{orgId}/finance:
+    get:
+      operationId: getOrgFinanceSummary
+      tags: [finance]
+      summary: Get organization financial summary
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgFinanceSummary"
+
+  /organizations/{orgId}/finance/transactions:
+    get:
+      operationId: listOrgTransactions
+      tags: [finance]
+      summary: List financial transactions for an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: pillar
+          in: query
+          schema:
+            type: string
+            enum: [event, election, campaign]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+
+  /organizations/{orgId}/finance/settlements:
+    get:
+      operationId: listOrgSettlements
+      tags: [finance]
+      summary: List settlement records for an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Settlements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Settlement"
+
+  /organizations/{orgId}/finance/export:
+    get:
+      operationId: exportOrgTransactions
+      tags: [finance]
+      summary: Export organization transactions as CSV
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /organizations/{orgId}/analytics:
+    get:
+      operationId: getOrgAnalytics
+      tags: [finance]
+      summary: Get per-pillar performance analytics for an organization
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organization performance analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgAnalytics"
+
+  # ── ADMIN FINANCE ──────────────────────────────────────────────────────────
+  /admin/finance/stats:
+    get:
+      operationId: getAdminFinanceStats
+      tags: [admin-finance]
+      summary: Get platform-wide financial statistics
+      responses:
+        "200":
+          description: Financial statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFinanceStats"
+
+  /admin/finance/transactions:
+    get:
+      operationId: listAdminTransactions
+      tags: [admin-finance]
+      summary: List all platform financial transactions
+      parameters:
+        - name: pillar
+          in: query
+          schema:
+            type: string
+            enum: [event, election, campaign]
+        - name: orgId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+
+  /admin/finance/settlements:
+    get:
+      operationId: listAdminSettlements
+      tags: [admin-finance]
+      summary: List all settlement records
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending_settlement, ready, released, completed]
+        - name: orgId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Settlements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Settlement"
+
+    post:
+      operationId: createSettlement
+      tags: [admin-finance]
+      summary: Create a settlement batch for an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSettlementInput"
+      responses:
+        "201":
+          description: Settlement created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settlement"
+
+  /admin/finance/settlements/{id}:
+    patch:
+      operationId: updateSettlement
+      tags: [admin-finance]
+      summary: Advance a settlement through its lifecycle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettlementInput"
+      responses:
+        "200":
+          description: Updated settlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settlement"
+
+  /admin/finance/org-balances:
+    get:
+      operationId: listOrgBalances
+      tags: [admin-finance]
+      summary: List financial balances for all organizations
+      responses:
+        "200":
+          description: Organization balances
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgBalance"
+
+  /admin/finance/commission-config:
+    get:
+      operationId: listCommissionConfigs
+      tags: [admin-finance]
+      summary: Get all commission configurations
+      responses:
+        "200":
+          description: Commission configurations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommissionConfig"
+
+  /admin/finance/commission-config/{pillar}:
+    patch:
+      operationId: updateCommissionConfig
+      tags: [admin-finance]
+      summary: Update commission rate for a pillar
+      parameters:
+        - name: pillar
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [global, event, election, campaign]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommissionConfigUpdate"
+      responses:
+        "200":
+          description: Updated commission config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionConfig"
+
+  /admin/finance/export:
+    get:
+      operationId: exportAdminTransactions
+      tags: [admin-finance]
+      summary: Export all platform transactions as CSV
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
   # ── DISCOVERY ─────────────────────────────────────────────────────────────
   /discover:
     get:
@@ -2793,3 +3094,254 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiscoveryItem"
+
+    # ── FINANCIAL ────────────────────────────────────────────────────────────
+    FinancialTransaction:
+      type: object
+      required: [id, orgId, pillar, entityId, transactionType, grossAmount, commissionRate, commissionAmount, orgEarnings, currency, status, settlementStatus, createdAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        pillar:
+          type: string
+          enum: [event, election, campaign]
+        entityId:
+          type: integer
+        entityTitle:
+          type: ["string", "null"]
+        transactionType:
+          type: string
+          enum: [ticket, vote, campaign_response]
+        grossAmount:
+          type: number
+          description: Total amount paid by participant
+        commissionRate:
+          type: number
+          description: Commission rate applied (e.g. 0.05 = 5%)
+        commissionAmount:
+          type: number
+          description: Platform commission amount
+        orgEarnings:
+          type: number
+          description: Amount earned by the organization
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [completed, refunded, disputed]
+        paymentProvider:
+          type: string
+        settlementStatus:
+          type: string
+          enum: [pending, ready, released, completed]
+        settlementId:
+          type: ["integer", "null"]
+        payerName:
+          type: ["string", "null"]
+        payerEmail:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    Settlement:
+      type: object
+      required: [id, orgId, amount, currency, status, transactionCount, createdAt]
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+        organizationName:
+          type: ["string", "null"]
+        amount:
+          type: number
+          description: Total org earnings included in this settlement
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending_settlement, ready, released, completed]
+        transactionCount:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        releasedAt:
+          type: ["string", "null"]
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CommissionConfig:
+      type: object
+      required: [id, pillar, rate, currency, isActive, updatedAt]
+      properties:
+        id:
+          type: integer
+        pillar:
+          type: string
+          enum: [global, event, election, campaign]
+        rate:
+          type: number
+          description: Commission rate as a decimal fraction (e.g. 0.05 = 5%)
+        currency:
+          type: string
+        isActive:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+
+    CommissionConfigUpdate:
+      type: object
+      properties:
+        rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Commission rate as a decimal fraction (e.g. 0.05 = 5%)
+        isActive:
+          type: boolean
+
+    OrgFinanceSummary:
+      type: object
+      required: [orgId, totalRevenue, totalCommissionPaid, totalOrgEarnings, pendingBalance, releasedBalance, transactionCount, byPillar, recentSettlements]
+      properties:
+        orgId:
+          type: integer
+        totalRevenue:
+          type: number
+        totalCommissionPaid:
+          type: number
+        totalOrgEarnings:
+          type: number
+        pendingBalance:
+          type: number
+        releasedBalance:
+          type: number
+        transactionCount:
+          type: integer
+        byPillar:
+          type: array
+          items:
+            type: object
+            required: [pillar, revenue, earnings, count]
+            properties:
+              pillar:
+                type: string
+              revenue:
+                type: number
+              earnings:
+                type: number
+              count:
+                type: integer
+        recentSettlements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Settlement"
+
+    TransactionList:
+      type: object
+      required: [total, transactions]
+      properties:
+        total:
+          type: integer
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinancialTransaction"
+
+    AdminFinanceStats:
+      type: object
+      properties:
+        total_platform_revenue:
+          type: number
+        total_commission_collected:
+          type: number
+        total_org_earnings:
+          type: number
+        revenue_today:
+          type: number
+        revenue_this_week:
+          type: number
+        revenue_this_month:
+          type: number
+        total_transactions:
+          type: integer
+        orgs_with_revenue:
+          type: integer
+        byPillar:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        pendingSettlements:
+          type: object
+          additionalProperties: true
+        revenueByDay:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    OrgBalance:
+      type: object
+      properties:
+        org_id:
+          type: integer
+        org_name:
+          type: string
+        total_revenue:
+          type: number
+        total_commission:
+          type: number
+        total_earnings:
+          type: number
+        pending_balance:
+          type: number
+        released_balance:
+          type: number
+        transaction_count:
+          type: integer
+
+    OrgAnalytics:
+      type: object
+      properties:
+        elections:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        campaigns:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    CreateSettlementInput:
+      type: object
+      required: [orgId]
+      properties:
+        orgId:
+          type: integer
+
+    UpdateSettlementInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending_settlement, ready, released, completed]

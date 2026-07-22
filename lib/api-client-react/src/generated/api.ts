@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminFinanceStats,
   Attendee,
   AuthUser,
   AuthUserUpdate,
@@ -33,6 +34,9 @@ import type {
   CandidateInput,
   CandidateUpdate,
   CheckInInput,
+  CommissionConfig,
+  CommissionConfigUpdate,
+  CreateSettlementInput,
   DiscoverParams,
   DiscoveryFeed,
   Election,
@@ -48,12 +52,18 @@ import type {
   EventInput,
   EventUpdate,
   HealthStatus,
+  ListAdminSettlementsParams,
+  ListAdminTransactionsParams,
   ListCampaignsParams,
   ListCandidatesParams,
   ListElectionsParams,
   ListEventsParams,
+  ListOrgTransactionsParams,
   LoginInput,
   MessageResponse,
+  OrgAnalytics,
+  OrgBalance,
+  OrgFinanceSummary,
   Organization,
   OrganizationInput,
   OrganizationMember,
@@ -70,10 +80,13 @@ import type {
   RegistrationInput,
   SearchParams,
   SearchResults,
+  Settlement,
   Ticket,
   TicketType,
   TicketTypeInput,
   TicketTypeUpdate,
+  TransactionList,
+  UpdateSettlementInput,
   VoteInput
 } from './api.schemas';
 
@@ -4669,6 +4682,1094 @@ export function useExportCampaignSubmissions<TData = Awaited<ReturnType<typeof e
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getExportCampaignSubmissionsQueryOptions(campaignId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOrgFinanceSummaryUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/finance`
+}
+
+/**
+ * @summary Get organization financial summary
+ */
+export const getOrgFinanceSummary = async (orgId: number, options?: RequestInit): Promise<OrgFinanceSummary> => {
+
+  return customFetch<OrgFinanceSummary>(getGetOrgFinanceSummaryUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrgFinanceSummaryQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/finance`
+    ] as const;
+    }
+
+
+export const getGetOrgFinanceSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getOrgFinanceSummary>>, TError = ErrorType<unknown>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgFinanceSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrgFinanceSummaryQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgFinanceSummary>>> = ({ signal }) => getOrgFinanceSummary(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrgFinanceSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrgFinanceSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getOrgFinanceSummary>>>
+export type GetOrgFinanceSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get organization financial summary
+ */
+
+export function useGetOrgFinanceSummary<TData = Awaited<ReturnType<typeof getOrgFinanceSummary>>, TError = ErrorType<unknown>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgFinanceSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrgFinanceSummaryQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOrgTransactionsUrl = (orgId: number,
+    params?: ListOrgTransactionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/organizations/${orgId}/finance/transactions?${stringifiedParams}` : `/api/organizations/${orgId}/finance/transactions`
+}
+
+/**
+ * @summary List financial transactions for an organization
+ */
+export const listOrgTransactions = async (orgId: number,
+    params?: ListOrgTransactionsParams, options?: RequestInit): Promise<TransactionList> => {
+
+  return customFetch<TransactionList>(getListOrgTransactionsUrl(orgId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrgTransactionsQueryKey = (orgId: number,
+    params?: ListOrgTransactionsParams,) => {
+    return [
+    `/api/organizations/${orgId}/finance/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListOrgTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listOrgTransactions>>, TError = ErrorType<unknown>>(orgId: number,
+    params?: ListOrgTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrgTransactionsQueryKey(orgId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgTransactions>>> = ({ signal }) => listOrgTransactions(orgId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrgTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrgTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listOrgTransactions>>>
+export type ListOrgTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List financial transactions for an organization
+ */
+
+export function useListOrgTransactions<TData = Awaited<ReturnType<typeof listOrgTransactions>>, TError = ErrorType<unknown>>(
+ orgId: number,
+    params?: ListOrgTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrgTransactionsQueryOptions(orgId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOrgSettlementsUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/finance/settlements`
+}
+
+/**
+ * @summary List settlement records for an organization
+ */
+export const listOrgSettlements = async (orgId: number, options?: RequestInit): Promise<Settlement[]> => {
+
+  return customFetch<Settlement[]>(getListOrgSettlementsUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrgSettlementsQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/finance/settlements`
+    ] as const;
+    }
+
+
+export const getListOrgSettlementsQueryOptions = <TData = Awaited<ReturnType<typeof listOrgSettlements>>, TError = ErrorType<unknown>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrgSettlementsQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgSettlements>>> = ({ signal }) => listOrgSettlements(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrgSettlements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrgSettlementsQueryResult = NonNullable<Awaited<ReturnType<typeof listOrgSettlements>>>
+export type ListOrgSettlementsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List settlement records for an organization
+ */
+
+export function useListOrgSettlements<TData = Awaited<ReturnType<typeof listOrgSettlements>>, TError = ErrorType<unknown>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrgSettlementsQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportOrgTransactionsUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/finance/export`
+}
+
+/**
+ * @summary Export organization transactions as CSV
+ */
+export const exportOrgTransactions = async (orgId: number, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportOrgTransactionsUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportOrgTransactionsQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/finance/export`
+    ] as const;
+    }
+
+
+export const getExportOrgTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof exportOrgTransactions>>, TError = ErrorType<unknown>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportOrgTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportOrgTransactionsQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportOrgTransactions>>> = ({ signal }) => exportOrgTransactions(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportOrgTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportOrgTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof exportOrgTransactions>>>
+export type ExportOrgTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export organization transactions as CSV
+ */
+
+export function useExportOrgTransactions<TData = Awaited<ReturnType<typeof exportOrgTransactions>>, TError = ErrorType<unknown>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportOrgTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportOrgTransactionsQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOrgAnalyticsUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/analytics`
+}
+
+/**
+ * @summary Get per-pillar performance analytics for an organization
+ */
+export const getOrgAnalytics = async (orgId: number, options?: RequestInit): Promise<OrgAnalytics> => {
+
+  return customFetch<OrgAnalytics>(getGetOrgAnalyticsUrl(orgId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrgAnalyticsQueryKey = (orgId: number,) => {
+    return [
+    `/api/organizations/${orgId}/analytics`
+    ] as const;
+    }
+
+
+export const getGetOrgAnalyticsQueryOptions = <TData = Awaited<ReturnType<typeof getOrgAnalytics>>, TError = ErrorType<unknown>>(orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgAnalytics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrgAnalyticsQueryKey(orgId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgAnalytics>>> = ({ signal }) => getOrgAnalytics(orgId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrgAnalytics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrgAnalyticsQueryResult = NonNullable<Awaited<ReturnType<typeof getOrgAnalytics>>>
+export type GetOrgAnalyticsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get per-pillar performance analytics for an organization
+ */
+
+export function useGetOrgAnalytics<TData = Awaited<ReturnType<typeof getOrgAnalytics>>, TError = ErrorType<unknown>>(
+ orgId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgAnalytics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrgAnalyticsQueryOptions(orgId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminFinanceStatsUrl = () => {
+
+
+
+
+  return `/api/admin/finance/stats`
+}
+
+/**
+ * @summary Get platform-wide financial statistics
+ */
+export const getAdminFinanceStats = async ( options?: RequestInit): Promise<AdminFinanceStats> => {
+
+  return customFetch<AdminFinanceStats>(getGetAdminFinanceStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinanceStatsQueryKey = () => {
+    return [
+    `/api/admin/finance/stats`
+    ] as const;
+    }
+
+
+export const getGetAdminFinanceStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinanceStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinanceStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinanceStats>>> = ({ signal }) => getAdminFinanceStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinanceStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinanceStats>>>
+export type GetAdminFinanceStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get platform-wide financial statistics
+ */
+
+export function useGetAdminFinanceStats<TData = Awaited<ReturnType<typeof getAdminFinanceStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinanceStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminTransactionsUrl = (params?: ListAdminTransactionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/transactions?${stringifiedParams}` : `/api/admin/finance/transactions`
+}
+
+/**
+ * @summary List all platform financial transactions
+ */
+export const listAdminTransactions = async (params?: ListAdminTransactionsParams, options?: RequestInit): Promise<TransactionList> => {
+
+  return customFetch<TransactionList>(getListAdminTransactionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminTransactionsQueryKey = (params?: ListAdminTransactionsParams,) => {
+    return [
+    `/api/admin/finance/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminTransactions>>, TError = ErrorType<unknown>>(params?: ListAdminTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminTransactionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminTransactions>>> = ({ signal }) => listAdminTransactions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminTransactions>>>
+export type ListAdminTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all platform financial transactions
+ */
+
+export function useListAdminTransactions<TData = Awaited<ReturnType<typeof listAdminTransactions>>, TError = ErrorType<unknown>>(
+ params?: ListAdminTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminTransactionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminSettlementsUrl = (params?: ListAdminSettlementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/settlements?${stringifiedParams}` : `/api/admin/finance/settlements`
+}
+
+/**
+ * @summary List all settlement records
+ */
+export const listAdminSettlements = async (params?: ListAdminSettlementsParams, options?: RequestInit): Promise<Settlement[]> => {
+
+  return customFetch<Settlement[]>(getListAdminSettlementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSettlementsQueryKey = (params?: ListAdminSettlementsParams,) => {
+    return [
+    `/api/admin/finance/settlements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminSettlementsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSettlements>>, TError = ErrorType<unknown>>(params?: ListAdminSettlementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSettlementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSettlements>>> = ({ signal }) => listAdminSettlements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSettlements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSettlementsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSettlements>>>
+export type ListAdminSettlementsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all settlement records
+ */
+
+export function useListAdminSettlements<TData = Awaited<ReturnType<typeof listAdminSettlements>>, TError = ErrorType<unknown>>(
+ params?: ListAdminSettlementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSettlements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSettlementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSettlementUrl = () => {
+
+
+
+
+  return `/api/admin/finance/settlements`
+}
+
+/**
+ * @summary Create a settlement batch for an organization
+ */
+export const createSettlement = async (createSettlementInput: CreateSettlementInput, options?: RequestInit): Promise<Settlement> => {
+
+  return customFetch<Settlement>(getCreateSettlementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createSettlementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSettlementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSettlement>>, TError,{data: BodyType<CreateSettlementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSettlement>>, TError,{data: BodyType<CreateSettlementInput>}, TContext> => {
+
+const mutationKey = ['createSettlement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSettlement>>, {data: BodyType<CreateSettlementInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSettlement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof createSettlement>>>
+    export type CreateSettlementMutationBody = BodyType<CreateSettlementInput>
+    export type CreateSettlementMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a settlement batch for an organization
+ */
+export const useCreateSettlement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSettlement>>, TError,{data: BodyType<CreateSettlementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSettlement>>,
+        TError,
+        {data: BodyType<CreateSettlementInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSettlementMutationOptions(options));
+    }
+
+export const getUpdateSettlementUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/finance/settlements/${id}`
+}
+
+/**
+ * @summary Advance a settlement through its lifecycle
+ */
+export const updateSettlement = async (id: number,
+    updateSettlementInput: UpdateSettlementInput, options?: RequestInit): Promise<Settlement> => {
+
+  return customFetch<Settlement>(getUpdateSettlementUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateSettlementInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateSettlementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSettlement>>, TError,{id: number;data: BodyType<UpdateSettlementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSettlement>>, TError,{id: number;data: BodyType<UpdateSettlementInput>}, TContext> => {
+
+const mutationKey = ['updateSettlement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSettlement>>, {id: number;data: BodyType<UpdateSettlementInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSettlement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof updateSettlement>>>
+    export type UpdateSettlementMutationBody = BodyType<UpdateSettlementInput>
+    export type UpdateSettlementMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Advance a settlement through its lifecycle
+ */
+export const useUpdateSettlement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSettlement>>, TError,{id: number;data: BodyType<UpdateSettlementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSettlement>>,
+        TError,
+        {id: number;data: BodyType<UpdateSettlementInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateSettlementMutationOptions(options));
+    }
+
+export const getListOrgBalancesUrl = () => {
+
+
+
+
+  return `/api/admin/finance/org-balances`
+}
+
+/**
+ * @summary List financial balances for all organizations
+ */
+export const listOrgBalances = async ( options?: RequestInit): Promise<OrgBalance[]> => {
+
+  return customFetch<OrgBalance[]>(getListOrgBalancesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrgBalancesQueryKey = () => {
+    return [
+    `/api/admin/finance/org-balances`
+    ] as const;
+    }
+
+
+export const getListOrgBalancesQueryOptions = <TData = Awaited<ReturnType<typeof listOrgBalances>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgBalances>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrgBalancesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgBalances>>> = ({ signal }) => listOrgBalances({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrgBalances>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrgBalancesQueryResult = NonNullable<Awaited<ReturnType<typeof listOrgBalances>>>
+export type ListOrgBalancesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List financial balances for all organizations
+ */
+
+export function useListOrgBalances<TData = Awaited<ReturnType<typeof listOrgBalances>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgBalances>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrgBalancesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCommissionConfigsUrl = () => {
+
+
+
+
+  return `/api/admin/finance/commission-config`
+}
+
+/**
+ * @summary Get all commission configurations
+ */
+export const listCommissionConfigs = async ( options?: RequestInit): Promise<CommissionConfig[]> => {
+
+  return customFetch<CommissionConfig[]>(getListCommissionConfigsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommissionConfigsQueryKey = () => {
+    return [
+    `/api/admin/finance/commission-config`
+    ] as const;
+    }
+
+
+export const getListCommissionConfigsQueryOptions = <TData = Awaited<ReturnType<typeof listCommissionConfigs>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommissionConfigs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommissionConfigsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCommissionConfigs>>> = ({ signal }) => listCommissionConfigs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCommissionConfigs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommissionConfigsQueryResult = NonNullable<Awaited<ReturnType<typeof listCommissionConfigs>>>
+export type ListCommissionConfigsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all commission configurations
+ */
+
+export function useListCommissionConfigs<TData = Awaited<ReturnType<typeof listCommissionConfigs>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCommissionConfigs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommissionConfigsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCommissionConfigUrl = (pillar: 'global' | 'event' | 'election' | 'campaign',) => {
+
+
+
+
+  return `/api/admin/finance/commission-config/${pillar}`
+}
+
+/**
+ * @summary Update commission rate for a pillar
+ */
+export const updateCommissionConfig = async (pillar: 'global' | 'event' | 'election' | 'campaign',
+    commissionConfigUpdate: CommissionConfigUpdate, options?: RequestInit): Promise<CommissionConfig> => {
+
+  return customFetch<CommissionConfig>(getUpdateCommissionConfigUrl(pillar),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(commissionConfigUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCommissionConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommissionConfig>>, TError,{pillar: 'global' | 'event' | 'election' | 'campaign';data: BodyType<CommissionConfigUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCommissionConfig>>, TError,{pillar: 'global' | 'event' | 'election' | 'campaign';data: BodyType<CommissionConfigUpdate>}, TContext> => {
+
+const mutationKey = ['updateCommissionConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCommissionConfig>>, {pillar: 'global' | 'event' | 'election' | 'campaign';data: BodyType<CommissionConfigUpdate>}> = (props) => {
+          const {pillar,data} = props ?? {};
+
+          return  updateCommissionConfig(pillar,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCommissionConfigMutationResult = NonNullable<Awaited<ReturnType<typeof updateCommissionConfig>>>
+    export type UpdateCommissionConfigMutationBody = BodyType<CommissionConfigUpdate>
+    export type UpdateCommissionConfigMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update commission rate for a pillar
+ */
+export const useUpdateCommissionConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCommissionConfig>>, TError,{pillar: 'global' | 'event' | 'election' | 'campaign';data: BodyType<CommissionConfigUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCommissionConfig>>,
+        TError,
+        {pillar: 'global' | 'event' | 'election' | 'campaign';data: BodyType<CommissionConfigUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCommissionConfigMutationOptions(options));
+    }
+
+export const getExportAdminTransactionsUrl = () => {
+
+
+
+
+  return `/api/admin/finance/export`
+}
+
+/**
+ * @summary Export all platform transactions as CSV
+ */
+export const exportAdminTransactions = async ( options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getExportAdminTransactionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportAdminTransactionsQueryKey = () => {
+    return [
+    `/api/admin/finance/export`
+    ] as const;
+    }
+
+
+export const getExportAdminTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof exportAdminTransactions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportAdminTransactionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportAdminTransactions>>> = ({ signal }) => exportAdminTransactions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportAdminTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportAdminTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof exportAdminTransactions>>>
+export type ExportAdminTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export all platform transactions as CSV
+ */
+
+export function useExportAdminTransactions<TData = Awaited<ReturnType<typeof exportAdminTransactions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportAdminTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportAdminTransactionsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

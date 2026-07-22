@@ -1,43 +1,48 @@
 ---
-name: Evenum Production Review
-description: Key decisions and lessons from the production readiness pass on Evenum
+name: Evenum production review
+description: Audit findings and fixes applied across multiple sessions; tracks what's resolved vs. what remains
 ---
 
-## Architecture
-- React+Vite frontend (`artifacts/evenum`) + Express API (`artifacts/api-server`) in pnpm monorepo
-- Drizzle ORM + PostgreSQL, session auth, Zod validation
-- Orval-generated React Query hooks from OpenAPI spec in `lib/api-client-react/src/generated/api.ts`
+## Resolved in first session
+- Stubs replaced with real data (org summary, finance section, settings mutation)
+- OG meta tags, ShareButton, BrandedHero, AccentColorPicker added
+- Tab URL persistence added
+- Upload UX improved
+- Settings save mutation wired
 
-## Key Decisions Made
+## Financial infrastructure (second session)
+Backend commission engine, financial_transactions, settlements, commission_configs — fully implemented.
+Admin finance dashboard (FinanceAdminSection) and Org finance section (FinanceSection) — fully built.
 
-### Design Subagent + Main Agent Split
-When both agents work on the same file, the design subagent adds duplicate declarations (schemas, form instances, handler functions, dialogs). Always grep for duplicates after a design subagent run on any file it touched.
+## Field name bugs & fixes (third session)
+The generated API client keeps snake_case field names (total_platform_revenue, not totalPlatformRevenue).
+AdminDashboard.tsx had camelCase field accesses that were all wrong. Fixed:
+- stats.total_platform_revenue, total_commission_collected, revenue_today, revenue_this_week, revenue_this_month, total_transactions
+- stats.pendingSettlements.total_amount / .count (nested object, not flat fields)
+- ob.org_id, ob.org_name, ob.total_earnings, ob.pending_balance, ob.released_balance
 
-**Why:** The design subagent reads the file as it was at dispatch time, applies its changes, and the main agent's concurrent edits create collisions.
+**Why:** orval codegen preserves snake_case when schema defines it that way. Never assume camelCase in the frontend for these fields.
 
-**How to apply:** After any design subagent run that touches existing files (not just new ones), grep for duplicate `const` declarations in modified files: `grep -n "const candidateForm\|const handleCreate" file.tsx`.
+## OrgBalance released_balance gap (third session)
+Backend org-balances query was missing released_balance. Added:
+`SUM(CASE WHEN settlement_status = 'completed' THEN org_earnings ELSE 0 END) AS released_balance`
 
-### Terminology
-"Engines" was the internal name for the three product modules (voting, events, campaigns). It was removed from all user-facing copy. The i18n key `sidebar.engines` now maps to "Activities" (EN) / "Outils" (FR). Dashboard copy changed to "workspaces and activities".
+## Org Analytics endpoint (third session)
+Added GET /api/organizations/:orgId/analytics to financial.ts router.
+Returns { elections[], events[], campaigns[] } with per-pillar performance data.
+- Elections: totalVotes, paidVotes, freeVotes, revenue
+- Events: ticketsSold, capacity, capacityUtilization, checkedIn, checkInRate, revenue
+- Campaigns: submissionsCount, paidContributors, avgContribution, amountRaised, goalAmount, goalCompletion
 
-### Trust Proxy Fix
-Added `app.set("trust proxy", 1)` to `artifacts/api-server/src/app.ts` before the rate limiter middleware to fix `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` errors in production-proxied environments.
+Added OrgAnalytics schema to openapi.yaml, ran codegen → useGetOrgAnalytics hook generated.
 
-### Search
-`useSearch` hook exists in the generated client. Call pattern: `useSearch({ q: string }, { query: { enabled: !!q } })`. The home page search uses a 350ms debounce via `useCallback`+`setTimeout`.
+## OrganizationWorkspace Analytics tab (third session)
+Added "Analytics" tab with AnalyticsSection component.
+Shows 3 summary KPIs + 3 per-pillar tables with performance metrics.
+Tab slug: 'analytics' — included in the URL persistence allowlist.
 
-### Candidate Management
-Full CRUD for candidates is wired in `ElectionDetail.tsx`. Hooks: `useCreateCandidate`, `useDeleteCandidate`, `getListCandidatesQueryKey`. Dialog opens per-position via `openCandidateDialog(positionId)`. Delete uses AlertDialog for confirmation.
-
-### Submission Data Viewer
-`CampaignDetail.tsx` now has a `viewingSubmission` state that opens a Dialog showing all form field key-value pairs from `submission.data` (JSON object).
-
-### Settings Page
-Created at `artifacts/evenum/src/pages/Settings.tsx` with tabs: Profile, Security, Notifications, Language. Routed at `/settings`. Linked from Navbar dropdown and AppSidebar.
-
-### Image Upload Component
-Created `artifacts/evenum/src/components/ui/image-upload.tsx` — converts File to base64 data URL (no object storage needed). Used in `CreateOrganization.tsx`.
-
-## Files That Were Collision-Prone
-- `ElectionDetail.tsx` — had 3 duplicate declarations after design subagent: candidateSchema, candidateForm, handleCreateCandidate, and a second Dialog block. All removed.
-- `Home.tsx` — design subagent left unclosed `<div className="flex-1">` and missing `)}` for the conditional section. Both fixed.
+## Admin dashboard improvements (third session)
+- Added "Revenue This Month" KPI card (6th card, grid changed to 6 cols)
+- Added "Export All Transactions" button → opens /api/admin/finance/export
+- Removed invalid `limit` param from useListAdminSettlements (not in ListAdminSettlementsParams type)
+- Added DialogDescription import (was missing, causing TS error)

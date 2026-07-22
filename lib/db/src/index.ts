@@ -10,7 +10,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,                        // Replit internal Postgres has a low connection limit
+  idleTimeoutMillis: 30_000,     // release idle connections after 30s
+  connectionTimeoutMillis: 8_000, // fail fast if pool is exhausted (vs. waiting forever)
+});
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";
