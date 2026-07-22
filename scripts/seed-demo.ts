@@ -274,6 +274,9 @@ async function main() {
     eligibilityMode: "open",
     startsAt: new Date("2026-07-10T08:00:00Z"),
     endsAt: new Date("2026-07-25T23:59:59Z"),
+    requiresPayment: true,
+    paymentAmount: "200.00",
+    currency: "XAF",
   }).where(eq(electionsTable.id, 1));
 
   // Clean up existing votes/positions for election 1 to rebuild properly

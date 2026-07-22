@@ -84,7 +84,7 @@ export default function ElectionVote() {
   const [inviteCode, setInviteCode] = useState('');
   const [voterEmail, setVoterEmail] = useState('');
   const [voteQuantity, setVoteQuantity] = useState(1);
-  const [paymentAmountInput, setPaymentAmountInput] = useState('5000');
+  const [paymentAmountInput, setPaymentAmountInput] = useState('');
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
 
   useEffect(() => {
@@ -269,8 +269,9 @@ export default function ElectionVote() {
   const feeCur = 'XAF';
   const feeSym = 'XAF ';
   const pricePerVote = Number(election.paymentAmount || 0);
+  const amountInput = paymentAmountInput === '' ? pricePerVote : Number(paymentAmountInput);
   const amountToPay = paymentMode === 'amount_first'
-    ? Math.max(0, Number(paymentAmountInput) || 0)
+    ? Math.max(0, amountInput || 0)
     : pricePerVote * voteQuantity;
   const computedQuantity = paymentMode === 'amount_first' && pricePerVote > 0
     ? Math.floor(amountToPay / pricePerVote)
