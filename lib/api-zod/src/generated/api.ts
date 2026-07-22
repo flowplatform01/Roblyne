@@ -477,7 +477,7 @@ export const createElectionBodyVisibilityDefault = `public`;
 export const createElectionBodyRequiresAuthDefault = false;
 export const createElectionBodyEligibilityModeDefault = `open`;
 export const createElectionBodyRequiresPaymentDefault = false;
-export const createElectionBodyCurrencyDefault = `USD`;
+export const createElectionBodyCurrencyDefault = `XAF`;
 
 export const CreateElectionBody = zod.object({
   "orgId": zod.number(),
@@ -494,7 +494,7 @@ export const CreateElectionBody = zod.object({
   "endsAt": zod.coerce.date().optional(),
   "requiresPayment": zod.boolean().default(createElectionBodyRequiresPaymentDefault).describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().optional().describe('Fee amount required to participate'),
-  "currency": zod.string().default(createElectionBodyCurrencyDefault).describe('ISO 4217 currency code e.g. USD, EUR, GBP')
+  "currency": zod.string().default(createElectionBodyCurrencyDefault).describe('Platform-approved ISO 4217 currency code')
 })
 
 export const CreateElectionResponse = zod.object({
@@ -585,7 +585,7 @@ export const UpdateElectionBody = zod.object({
   "endsAt": zod.coerce.date().optional(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().optional().describe('Fee amount required to participate'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP')
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code')
 })
 
 export const UpdateElectionResponse = zod.object({
@@ -700,7 +700,8 @@ export const GetPositionResponse = zod.object({
   "voteCount": zod.number().nullish(),
   "requiresPayment": zod.boolean().nullish(),
   "paymentAmount": zod.string().nullish(),
-  "currency": zod.string().nullish()
+  "currency": zod.string().nullish(),
+  "quantity": zod.number().optional().describe('Number of votes purchased with this ballot')
 }))
 })
 
@@ -769,7 +770,8 @@ export const ListCandidatesResponseItem = zod.object({
   "voteCount": zod.number().nullish(),
   "requiresPayment": zod.boolean().nullish(),
   "paymentAmount": zod.string().nullish(),
-  "currency": zod.string().nullish()
+  "currency": zod.string().nullish(),
+  "quantity": zod.number().optional().describe('Number of votes purchased with this ballot')
 })
 export const ListCandidatesResponse = zod.array(ListCandidatesResponseItem)
 
@@ -807,7 +809,8 @@ export const CreateCandidateResponse = zod.object({
   "voteCount": zod.number().nullish(),
   "requiresPayment": zod.boolean().nullish(),
   "paymentAmount": zod.string().nullish(),
-  "currency": zod.string().nullish()
+  "currency": zod.string().nullish(),
+  "quantity": zod.number().optional().describe('Number of votes purchased with this ballot')
 })
 
 
@@ -831,7 +834,8 @@ export const GetCandidateResponse = zod.object({
   "voteCount": zod.number().nullish(),
   "requiresPayment": zod.boolean().nullish(),
   "paymentAmount": zod.string().nullish(),
-  "currency": zod.string().nullish()
+  "currency": zod.string().nullish(),
+  "quantity": zod.number().optional().describe('Number of votes purchased with this ballot')
 })
 
 
@@ -868,7 +872,8 @@ export const UpdateCandidateResponse = zod.object({
   "voteCount": zod.number().nullish(),
   "requiresPayment": zod.boolean().nullish(),
   "paymentAmount": zod.string().nullish(),
-  "currency": zod.string().nullish()
+  "currency": zod.string().nullish(),
+  "quantity": zod.number().optional().describe('Number of votes purchased with this ballot')
 })
 
 
@@ -892,9 +897,14 @@ export const SubmitVoteParams = zod.object({
   "electionId": zod.coerce.number()
 })
 
+export const submitVoteBodyVoteQuantityDefault = 1;
+
+
+
 export const SubmitVoteBody = zod.object({
   "voterEmail": zod.string().optional().describe('Required when the election uses allowlist eligibility and the voter is not authenticated'),
   "inviteCode": zod.string().optional().describe('Required when the election visibility is invite_only'),
+  "voteQuantity": zod.number().min(1).default(submitVoteBodyVoteQuantityDefault).describe('Number of voting units purchased'),
   "selections": zod.array(zod.object({
   "positionId": zod.number(),
   "candidateIds": zod.array(zod.number())

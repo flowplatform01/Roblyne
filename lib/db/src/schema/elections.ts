@@ -60,6 +60,7 @@ export const votesTable = pgTable("votes", {
   id: serial("id").primaryKey(),
   electionId: integer("election_id").notNull().references(() => electionsTable.id, { onDelete: "cascade" }),
   voterIdentifier: text("voter_identifier").notNull(), // userId or sessionId
+  quantity: integer("quantity").notNull().default(1),
   votedAt: timestamp("voted_at").notNull().defaultNow(),
 }, (table) => ({
   // Hard DB-level guarantee against double-voting, not just an application-level check.
@@ -71,6 +72,14 @@ export const voteSelectionsTable = pgTable("vote_selections", {
   voteId: integer("vote_id").notNull().references(() => votesTable.id, { onDelete: "cascade" }),
   positionId: integer("position_id").notNull().references(() => positionsTable.id),
   candidateId: integer("candidate_id").notNull().references(() => candidatesTable.id),
+});
+
+export const platformSettingsTable = pgTable("platform_settings", {
+  id: serial("id").primaryKey(),
+  paymentMode: text("payment_mode").notNull().default("quantity_first"), // quantity_first | amount_first
+  defaultCurrency: text("default_currency").notNull().default("XAF"),
+  supportedCurrencies: text("supported_currencies").notNull().default("XAF"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const insertElectionSchema = createInsertSchema(electionsTable).omit({ id: true, createdAt: true });

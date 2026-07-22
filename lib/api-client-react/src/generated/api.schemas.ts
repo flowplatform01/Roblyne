@@ -420,6 +420,8 @@ export interface Candidate {
   paymentAmount?: string | null;
   /** @nullable */
   currency?: string | null;
+  /** Number of votes purchased with this ballot */
+  quantity?: number;
 }
 
 export interface PositionWithCandidates {
@@ -477,7 +479,7 @@ export interface ElectionInput {
   requiresPayment?: boolean;
   /** Fee amount required to participate */
   paymentAmount?: number;
-  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  /** Platform-approved ISO 4217 currency code */
   currency?: string;
 }
 
@@ -534,7 +536,7 @@ export interface ElectionUpdate {
   requiresPayment?: boolean;
   /** Fee amount required to participate */
   paymentAmount?: number;
-  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  /** Platform-approved ISO 4217 currency code */
   currency?: string;
 }
 
@@ -654,6 +656,11 @@ export interface VoteInput {
   voterEmail?: string;
   /** Required when the election visibility is invite_only */
   inviteCode?: string;
+  /**
+     * Number of voting units purchased
+     * @minimum 1
+     */
+  voteQuantity?: number;
   selections: VoteInputSelectionsItem[];
 }
 

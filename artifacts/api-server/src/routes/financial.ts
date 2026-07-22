@@ -47,7 +47,7 @@ router.get("/organizations/:orgId/finance",
   requireAuth,
   requireOrgRole(["owner", "admin"]),
   async (req, res): Promise<void> => {
-    const orgId = parseInt(req.params.orgId, 10);
+    const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
     const { summary, byPillar } = await getOrgFinanceSummary(orgId);
@@ -86,7 +86,7 @@ router.get("/organizations/:orgId/finance/transactions",
   requireAuth,
   requireOrgRole(["owner", "admin"]),
   async (req, res): Promise<void> => {
-    const orgId = parseInt(req.params.orgId, 10);
+    const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
     const limit = Math.min(parseInt(String(req.query.limit ?? "50")), 200);
@@ -123,7 +123,7 @@ router.get("/organizations/:orgId/finance/settlements",
   requireAuth,
   requireOrgRole(["owner", "admin"]),
   async (req, res): Promise<void> => {
-    const orgId = parseInt(req.params.orgId, 10);
+    const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
     const settlements = await db
@@ -144,7 +144,7 @@ router.get("/organizations/:orgId/finance/export",
   requireAuth,
   requireOrgRole(["owner", "admin"]),
   async (req, res): Promise<void> => {
-    const orgId = parseInt(req.params.orgId, 10);
+    const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
     const txns = await db
@@ -494,7 +494,7 @@ router.get("/organizations/:orgId/analytics",
   requireAuth,
   requireOrgRole(["owner", "admin"]),
   async (req, res): Promise<void> => {
-    const orgId = parseInt(req.params.orgId, 10);
+    const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
     // ── Elections analytics ──────────────────────────────────────────────────

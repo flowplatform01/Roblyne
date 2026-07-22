@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, platformSettingsTable } from "@workspace/db";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { sql, eq } from "drizzle-orm";
 
@@ -34,8 +34,38 @@ router.post("/admin/bootstrap", async (req, res): Promise<void> => {
   res.json({ message: "You are now the platform administrator", user });
 });
 
+// Payment presentation is public because participants need it before payment.
+router.get("/admin/platform-settings/public", async (_req, res): Promise<void> => {
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  if (settings) {
+    res.json(settings);
+    return;
+  }
+  const [created] = await db.insert(platformSettingsTable).values({}).returning();
+  res.json(created);
+});
+
 // All subsequent routes require platform admin
 router.use(requirePlatformAdmin);
+
+router.get("/admin/platform-settings", async (_req, res): Promise<void> => {
+  const [settings] = await db.select().from(platformSettingsTable).limit(1);
+  if (settings) {
+    res.json(settings);
+    return;
+  }
+  const [created] = await db.insert(platformSettingsTable).values({}).returning();
+  res.json(created);
+});
+
+router.patch("/admin/platform-settings", async (req, res): Promise<void> => {
+  const paymentMode = req.body?.paymentMode === "amount_first" ? "amount_first" : "quantity_first";
+  const [existing] = await db.select().from(platformSettingsTable).limit(1);
+  const [settings] = existing
+    ? await db.update(platformSettingsTable).set({ paymentMode, defaultCurrency: "XAF", supportedCurrencies: "XAF", updatedAt: new Date() }).where(eq(platformSettingsTable.id, existing.id)).returning()
+    : await db.insert(platformSettingsTable).values({ paymentMode, defaultCurrency: "XAF", supportedCurrencies: "XAF" }).returning();
+  res.json(settings);
+});
 
 // GET /api/admin/stats — platform overview numbers
 router.get("/admin/stats", async (_req, res): Promise<void> => {

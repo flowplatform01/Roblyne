@@ -2143,8 +2143,8 @@ components:
           description: Fee amount required to participate
         currency:
           type: string
-          default: USD
-          description: ISO 4217 currency code e.g. USD, EUR, GBP
+          default: XAF
+          description: Platform-approved ISO 4217 currency code
 
     ElectionUpdate:
       type: object
@@ -2188,7 +2188,7 @@ components:
           description: Fee amount required to participate
         currency:
           type: string
-          description: ISO 4217 currency code e.g. USD, EUR, GBP
+          description: Platform-approved ISO 4217 currency code
 
     EligibleVoter:
       type: object
@@ -2324,6 +2324,9 @@ components:
           type: ["string", "null"]
         currency:
           type: ["string", "null"]
+        quantity:
+          type: integer
+          description: Number of votes purchased with this ballot
 
     CandidateInput:
       type: object
@@ -2376,6 +2379,11 @@ components:
         inviteCode:
           type: string
           description: Required when the election visibility is invite_only
+        voteQuantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of voting units purchased
         selections:
           type: array
           items:

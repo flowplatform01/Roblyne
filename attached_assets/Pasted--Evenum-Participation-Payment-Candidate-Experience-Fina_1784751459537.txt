@@ -1,0 +1,375 @@
+# Evenum — Participation Payment, Candidate Experience & Financial UX Refinement
+
+## Context
+
+This refinement continues improving the production platform.
+
+Do not rebuild existing systems.
+
+Review the current implementation and refine weak product decisions, incomplete payment experiences, and rigid workflows.
+
+The objective is to make participation, monetization, and financial interactions feel natural, fair, configurable, and production-ready.
+
+---
+
+# Mission
+
+Participation should feel effortless.
+
+Payment should feel transparent.
+
+Candidates should become first-class public entities.
+
+Organizations should have control over financial behaviour without compromising fairness.
+
+All refinements must integrate with the existing Commission Engine and financial architecture.
+
+---
+
+# 1. Remove Internal Infrastructure References
+
+The public interface must never expose internal platform infrastructure.
+
+Review all payment experiences.
+
+Remove wording that references internal services such as payment gateways.
+
+Examples include labels such as:
+
+* "Pay with Flow Pay"
+
+Replace them with user-focused language such as:
+
+* Pay
+* Continue to Payment
+* Complete Payment
+* Confirm Payment
+
+Internal payment providers belong behind the platform architecture, not in the customer experience.
+
+---
+
+# 2. Configurable Participant Visibility
+
+Organizations should decide whether participant information is publicly visible.
+
+Support configurable options such as:
+
+* Show participant count
+* Hide participant count
+* Show contributor identities
+* Hide contributor identities
+* Show supporter list
+* Keep participation private
+
+Privacy should be configurable at the organization or experience level depending on the pillar.
+
+The platform should never assume participant visibility by default.
+
+---
+
+# 3. Fair Voting Payment Model
+
+Review the paid voting architecture.
+
+Payment configuration must remain fair.
+
+Supported pricing levels:
+
+* Entire election
+* Individual position
+
+Do **not** support pricing per candidate.
+
+Candidates competing for the same position must always participate under identical financial conditions.
+
+This preserves fairness and avoids introducing economic bias into elections.
+
+---
+
+# 4. Candidate Profile as Participation Entry Point
+
+Every candidate should have a dedicated public profile.
+
+The profile becomes more than a biography.
+
+It becomes the primary participation experience.
+
+The page should present:
+
+* Candidate identity
+* Position
+* Organization
+* Manifesto
+* Biography
+* Campaign media
+* Election information
+* Share functionality
+* Voting actions
+
+If paid voting is enabled, the page should allow participation directly without requiring unnecessary navigation back through the election wizard, this is very important .
+
+---
+
+# 5. Flexible Vote Quantity Experience
+
+Current implementation assumes one payment for one voting action.
+
+Improve this workflow.
+
+When paid voting is enabled:
+
+Allow participants to specify how many votes they wish to purchase.
+
+Examples:
+
+5 votes
+
+10 votes
+
+25 votes
+
+50 votes
+
+100 votes
+
+Or another permitted quantity according to the organization's configuration.
+
+The platform should immediately calculate:
+
+* Price per vote
+* Selected quantity
+* Total amount payable
+
+The relationship between payment and voting entitlement should always be clear before payment begins.
+
+---
+
+# 6. Intelligent Payment Summary
+
+Before payment confirmation, clearly present:
+
+Selected candidate
+
+Selected position
+
+Vote quantity
+
+Price per vote
+
+Total votes
+
+Total payable amount
+
+Applicable currency
+
+The summary should eliminate ambiguity and build trust.
+
+---
+
+# 7. Currency Management
+
+Do not assume a single currency.
+
+Support organization-configured currencies.
+
+The selected currency must propagate consistently throughout:
+
+Payment screens
+
+Receipts
+
+Transaction history
+
+Financial reports
+
+Organization dashboards
+
+Participant confirmations
+
+The platform should display the appropriate currency for each organization rather than using a universal default.
+
+---
+
+# 8. Shareable Candidate Experiences
+
+Candidate pages should support professional sharing.
+
+Shared links should open directly to the intended candidate.
+
+If voting is available, participants should be guided naturally into the participation flow.
+
+Sharing should improve discoverability while preserving a smooth experience.
+
+---
+
+# 9. UX Refinement
+
+Review every payment interaction.
+
+Reduce unnecessary steps.
+
+Avoid repeated navigation.
+
+Provide immediate feedback.
+
+Keep payment progression obvious.
+
+Allow users to understand what they are purchasing before committing.
+
+The experience should feel deliberate, transparent, and effortless.
+
+---
+
+# 10. Platform Consistency
+
+Apply these refinements consistently wherever financial participation exists.
+
+Voting
+
+Events
+
+Campaigns
+
+Future participation modules
+
+Every financial experience should follow the same product philosophy while respecting the unique behaviour of each pillar.
+
+---
+
+# Final Objective
+
+After this refinement:
+
+* Public interfaces should no longer expose internal payment infrastructure.
+* Organizations should control participant visibility according to their needs.
+* Paid voting should support fair pricing at the election or position level, never per candidate.
+* Every candidate should have a rich, shareable public profile that also serves as a participation entry point.
+* Participants should be able to purchase multiple votes through a clear, quantity-based payment flow rather than repeating small transactions.
+* Currency should respect each organization's configuration and be presented consistently across the platform.
+* Payment, participation, and candidate discovery should feel seamless, transparent, and production-ready.
+
+The implementation should strengthen Evenum's identity as a professional participation platform where fairness, clarity, configurability, and user experience  are treated as core product principles rather than optional enhancements.
+
+---
+
+# 11. Platform-Controlled Payment Experience & Currency Governance
+
+## Payment Experience Configuration
+
+The voting payment experience should not be hardcoded.
+
+Instead, introduce a platform-level configuration managed exclusively by the Platform Administrator.
+
+This configuration determines how participants interact with paid voting across the platform.
+
+Support two presentation modes.
+
+### Amount-First Experience
+
+Participants enter the amount they wish to pay.
+
+The platform immediately calculates and displays:
+
+* Number of votes received
+* Price per vote
+* Total voting entitlement
+* Confirmation before payment
+
+Example:
+
+User enters **5,000 XAF**
+
+↓
+
+Platform automatically displays:
+
+"You will receive 50 votes."
+
+↓
+
+Proceed to payment.
+
+This experience feels natural for participants who already know how much they wish to contribute.
+
+---
+
+### Quantity-First Experience
+
+Participants choose how many votes they want.
+
+The platform immediately calculates:
+
+* Price per vote
+* Total payable amount
+
+Example:
+
+User selects:
+
+50 votes
+
+↓
+
+Platform displays:
+
+"Total payment: 5,000 XAF"
+
+↓
+
+Proceed to payment.
+
+This experience is more appropriate where voting is treated as purchasing voting units.
+
+---
+
+### Platform Governance
+
+The Platform Administrator should determine which payment experience is active.
+
+Organizations should not configure this behaviour individually.
+
+The goal is to provide a consistent participation experience across the entire Evenum platform while still allowing the platform operator to choose the interaction model that best suits its market.
+
+This configuration should remain extensible for future participation models without requiring changes to the voting architecture.
+
+---
+
+## Currency Governance
+
+Currency management should also be controlled at the platform level.
+
+Organizations should not independently define currencies.
+
+Instead, the Platform Administrator manages:
+
+* Supported currencies
+* Default platform currency
+* Currency availability
+* Currency activation and deactivation
+* Future payment provider compatibility
+
+Organizations may only use currencies that have been enabled by the platform.
+
+For the current deployment, configure **XAF** as the default operational currency and ensure all payment interfaces, financial calculations, receipts, summaries, reports, dashboards, and participant experiences consistently display XAF.
+
+Design the architecture so that additional currencies can be enabled later by the Platform Administrator without requiring changes to business logic.
+
+---
+
+## Design Principle
+
+Payment should always feel simple and trustworthy.
+
+Participants should never need to calculate conversions or estimate outcomes themselves.
+
+Regardless of the configured payment mode, the interface should immediately communicate:
+
+* The amount being paid
+* The number of votes received
+* The applicable currency
+* The total participation entitlement
+* The final payment confirmation
+
+The experience should eliminate ambiguity and create confidence before payment is completed.
+

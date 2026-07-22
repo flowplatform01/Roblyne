@@ -37,6 +37,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function useAdminStats() {
@@ -316,6 +317,10 @@ export default function AdminDashboard() {
               <DollarSign className="h-3.5 w-3.5" />
               Finance
             </TabsTrigger>
+            <TabsTrigger value="governance" className="gap-2">
+              <Settings className="h-3.5 w-3.5" />
+              Participation
+            </TabsTrigger>
           </TabsList>
 
           {/* Organizations */}
@@ -565,6 +570,9 @@ export default function AdminDashboard() {
           <TabsContent value="finance" className="mt-4">
             <FinanceAdminSection />
           </TabsContent>
+          <TabsContent value="governance" className="mt-4">
+            <ParticipationGovernance />
+          </TabsContent>
         </Tabs>
 
         {/* Platform health notice */}
@@ -577,6 +585,68 @@ export default function AdminDashboard() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function ParticipationGovernance() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['admin', 'platform-settings'],
+    queryFn: () => customFetch<any>(`${API_BASE}/api/admin/platform-settings`),
+  });
+  const [mode, setMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
+  React.useEffect(() => {
+    if (settings?.paymentMode === 'amount_first' || settings?.paymentMode === 'quantity_first') {
+      setMode(settings.paymentMode);
+    }
+  }, [settings]);
+  const save = useMutation({
+    mutationFn: () => customFetch(`${API_BASE}/api/admin/platform-settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMode: mode }),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'platform-settings'] });
+      toast({ title: 'Participation settings saved', description: 'All paid elections now use this payment experience.' });
+    },
+    onError: (e: any) => toast({ variant: 'destructive', title: 'Save failed', description: e?.data?.error || 'Could not save settings.' }),
+  });
+
+  return (
+    <Card className="border-border/50 shadow-sm max-w-3xl">
+      <CardHeader>
+        <CardTitle className="font-serif">Participation governance</CardTitle>
+        <CardDescription>Control the payment experience consistently across every paid election. Organizations cannot override this setting.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="rounded-sm border border-primary/20 bg-primary/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Operational currency</p>
+          <p className="font-serif text-2xl font-bold">XAF</p>
+          <p className="text-sm text-muted-foreground mt-1">XAF is the active platform currency for payment screens, summaries, receipts, and financial reporting.</p>
+        </div>
+        <div className="space-y-3">
+          <Label className="text-base font-medium">Paid voting experience</Label>
+          <Select value={mode} onValueChange={(value: 'quantity_first' | 'amount_first') => setMode(value)}>
+            <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="quantity_first">Quantity first — participant chooses votes</SelectItem>
+              <SelectItem value="amount_first">Amount first — participant chooses contribution</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">
+            {mode === 'quantity_first'
+              ? 'Participants choose a vote quantity and immediately see the XAF total.'
+              : 'Participants enter an XAF amount and immediately see the voting entitlement.'}
+          </p>
+        </div>
+        <Button onClick={() => save.mutate()} disabled={isLoading || save.isPending}>
+          {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save governance settings
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

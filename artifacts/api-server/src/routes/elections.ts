@@ -62,7 +62,7 @@ router.get("/elections", async (req, res): Promise<void> => {
   const elections = await Promise.all(rows.map(async ({ election, orgName, orgLogoUrl }) => {
     const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, election.id));
     const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, election.id));
-    const [{ voteCount }] = await db.select({ voteCount: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, election.id));
+    const [{ voteCount }] = await db.select({ voteCount: sql<number>`COALESCE(SUM(quantity), 0)::int` }).from(votesTable).where(eq(votesTable.electionId, election.id));
     return {
       ...election,
       organizationName: orgName ?? null,
@@ -108,7 +108,7 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
 
   const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, row.election.id));
   const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, row.election.id));
-  const [{ voteCount }] = await db.select({ voteCount: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, row.election.id));
+  const [{ voteCount }] = await db.select({ voteCount: sql<number>`COALESCE(SUM(quantity), 0)::int` }).from(votesTable).where(eq(votesTable.electionId, row.election.id));
 
   res.json({ ...row.election, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, positionsCount: posCount ?? 0, candidatesCount: candCount ?? 0, totalVotes: voteCount ?? 0 });
 });
@@ -120,7 +120,11 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateElectionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [election] = await db.update(electionsTable).set(bodyParsed.data).where(eq(electionsTable.id, paramParsed.data.electionId)).returning();
+  const updateData = {
+    ...bodyParsed.data,
+    paymentAmount: bodyParsed.data.paymentAmount === undefined ? undefined : (bodyParsed.data.paymentAmount === null ? null : String(bodyParsed.data.paymentAmount)),
+  };
+  const [election] = await db.update(electionsTable).set(updateData).where(eq(electionsTable.id, paramParsed.data.electionId)).returning();
   if (!election) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
@@ -175,7 +179,10 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
     .where(eq(candidatesTable.positionId, positionId));
 
   const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, candidate.id));
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+      .from(voteSelectionsTable)
+      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
+      .where(eq(voteSelectionsTable.candidateId, candidate.id));
     return { ...candidate, positionTitle: positionTitle ?? null, voteCount: count ?? 0 };
   }));
 
@@ -222,7 +229,10 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
     .where(and(...conditions));
 
   const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, candidate.id));
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+      .from(voteSelectionsTable)
+      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
+      .where(eq(voteSelectionsTable.candidateId, candidate.id));
     return { ...candidate, positionTitle: positionTitle ?? null, voteCount: count ?? 0 };
   }));
 
@@ -252,7 +262,10 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
     .from(candidatesTable).leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
     .where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId))).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, row.candidate.id));
+  const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+    .from(voteSelectionsTable)
+    .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
+    .where(eq(voteSelectionsTable.candidateId, row.candidate.id));
   res.json({ ...row.candidate, positionTitle: row.positionTitle ?? null, voteCount: count ?? 0 });
 });
 
@@ -287,6 +300,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
   const electionId = paramParsed.data.electionId;
+  const voteQuantity = bodyParsed.data.voteQuantity ?? 1;
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Election not found" }); return; }
 
@@ -331,13 +345,13 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   const existing = await db.select().from(votesTable)
     .where(and(eq(votesTable.electionId, electionId), eq(votesTable.voterIdentifier, voterIdentifier))).limit(1);
   if (existing.length > 0) {
-    res.status(403).json({ error: "You have already cast a ballot in this election" });
+    res.status(403).json({ error: "You have already participated in this election" });
     return;
   }
 
   try {
     await db.transaction(async (tx) => {
-      const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier }).returning();
+      const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier, quantity: voteQuantity }).returning();
       for (const selection of bodyParsed.data.selections) {
         for (const candidateId of selection.candidateIds) {
           await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
@@ -410,7 +424,10 @@ router.get("/elections/:electionId/export", requireAuth, requireResourceOrgRole(
   for (const pos of positions) {
     const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
     for (const c of candidates) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, c.id));
+      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+        .from(voteSelectionsTable)
+        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
+        .where(eq(voteSelectionsTable.candidateId, c.id));
       rows.push([pos.title, c.name, String(count ?? 0)]);
     }
   }
@@ -435,14 +452,17 @@ router.get("/elections/:electionId/results", async (req, res): Promise<void> => 
     res.status(404).json({ error: "Not found" }); return;
   }
 
-  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, electionId));
+  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`COALESCE(SUM(quantity), 0)::int` }).from(votesTable).where(eq(votesTable.electionId, electionId));
   const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
 
   const positionResults = await Promise.all(positions.map(async (pos) => {
     const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
     const total = totalVotes ?? 0;
     const candidateResults = await Promise.all(candidates.map(async (c) => {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, c.id));
+      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` })
+        .from(voteSelectionsTable)
+        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
+        .where(eq(voteSelectionsTable.candidateId, c.id));
       return {
         candidateId: c.id,
         name: c.name,
@@ -465,7 +485,7 @@ router.get("/elections/:electionId/analytics", requireAuth, requireResourceOrgRo
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const electionId = parsed.data.electionId;
 
-  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, electionId));
+  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`COALESCE(SUM(quantity), 0)::int` }).from(votesTable).where(eq(votesTable.electionId, electionId));
 
   const votesByHour = await db.execute(
     sql`SELECT date_trunc('hour', voted_at) as hour, count(*)::int as count FROM votes WHERE election_id = ${electionId} GROUP BY 1 ORDER BY 1`
@@ -473,7 +493,8 @@ router.get("/elections/:electionId/analytics", requireAuth, requireResourceOrgRo
 
   const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
   const topPositions = await Promise.all(positions.map(async (pos) => {
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable)
+    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(v.quantity), 0)::int` }).from(voteSelectionsTable)
+      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
       .where(eq(voteSelectionsTable.positionId, pos.id));
     return { positionId: pos.id, title: pos.title, voteCount: count ?? 0 };
   }));

@@ -26,17 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, Vote, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 
-const CURRENCIES = [
-  { value: "USD", label: "USD — US Dollar" },
-  { value: "EUR", label: "EUR — Euro" },
-  { value: "GBP", label: "GBP — British Pound" },
-  { value: "CAD", label: "CAD — Canadian Dollar" },
-  { value: "AUD", label: "AUD — Australian Dollar" },
-  { value: "NGN", label: "NGN — Nigerian Naira" },
-  { value: "KES", label: "KES — Kenyan Shilling" },
-  { value: "ZAR", label: "ZAR — South African Rand" },
-  { value: "GHS", label: "GHS — Ghanaian Cedi" },
-];
+const CURRENCIES = [{ value: "XAF", label: "XAF — Central African CFA franc" }];
 
 const electionSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
@@ -49,7 +39,7 @@ const electionSchema = z.object({
   endsAt: z.string().optional().or(z.literal("")),
   requiresPayment: z.boolean().default(false),
   paymentAmount: z.string().optional().or(z.literal("")),
-  currency: z.string().default("USD"),
+  currency: z.string().default("XAF"),
 });
 
 export default function CreateElection() {
@@ -75,7 +65,7 @@ export default function CreateElection() {
       endsAt: "",
       requiresPayment: false,
       paymentAmount: "",
-      currency: "USD",
+      currency: "XAF",
     },
   });
 
@@ -93,7 +83,7 @@ export default function CreateElection() {
           endsAt: values.endsAt ? new Date(values.endsAt).toISOString() : undefined,
           requiresPayment: values.requiresPayment,
           paymentAmount: values.requiresPayment && values.paymentAmount ? parseFloat(values.paymentAmount) : undefined,
-          currency: values.currency || "USD",
+          currency: "XAF",
         } 
       },
       {

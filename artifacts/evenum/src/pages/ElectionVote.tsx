@@ -83,6 +83,20 @@ export default function ElectionVote() {
   const [selections, setSelections] = useState<Record<number, number[]>>({});
   const [inviteCode, setInviteCode] = useState('');
   const [voterEmail, setVoterEmail] = useState('');
+  const [voteQuantity, setVoteQuantity] = useState(1);
+  const [paymentAmountInput, setPaymentAmountInput] = useState('5000');
+  const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
+
+  useEffect(() => {
+    fetch('/api/admin/platform-settings/public')
+      .then(res => res.ok ? res.json() : null)
+      .then(settings => {
+        if (settings?.paymentMode === 'amount_first' || settings?.paymentMode === 'quantity_first') {
+          setPaymentMode(settings.paymentMode);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   // When coming from a candidate profile, jump straight to that position and pre-select the candidate
   useEffect(() => {
@@ -137,10 +151,11 @@ export default function ElectionVote() {
       {
         electionId,
         data: {
-          selections: Object.entries(selections).map(([positionId, candidateIds]) => ({
+           selections: Object.entries(selections).map(([positionId, candidateIds]) => ({
             positionId: parseInt(positionId, 10),
             candidateIds,
           })),
+           voteQuantity: computedQuantity,
           inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
           voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
         },
@@ -250,36 +265,21 @@ export default function ElectionVote() {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
-  const symMap: Record<string, string> = { USD: '$', EUR: '\u20ac', GBP: '\u00a3', NGN: '\u20a6', KES: 'KSh ', ZAR: 'R ', CAD: 'CA$', AUD: 'A$', GHS: '\u20b5' };
+  const feeRequired = Boolean(election.requiresPayment);
+  const feeCur = 'XAF';
+  const feeSym = 'XAF ';
+  const pricePerVote = Number(election.paymentAmount || 0);
+  const amountToPay = paymentMode === 'amount_first'
+    ? Math.max(0, Number(paymentAmountInput) || 0)
+    : pricePerVote * voteQuantity;
+  const computedQuantity = paymentMode === 'amount_first' && pricePerVote > 0
+    ? Math.floor(amountToPay / pricePerVote)
+    : voteQuantity;
 
-  // Per-candidate payment: fees are tied to individual candidates, not the election as a whole.
-  // A voter only pays for candidates they actually selected that require a fee.
-  const getSelectedCandidateFees = () => {
-    const fees: { candidate: typeof allCandidates[0]; amount: number; currency: string }[] = [];
-    for (const candIds of Object.values(selections)) {
-      for (const candId of candIds) {
-        const cand = allCandidates.find(c => c.id === candId);
-        if (cand && cand.requiresPayment && cand.paymentAmount) {
-          fees.push({ candidate: cand, amount: parseFloat(String(cand.paymentAmount)), currency: (cand as any).currency || 'USD' });
-        }
-      }
-    }
-    return fees;
-  };
-
-  const selectedFees = getSelectedCandidateFees();
-  const feeRequired = selectedFees.length > 0;
-  const feeCur = selectedFees[0]?.currency || 'USD';
-  const feeSym = symMap[feeCur] ?? (feeCur + ' ');
-  const totalFeeAmt = selectedFees.reduce((sum, f) => sum + f.amount, 0);
-
-  // ── FlowPay gate (after review, before submit) ───────────────────────────
+  // ── Payment gate (after review, before submit) ─────────────────────────────
 
   if (step === 'payment') {
-    const currentFees = getSelectedCandidateFees();
-    const totalAmt = currentFees.reduce((s, f) => s + f.amount, 0);
-
-    const handleFlowPay = () => {
+    const handlePayment = () => {
       setPaymentProcessing(true);
       setTimeout(() => {
         setHasPaid(true);
@@ -303,11 +303,11 @@ export default function ElectionVote() {
             </>
           )}
           <div className="relative z-10 container mx-auto px-4 pt-16 pb-12 max-w-xl text-center animate-in fade-in duration-500">
-            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">Candidate Support Fee</p>
+            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">Participation Summary</p>
             <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
-              {feeSym}{totalAmt.toFixed(2)}
+              {feeSym}{amountToPay.toLocaleString('en-US')}
             </div>
-            <p className="text-background/50 font-light">{feeCur} · Required by your selected candidate{currentFees.length > 1 ? 's' : ''}</p>
+            <p className="text-background/50 font-light">{feeCur} · {computedQuantity} vote{computedQuantity === 1 ? '' : 's'}</p>
           </div>
         </div>
 
@@ -319,24 +319,25 @@ export default function ElectionVote() {
             <ArrowLeft className="h-4 w-4" /> Back to review
           </button>
 
-          {/* Per-candidate fee breakdown */}
-          {currentFees.length > 0 && (
-            <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Fee Breakdown</p>
-              {currentFees.map((f, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-foreground font-medium">{f.candidate.name}</span>
-                  <span className="font-bold text-primary">{symMap[f.currency] ?? (f.currency + ' ')}{f.amount.toFixed(2)}</span>
-                </div>
-              ))}
-              {currentFees.length > 1 && (
-                <div className="pt-3 border-t border-border/40 flex items-center justify-between text-sm font-bold">
-                  <span>Total</span>
-                  <span className="text-primary">{feeSym}{totalAmt.toFixed(2)}</span>
-                </div>
-              )}
+          <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Details</p>
+            {paymentMode === 'amount_first' ? (
+              <div className="space-y-2">
+                <Label htmlFor="payment-amount">Amount to pay (XAF)</Label>
+                <Input id="payment-amount" type="number" min="0" step="1" value={paymentAmountInput} onChange={e => setPaymentAmountInput(e.target.value)} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="vote-quantity">Number of votes</Label>
+                <Input id="vote-quantity" type="number" min="1" step="1" value={voteQuantity} onChange={e => setVoteQuantity(Math.max(1, parseInt(e.target.value || '1', 10)))} />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><span className="text-muted-foreground block">Price per vote</span><strong>{feeSym}{pricePerVote.toLocaleString('en-US')}</strong></div>
+              <div><span className="text-muted-foreground block">Total votes</span><strong>{computedQuantity}</strong></div>
+              <div className="col-span-2 pt-3 border-t border-border/40"><span className="text-muted-foreground block">Total payable</span><strong className="text-xl text-primary">{feeSym}{amountToPay.toLocaleString('en-US')}</strong></div>
             </div>
-          )}
+          </div>
 
           {/* Ballot summary */}
           <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-3">
@@ -354,26 +355,26 @@ export default function ElectionVote() {
             })}
           </div>
 
-          {/* FlowPay CTA */}
+          {/* Payment CTA */}
           <div className="rounded-sm border border-border overflow-hidden shadow-xl mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-foreground/5 px-6 py-4 border-b border-border/60 flex items-center gap-3">
               <Wallet className="h-5 w-5 text-primary" />
               <div>
                 <p className="font-serif font-bold">Complete Payment</p>
-                <p className="text-xs text-muted-foreground">You'll be redirected to FlowPay</p>
+                <p className="text-xs text-muted-foreground">Secure payment confirmation</p>
               </div>
               <span className="ml-auto text-lg">🔒</span>
             </div>
             <div className="p-6">
               <Button
                 className="w-full h-14 text-base rounded-sm"
-                onClick={handleFlowPay}
+                 onClick={handlePayment}
                 disabled={paymentProcessing}
               >
                 {paymentProcessing ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Redirecting to FlowPay…</>
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Confirming payment…</>
                 ) : (
-                  <><Wallet className="mr-2 h-5 w-5" /> Pay {feeSym}{totalAmt.toFixed(2)} with FlowPay</>
+                  <><Wallet className="mr-2 h-5 w-5" /> Confirm payment</>
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground/50 mt-4">
@@ -515,9 +516,6 @@ export default function ElectionVote() {
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="font-serif font-bold text-sm truncate group-hover:text-primary transition-colors">{candidate.name}</p>
-                              {candidate.requiresPayment && candidate.paymentAmount && (
-                                <p className="text-xs text-muted-foreground">{symMap[(candidate as any).currency || 'USD'] ?? ((candidate as any).currency + ' ')}{parseFloat(String(candidate.paymentAmount)).toFixed(2)} fee</p>
-                              )}
                             </div>
                             <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />
                           </Link>
@@ -735,12 +733,6 @@ export default function ElectionVote() {
                                   Selected
                                 </div>
                               )}
-                              {candidate.requiresPayment && candidate.paymentAmount && (
-                                <div className="flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full">
-                                  <Wallet className="h-3 w-3" />
-                                  {symMap[(candidate as any).currency || 'USD'] ?? ((candidate as any).currency + ' ')}{parseFloat(String(candidate.paymentAmount)).toFixed(2)} fee
-                                </div>
-                              )}
                             </div>
                           </div>
                           <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all mt-0.5
@@ -922,11 +914,6 @@ export default function ElectionVote() {
                               <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                               <span className="font-serif font-bold text-primary truncate">{c.name}</span>
                             </div>
-                            {c.requiresPayment && c.paymentAmount && (
-                              <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full shrink-0">
-                                {symMap[(c as any).currency || 'USD'] ?? ((c as any).currency + ' ')}{parseFloat(String(c.paymentAmount)).toFixed(2)} fee
-                              </span>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -941,7 +928,7 @@ export default function ElectionVote() {
               <div className="px-8 py-4 bg-amber-50/60 border-t border-amber-200/40 flex items-center gap-3">
                 <Wallet className="h-4 w-4 text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-700 font-medium">
-                  Payment required: {feeSym}{totalFeeAmt.toFixed(2)} for {selectedFees.length} candidate{selectedFees.length > 1 ? 's' : ''} with a support fee
+                  Payment required: {feeSym}{amountToPay.toLocaleString('en-US')} for {computedQuantity} vote{computedQuantity === 1 ? '' : 's'}
                 </p>
               </div>
             )}
@@ -969,7 +956,7 @@ export default function ElectionVote() {
               ) : (
                 <ShieldCheck className="mr-2 h-5 w-5" />
               )}
-              {feeRequired && !hasPaid ? `Pay ${feeSym}${totalFeeAmt.toFixed(2)} & Submit` : 'Cast Official Vote'}
+              {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
             </Button>
           </div>
         </div>
