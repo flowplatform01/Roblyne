@@ -28,6 +28,8 @@ function toCsvValue(value: unknown): string {
 }
 
 // List elections
+// Unauthenticated callers always get public-only results.
+// Authenticated callers (org workspace) may filter by orgId and see all visibility levels.
 router.get("/elections", async (req, res): Promise<void> => {
   const queryParsed = ListElectionsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -36,7 +38,15 @@ router.get("/elections", async (req, res): Promise<void> => {
     const { orgId, status, visibility } = queryParsed.data;
     if (orgId) filters.push(eq(electionsTable.orgId, orgId));
     if (status) filters.push(eq(electionsTable.status, status));
-    if (visibility) filters.push(eq(electionsTable.visibility, visibility));
+    if (visibility) {
+      filters.push(eq(electionsTable.visibility, visibility));
+    } else if (!req.session?.userId) {
+      // No auth — restrict to public elections only
+      filters.push(eq(electionsTable.visibility, "public"));
+    }
+  } else {
+    // Unparseable query — default safe: public only
+    filters.push(eq(electionsTable.visibility, "public"));
   }
 
   const rows = await db
@@ -91,6 +101,11 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
     .where(eq(electionsTable.id, parsed.data.electionId)).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
+  // Non-public elections require the viewer to be authenticated and belong to the org
+  if (row.election.visibility !== "public" && !req.session?.userId) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+
   const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, row.election.id));
   const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, row.election.id));
   const [{ voteCount }] = await db.select({ voteCount: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, row.election.id));
@@ -98,8 +113,8 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
   res.json({ ...row.election, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, positionsCount: posCount ?? 0, candidatesCount: candCount ?? 0, totalVotes: voteCount ?? 0 });
 });
 
-// Update election
-router.patch("/elections/:electionId", requireAuth, async (req, res): Promise<void> => {
+// Update election — must be org owner/admin
+router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = UpdateElectionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -110,8 +125,8 @@ router.patch("/elections/:electionId", requireAuth, async (req, res): Promise<vo
   res.json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
 
-// Delete election
-router.delete("/elections/:electionId", requireAuth, async (req, res): Promise<void> => {
+// Delete election — must be org owner/admin
+router.delete("/elections/:electionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = DeleteElectionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -129,7 +144,7 @@ router.get("/elections/:electionId/positions", async (req, res): Promise<void> =
   res.json(positions);
 });
 
-router.post("/elections/:electionId/positions", requireAuth, async (req, res): Promise<void> => {
+router.post("/elections/:electionId/positions", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = CreatePositionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -167,7 +182,7 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
   res.json({ ...pos, candidates: withVotes });
 });
 
-router.patch("/elections/:electionId/positions/:positionId", requireAuth, async (req, res): Promise<void> => {
+router.patch("/elections/:electionId/positions/:positionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
   const paramParsed = UpdatePositionParams.safeParse({ electionId: parseInt(rawElId, 10), positionId: parseInt(rawPosId, 10) });
@@ -179,7 +194,7 @@ router.patch("/elections/:electionId/positions/:positionId", requireAuth, async 
   res.json(pos);
 });
 
-router.delete("/elections/:electionId/positions/:positionId", requireAuth, async (req, res): Promise<void> => {
+router.delete("/elections/:electionId/positions/:positionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
   const parsed = DeletePositionParams.safeParse({ electionId: 0, positionId: parseInt(rawPosId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -214,7 +229,7 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
   res.json(withVotes);
 });
 
-router.post("/elections/:electionId/candidates", requireAuth, async (req, res): Promise<void> => {
+router.post("/elections/:electionId/candidates", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = CreateCandidateParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -235,30 +250,30 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [row] = await db.select({ candidate: candidatesTable, positionTitle: positionsTable.title })
     .from(candidatesTable).leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
-    .where(eq(candidatesTable.id, parsed.data.candidateId)).limit(1);
+    .where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId))).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(voteSelectionsTable).where(eq(voteSelectionsTable.candidateId, row.candidate.id));
   res.json({ ...row.candidate, positionTitle: row.positionTitle ?? null, voteCount: count ?? 0 });
 });
 
-router.patch("/elections/:electionId/candidates/:candidateId", requireAuth, async (req, res): Promise<void> => {
+router.patch("/elections/:electionId/candidates/:candidateId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = UpdateCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateCandidateBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [candidate] = await db.update(candidatesTable).set(bodyParsed.data).where(eq(candidatesTable.id, paramParsed.data.candidateId)).returning();
+  const [candidate] = await db.update(candidatesTable).set(bodyParsed.data).where(and(eq(candidatesTable.id, paramParsed.data.candidateId), eq(candidatesTable.electionId, paramParsed.data.electionId))).returning();
   if (!candidate) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...candidate, positionTitle: null, voteCount: null });
 });
 
-router.delete("/elections/:electionId/candidates/:candidateId", requireAuth, async (req, res): Promise<void> => {
+router.delete("/elections/:electionId/candidates/:candidateId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = DeleteCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(candidatesTable).where(eq(candidatesTable.id, parsed.data.candidateId));
+  await db.delete(candidatesTable).where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId)));
   res.json({ message: "Deleted" });
 });
 
@@ -277,6 +292,12 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
 
   if (election.status !== "active") {
     res.status(403).json({ error: "This election is not currently open for voting" });
+    return;
+  }
+
+  // Enforce endsAt deadline server-side (status may not have been auto-updated yet)
+  if (election.endsAt && new Date(election.endsAt) < new Date()) {
+    res.status(403).json({ error: "This election has ended and is no longer accepting votes" });
     return;
   }
 
@@ -398,6 +419,13 @@ router.get("/elections/:electionId/results", async (req, res): Promise<void> => 
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const electionId = parsed.data.electionId;
 
+  // Verify election exists and is accessible
+  const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
+  if (!election) { res.status(404).json({ error: "Not found" }); return; }
+  if (election.visibility !== "public" && !req.session?.userId) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+
   const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, electionId));
   const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
 
@@ -420,9 +448,9 @@ router.get("/elections/:electionId/results", async (req, res): Promise<void> => 
   res.json({ electionId, totalVotes: totalVotes ?? 0, positions: positionResults });
 });
 
-// ── ANALYTICS ──────────────────────────────────────────────────────────────
+// ── ANALYTICS — org admin only ─────────────────────────────────────────────
 
-router.get("/elections/:electionId/analytics", async (req, res): Promise<void> => {
+router.get("/elections/:electionId/analytics", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = GetElectionAnalyticsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }

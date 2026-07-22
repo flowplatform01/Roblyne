@@ -8,7 +8,7 @@ import {
   RemoveOrganizationMemberParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireOrgRole } from "../middlewares/orgAccess";
+import { requireOrgRole, getOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
 
@@ -46,18 +46,23 @@ router.post("/organizations", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(org);
 });
 
-// Get organization
-router.get("/organizations/:orgId", async (req, res): Promise<void> => {
+// Get organization — any auth'd user (needed for workspace access)
+router.get("/organizations/:orgId", requireAuth, async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const parsed = GetOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, parsed.data.orgId)).limit(1);
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Verify requester has a role in this org (owner or member)
+  const role = await getOrgRole(parsed.data.orgId, req.session.userId!);
+  if (!role) { res.status(403).json({ error: "Access denied" }); return; }
+
   res.json(org);
 });
 
-// Get public organization profile (with stats and recent activity)
+// Get public organization profile (with stats and recent activity) — public, no auth required
 router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const parsed = GetOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
@@ -67,12 +72,12 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
 
-  const [electionsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(eq(electionsTable.orgId, orgId));
-  const [eventsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(eq(eventsTable.orgId, orgId));
-  const [campaignsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(eq(campaignsTable.orgId, orgId));
-  const [activeElections] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.status} = 'active'`);
-  const [upcomingEvents] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.status} = 'published'`);
-  const [activeCampaigns] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.status} = 'active'`);
+  const [electionsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(and(eq(electionsTable.orgId, orgId), eq(electionsTable.visibility, "public")));
+  const [eventsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(and(eq(eventsTable.orgId, orgId), eq(eventsTable.visibility, "public")));
+  const [campaignsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(and(eq(campaignsTable.orgId, orgId), eq(campaignsTable.visibility, "public")));
+  const [activeElections] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.status} = 'active' AND ${electionsTable.visibility} = 'public'`);
+  const [upcomingEvents] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.status} = 'published' AND ${eventsTable.visibility} = 'public'`);
+  const [activeCampaigns] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.status} = 'active' AND ${campaignsTable.visibility} = 'public'`);
 
   const recentElections = await db.select().from(electionsTable)
     .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public'`)
@@ -84,7 +89,6 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
     .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
     .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3);
 
-  // Flatten stats at top level so frontend can read them directly (e.g. org.electionsCount)
   res.json({
     ...org,
     electionsCount: electionsCount?.count ?? 0,
@@ -100,8 +104,8 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   });
 });
 
-// Update organization
-router.patch("/organizations/:orgId", requireAuth, async (req, res): Promise<void> => {
+// Update organization — must be owner or admin of that org
+router.patch("/organizations/:orgId", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const paramParsed = UpdateOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -117,8 +121,8 @@ router.patch("/organizations/:orgId", requireAuth, async (req, res): Promise<voi
   res.json(org);
 });
 
-// Get organization stats
-router.get("/organizations/:orgId/stats", async (req, res): Promise<void> => {
+// Get organization stats — must be org member
+router.get("/organizations/:orgId/stats", requireAuth, requireOrgRole(["owner", "admin", "member"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const parsed = GetOrganizationStatsParams.safeParse({ orgId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -144,7 +148,8 @@ router.get("/organizations/:orgId/stats", async (req, res): Promise<void> => {
 
 // ── MEMBERS ────────────────────────────────────────────────────────────────
 
-router.get("/organizations/:orgId/members", requireAuth, async (req, res): Promise<void> => {
+// Members list — must be an org member to see the team
+router.get("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner", "admin", "member"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const paramParsed = AddOrganizationMemberParams.pick({ orgId: true }).safeParse({ orgId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }

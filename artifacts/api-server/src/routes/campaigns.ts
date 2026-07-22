@@ -30,6 +30,7 @@ function campaignRow(campaign: any, orgName: string | null, submissionsCount: nu
 }
 
 // List campaigns
+// Unauthenticated callers always get public-only results.
 router.get("/campaigns", async (req, res): Promise<void> => {
   const queryParsed = ListCampaignsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -38,7 +39,13 @@ router.get("/campaigns", async (req, res): Promise<void> => {
     if (orgId) filters.push(eq(campaignsTable.orgId, orgId));
     if (type) filters.push(eq(campaignsTable.type, type));
     if (status) filters.push(eq(campaignsTable.status, status));
-    if (visibility) filters.push(eq(campaignsTable.visibility, visibility));
+    if (visibility) {
+      filters.push(eq(campaignsTable.visibility, visibility));
+    } else if (!req.session?.userId) {
+      filters.push(eq(campaignsTable.visibility, "public"));
+    }
+  } else {
+    filters.push(eq(campaignsTable.visibility, "public"));
   }
 
   const rows = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
@@ -78,12 +85,17 @@ router.get("/campaigns/:campaignId", async (req, res): Promise<void> => {
     .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
     .where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (row.campaign.visibility !== "public" && !req.session?.userId) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, row.campaign.id));
   res.json(campaignRow(row.campaign, row.orgName ?? null, count ?? 0, row.orgLogoUrl));
 });
 
-// Update campaign
-router.patch("/campaigns/:campaignId", requireAuth, async (req, res): Promise<void> => {
+// Update campaign — must be org owner/admin
+router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campaignsTable, "campaignId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const paramParsed = UpdateCampaignParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -97,8 +109,8 @@ router.patch("/campaigns/:campaignId", requireAuth, async (req, res): Promise<vo
   res.json(campaignRow(campaign, null, 0));
 });
 
-// Delete campaign
-router.delete("/campaigns/:campaignId", requireAuth, async (req, res): Promise<void> => {
+// Delete campaign — must be org owner/admin
+router.delete("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campaignsTable, "campaignId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = DeleteCampaignParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -119,6 +131,26 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
 
+  // ── Lifecycle enforcement ─────────────────────────────────────────────────
+  if (campaign.status !== "active") {
+    const reason =
+      campaign.status === "ended" ? "This campaign has ended and is no longer accepting submissions" :
+      "This campaign is not currently open for submissions";
+    res.status(403).json({ error: reason });
+    return;
+  }
+
+  const now = new Date();
+  if (campaign.endsAt && new Date(campaign.endsAt) < now) {
+    res.status(403).json({ error: "This campaign's submission deadline has passed" });
+    return;
+  }
+
+  if (campaign.startsAt && new Date(campaign.startsAt) > now) {
+    res.status(403).json({ error: "This campaign has not opened for submissions yet" });
+    return;
+  }
+
   const [response] = await db.insert(campaignResponsesTable).values({
     campaignId: paramParsed.data.campaignId, submitterName, submitterEmail, data,
   }).returning();
@@ -133,7 +165,8 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   });
 });
 
-router.get("/campaigns/:campaignId/submissions", requireAuth, async (req, res): Promise<void> => {
+// Submissions list — org admin only
+router.get("/campaigns/:campaignId/submissions", requireAuth, requireResourceOrgRole(campaignsTable, "campaignId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = ListCampaignSubmissionsParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -141,9 +174,9 @@ router.get("/campaigns/:campaignId/submissions", requireAuth, async (req, res): 
   res.json(submissions.map(s => ({ ...s, amountPaid: s.amountPaid ? parseFloat(s.amountPaid) : null })));
 });
 
-// ── ANALYTICS ──────────────────────────────────────────────────────────────
+// ── ANALYTICS — org admin only ─────────────────────────────────────────────
 
-router.get("/campaigns/:campaignId/analytics", requireAuth, async (req, res): Promise<void> => {
+router.get("/campaigns/:campaignId/analytics", requireAuth, requireResourceOrgRole(campaignsTable, "campaignId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = GetCampaignAnalyticsParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }

@@ -22,6 +22,7 @@ function toCsvValue(value: unknown): string {
 }
 
 // List events
+// Unauthenticated callers always get public-only results.
 router.get("/events", async (req, res): Promise<void> => {
   const queryParsed = ListEventsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -29,7 +30,13 @@ router.get("/events", async (req, res): Promise<void> => {
     const { orgId, status, visibility } = queryParsed.data;
     if (orgId) filters.push(eq(eventsTable.orgId, orgId));
     if (status) filters.push(eq(eventsTable.status, status));
-    if (visibility) filters.push(eq(eventsTable.visibility, visibility));
+    if (visibility) {
+      filters.push(eq(eventsTable.visibility, visibility));
+    } else if (!req.session?.userId) {
+      filters.push(eq(eventsTable.visibility, "public"));
+    }
+  } else {
+    filters.push(eq(eventsTable.visibility, "public"));
   }
 
   const rows = await db.select({ event: eventsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
@@ -68,13 +75,18 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
     .from(eventsTable).leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
     .where(eq(eventsTable.id, parsed.data.eventId)).limit(1);
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (row.event.visibility !== "public" && !req.session?.userId) {
+    res.status(404).json({ error: "Not found" }); return;
+  }
+
   const [{ attendeesCount }] = await db.select({ attendeesCount: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, row.event.id));
   const [{ ticketTypesCount }] = await db.select({ ticketTypesCount: sql<number>`count(*)::int` }).from(ticketTypesTable).where(eq(ticketTypesTable.eventId, row.event.id));
   res.json({ ...row.event, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 });
 });
 
-// Update event
-router.patch("/events/:eventId", requireAuth, async (req, res): Promise<void> => {
+// Update event — must be org owner/admin
+router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const paramParsed = UpdateEventParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -85,8 +97,8 @@ router.patch("/events/:eventId", requireAuth, async (req, res): Promise<void> =>
   res.json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
-// Delete event
-router.delete("/events/:eventId", requireAuth, async (req, res): Promise<void> => {
+// Delete event — must be org owner/admin
+router.delete("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = DeleteEventParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -104,7 +116,7 @@ router.get("/events/:eventId/ticket-types", async (req, res): Promise<void> => {
   res.json(types.map(t => ({ ...t, price: parseFloat(t.price) })));
 });
 
-router.post("/events/:eventId/ticket-types", requireAuth, async (req, res): Promise<void> => {
+router.post("/events/:eventId/ticket-types", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const paramParsed = CreateTicketTypeParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -119,7 +131,7 @@ router.post("/events/:eventId/ticket-types", requireAuth, async (req, res): Prom
   res.status(201).json({ ...tt, price: parseFloat(tt.price) });
 });
 
-router.patch("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, async (req, res): Promise<void> => {
+router.patch("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawTtId = Array.isArray(req.params.ticketTypeId) ? req.params.ticketTypeId[0] : req.params.ticketTypeId;
   const rawEvId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const paramParsed = UpdateTicketTypeParams.safeParse({ eventId: parseInt(rawEvId, 10), ticketTypeId: parseInt(rawTtId, 10) });
@@ -128,17 +140,17 @@ router.patch("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, async (
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const updateData: any = { ...bodyParsed.data };
   if (updateData.price !== undefined) updateData.price = String(updateData.price);
-  const [tt] = await db.update(ticketTypesTable).set(updateData).where(eq(ticketTypesTable.id, paramParsed.data.ticketTypeId)).returning();
+  const [tt] = await db.update(ticketTypesTable).set(updateData).where(and(eq(ticketTypesTable.id, paramParsed.data.ticketTypeId), eq(ticketTypesTable.eventId, paramParsed.data.eventId))).returning();
   if (!tt) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...tt, price: parseFloat(tt.price) });
 });
 
-router.delete("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, async (req, res): Promise<void> => {
+router.delete("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawTtId = Array.isArray(req.params.ticketTypeId) ? req.params.ticketTypeId[0] : req.params.ticketTypeId;
   const rawEvId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = DeleteTicketTypeParams.safeParse({ eventId: parseInt(rawEvId, 10), ticketTypeId: parseInt(rawTtId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(ticketTypesTable).where(eq(ticketTypesTable.id, parsed.data.ticketTypeId));
+  await db.delete(ticketTypesTable).where(and(eq(ticketTypesTable.id, parsed.data.ticketTypeId), eq(ticketTypesTable.eventId, parsed.data.eventId)));
   res.json({ message: "Deleted" });
 });
 
@@ -155,6 +167,23 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
 
+  // ── Lifecycle enforcement ─────────────────────────────────────────────────
+  if (event.status !== "published") {
+    const reason =
+      event.status === "cancelled" ? "This event has been cancelled" :
+      event.status === "completed" ? "This event has already concluded" :
+      "This event is not currently open for registration";
+    res.status(403).json({ error: reason });
+    return;
+  }
+
+  const now = new Date();
+  if (event.endsAt && new Date(event.endsAt) < now) {
+    res.status(403).json({ error: "Registration for this event has closed" });
+    return;
+  }
+
+  // ── Invite code check ─────────────────────────────────────────────────────
   if (event.visibility === "invite_only") {
     if (!inviteCode || inviteCode !== event.inviteCode) {
       res.status(403).json({ error: "A valid invite code is required to register for this event" });
@@ -166,6 +195,17 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   const [tt] = await db.select().from(ticketTypesTable)
     .where(and(eq(ticketTypesTable.id, ticketTypeId), eq(ticketTypesTable.eventId, paramParsed.data.eventId))).limit(1);
   if (!tt) { res.status(404).json({ error: "Ticket type not found for this event" }); return; }
+
+  // Check ticket sale window
+  if (tt.saleStartsAt && new Date(tt.saleStartsAt) > now) {
+    res.status(403).json({ error: "Ticket sales for this tier have not started yet" });
+    return;
+  }
+  if (tt.saleEndsAt && new Date(tt.saleEndsAt) < now) {
+    res.status(403).json({ error: "Ticket sales for this tier have ended" });
+    return;
+  }
+
   if (tt.quantity !== null && tt.sold >= tt.quantity) {
     res.status(409).json({ error: "This ticket type is sold out" });
     return;
@@ -189,9 +229,9 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   });
 });
 
-// ── ATTENDEES ──────────────────────────────────────────────────────────────
+// ── ATTENDEES — org admin only ─────────────────────────────────────────────
 
-router.get("/events/:eventId/attendees", requireAuth, async (req, res): Promise<void> => {
+router.get("/events/:eventId/attendees", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin", "member"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = ListAttendeesParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -203,9 +243,9 @@ router.get("/events/:eventId/attendees", requireAuth, async (req, res): Promise<
   res.json(attendees.map(({ ticket, ticketTypeName }) => ({ ...ticket, ticketTypeName: ticketTypeName ?? null })));
 });
 
-// ── CHECK-IN ───────────────────────────────────────────────────────────────
+// ── CHECK-IN — org member+ ─────────────────────────────────────────────────
 
-router.post("/events/:eventId/checkin", requireAuth, async (req, res): Promise<void> => {
+router.post("/events/:eventId/checkin", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin", "member"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const paramParsed = CheckInAttendeeParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -224,9 +264,9 @@ router.post("/events/:eventId/checkin", requireAuth, async (req, res): Promise<v
   res.json({ ...updated, ticketTypeName: tt?.name ?? null });
 });
 
-// ── ANALYTICS ──────────────────────────────────────────────────────────────
+// ── ANALYTICS — org admin only ─────────────────────────────────────────────
 
-router.get("/events/:eventId/analytics", requireAuth, async (req, res): Promise<void> => {
+router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = GetEventAnalyticsParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
