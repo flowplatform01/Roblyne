@@ -34,8 +34,8 @@ export interface RecordTransactionInput {
  * Get the effective commission rate for a pillar.
  * Falls back to global rate if no pillar-specific config exists.
  */
-export async function getCommissionRate(pillar: Pillar): Promise<number> {
-  const [pillarConfig] = await db
+export async function getCommissionRate(pillar: Pillar, database: any = db): Promise<number> {
+  const [pillarConfig] = await database
     .select()
     .from(commissionConfigsTable)
     .where(eq(commissionConfigsTable.pillar, pillar))
@@ -45,7 +45,7 @@ export async function getCommissionRate(pillar: Pillar): Promise<number> {
     return parseFloat(pillarConfig.rate);
   }
 
-  const [globalConfig] = await db
+  const [globalConfig] = await database
     .select()
     .from(commissionConfigsTable)
     .where(eq(commissionConfigsTable.pillar, "global"))
@@ -82,7 +82,7 @@ export function calculateCommission(
  * Record a financial transaction in the ledger and create a pending settlement entry.
  * This is the main entry point for all paid participation flows.
  */
-export async function recordTransaction(input: RecordTransactionInput): Promise<{
+export async function recordTransaction(input: RecordTransactionInput, database: any = db): Promise<{
   transactionId: number;
   breakdown: CommissionResult;
 }> {
@@ -95,10 +95,10 @@ export async function recordTransaction(input: RecordTransactionInput): Promise<
     throw new Error("Cannot record a financial transaction with zero or negative gross amount");
   }
 
-  const commissionRate = await getCommissionRate(pillar);
+  const commissionRate = await getCommissionRate(pillar, database);
   const breakdown = calculateCommission(grossAmount, commissionRate, currency);
 
-  const [txn] = await db
+  const [txn] = await database
     .insert(financialTransactionsTable)
     .values({
       orgId,

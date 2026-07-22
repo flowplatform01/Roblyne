@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { requireResourceOrgRole } from "../middlewares/orgAccess";
+import { recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
 
@@ -365,6 +366,19 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
         for (const candidateId of selection.candidateIds) {
           await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
         }
+      }
+
+      if (election.requiresPayment && Number(election.paymentAmount || 0) > 0) {
+        await recordTransaction({
+          orgId: election.orgId,
+          pillar: "election",
+          entityId: election.id,
+          entityTitle: election.title,
+          transactionType: "vote",
+          grossAmount: Number(election.paymentAmount) * selectedCandidateCount * voteQuantity,
+          currency: election.currency || "XAF",
+          payerEmail: bodyParsed.data.voterEmail,
+        }, tx);
       }
     });
   } catch (err: any) {
