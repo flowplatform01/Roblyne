@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { EvenumLogo } from '@/components/branding/EvenumLogo';
 import { 
   Building2, 
   Vote, 
@@ -55,11 +56,9 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary rounded-sm flex items-center justify-center">
-              <span className="text-primary-foreground font-serif font-bold text-xl leading-none">E</span>
-            </div>
-            <span className="font-serif text-xl font-bold tracking-tight text-foreground hidden sm:inline-block">Evenum</span>
+          <Link href="/" className="flex items-center">
+            <EvenumLogo size="md" showWordmark className="hidden sm:inline-flex" />
+            <EvenumLogo size="md" showWordmark={false} className="sm:hidden" />
           </Link>
           
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
@@ -152,8 +151,7 @@ export function Navbar() {
             <SheetContent side="left" className="w-[300px] sm:w-[400px]">
               <SheetHeader>
                 <SheetTitle className="font-serif text-2xl font-bold flex items-center gap-2">
-                  <div className="h-8 w-8 bg-primary rounded-sm flex items-center justify-center text-primary-foreground leading-none">E</div>
-                  Evenum
+                  <EvenumLogo size="lg" showWordmark />
                 </SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-6 mt-8">

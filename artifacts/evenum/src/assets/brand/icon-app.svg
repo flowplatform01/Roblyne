@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon: brand navy square with white mark -->
+  <rect width="512" height="512" rx="112" fill="#003785"/>
+  <!-- Mark scaled: original 100×100 → 320×320, centered in 512 → offset (96, 96) -->
+  <rect x="115" y="305" width="74" height="93" rx="8" fill="white"/>
+  <rect x="219" y="208" width="74" height="190" rx="8" fill="white"/>
+  <rect x="323" y="96" width="74" height="302" rx="8" fill="white"/>
+</svg>

@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
+import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Full name is required"),
@@ -92,8 +93,8 @@ export default function Register() {
         
         <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="mb-10 text-center">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-sm bg-primary mb-6 shadow-md text-primary-foreground font-serif font-bold text-3xl leading-none">
-              E
+            <div className="flex justify-center mb-6">
+              <EvenumAuthMark />
             </div>
             <h1 className="text-4xl font-serif font-bold tracking-tight mb-3">Create an Account</h1>
             <p className="text-muted-foreground text-lg font-light">Start managing professional events and elections.</p>

@@ -1,0 +1,805 @@
+
+
+# EVENUM — Brand Identity & Visual System (Production Branding)
+
+
+
+## Context
+
+
+
+The Evenum platform has now reached production maturity.
+
+
+
+Core architecture has been built.
+
+
+
+The major product pillars have been implemented.
+
+
+
+The UI and UX have been significantly refined.
+
+
+
+Performance, scalability, concurrency,  and production architecture have already been addressed.
+
+
+
+This refinement is **NOT** about rebuilding the application.
+
+
+
+It is **NOT** about changing business logic.
+
+
+
+It is **NOT** about redesigning pages.
+
+
+
+Its sole purpose is to professionally create Evenum's complete visual identity and integrate it into the existing application without introducing regressions.
+
+
+
+---
+
+
+
+# Mission
+
+
+
+Evenum is no longer a prototype.
+
+
+
+Evenum is now a professional platform.
+
+
+
+Its branding should immediately communicate trust, professionalism, authority, technology, participation, organization, and premium quality.
+
+
+
+The current placeholder "E" icon is no longer acceptable.
+
+
+
+Replace it with a complete production-ready visual identity.
+
+
+
+---
+
+
+
+# Primary Objective
+
+
+
+Use Replit Canvas to design a complete, original brand identity for Evenum.
+
+
+
+Do **not** use generic AI-generated logos.
+
+
+
+Do **not** use stock branding.
+
+
+
+Do **not** imitate another company.
+
+
+
+Create a completely original identity that belongs only to Evenum.
+
+
+
+Everything should feel intentional, timeless, memorable, and premium.
+
+
+
+---
+
+
+
+# Understand the Product Before Designing
+
+
+
+The logo must represent the identity of the platform.
+
+
+
+Evenum is **NOT** simply a voting application.
+
+
+
+It is a professional participation platform built around three major pillars:
+
+
+
+• Elections & Voting
+
+• Events & Ticketing
+
+• Campaigns & Engagement
+
+
+
+The brand should communicate participation, connection, trust, movement, structure, and professionalism rather than focusing on a single pillar.
+
+
+
+The identity should remain relevant as Evenum expands into future participation modules.
+
+
+
+---
+
+
+
+# Design Philosophy
+
+
+
+The branding should feel:
+
+
+
+* Professional
+
+* Modern
+
+* Confident
+
+* Clean
+
+* Premium
+
+* Intelligent
+
+* Memorable
+
+* Scalable
+
+* Human
+
+* Digital-first
+
+
+
+Avoid visual clichés.
+
+
+
+Avoid trendy effects that will age quickly.
+
+
+
+Design something that still looks world-class many years from now.
+
+
+
+---
+
+
+
+# Brand Personality
+
+
+
+The visual identity should communicate:
+
+
+
+Trust
+
+
+
+Integrity
+
+
+
+Participation
+
+
+
+Authority
+
+
+
+Technology
+
+
+
+Organization
+
+
+
+Community
+
+
+
+Growth
+
+
+
+Momentum
+
+
+
+Professionalism
+
+
+
+The brand should feel suitable for governments, universities, enterprises, NGOs, startups, corporations, communities, and large organizations.
+
+
+
+---
+
+
+
+# Logo Requirements
+
+
+
+Create a primary logo.
+
+
+
+Create a secondary logo.
+
+
+
+Create a simplified mark.
+
+
+
+Create an application icon.
+
+
+
+Create a favicon.
+
+
+
+Create monochrome versions.
+
+
+
+Create light-mode versions.
+
+
+
+Create dark-mode versions.
+
+
+
+Create responsive versions.
+
+
+
+Every version should belong to one consistent visual system.
+
+
+
+---
+
+
+
+# Symbol Design
+
+
+
+The symbol should be original.
+
+
+
+It may subtly represent ideas such as:
+
+
+
+Connection
+
+
+
+People
+
+
+
+Participation
+
+
+
+Growth
+
+
+
+Movement
+
+
+
+Unity
+
+
+
+Trust
+
+
+
+Network
+
+
+
+Events
+
+
+
+Decision making
+
+
+
+Community
+
+
+
+Progress
+
+
+
+However, avoid making the symbol overly literal.
+
+
+
+Do not simply draw:
+
+
+
+• Ballot boxes
+
+
+
+• Check marks
+
+
+
+• Calendar icons
+
+
+
+• Megaphones
+
+
+
+• Tickets
+
+
+
+• Generic circles
+
+
+
+• Generic letters
+
+
+
+Instead, create an abstract symbol that naturally becomes recognizable as Evenum's identity.
+
+
+
+---
+
+
+
+# Typography
+
+
+
+Choose or create typography that feels:
+
+
+
+Professional
+
+
+
+Balanced
+
+
+
+Readable
+
+
+
+Modern
+
+
+
+Elegant
+
+
+
+Timeless
+
+
+
+The wordmark should integrate naturally with the symbol.
+
+
+
+Avoid decorative fonts.
+
+
+
+Avoid trendy fonts.
+
+
+
+Avoid playful typography.
+
+
+
+---
+
+
+
+# Color System
+
+
+
+Design a professional color system.
+
+
+
+Instead of selecting arbitrary colors, build a palette that reflects the platform's identity.
+
+
+
+Define:
+
+
+
+Primary color
+
+
+
+Secondary color
+
+
+
+Accent color
+
+
+
+Success
+
+
+
+Warning
+
+
+
+Danger
+
+
+
+Neutral palette
+
+
+
+Surface palette
+
+
+
+Background palette
+
+
+
+Border palette
+
+
+
+Typography palette
+
+
+
+The palette should work beautifully in both light and dark mode.
+
+
+
+Accessibility and contrast should always be respected.
+
+
+
+---
+
+
+
+# Canvas Deliverables
+
+
+
+Use Replit Canvas to generate professional branding assets including:
+
+
+
+Logo concepts
+
+
+
+Final logo
+
+
+
+App icon
+
+
+
+Favicon
+
+
+
+Wordmark
+
+
+
+Brand mark
+
+
+
+Spacing guidelines
+
+
+
+Safe area
+
+
+
+Minimum size
+
+
+
+Responsive logo behaviour
+
+
+
+Color specifications
+
+
+
+Typography recommendations
+
+
+
+Icon proportions
+
+
+
+Visual examples
+
+
+
+Brand usage examples
+
+
+
+The Canvas should become Evenum's official branding foundation.
+
+
+
+---
+
+
+
+# Integration
+
+
+
+After the branding has been finalized:
+
+
+
+Replace every placeholder "E" throughout the application.
+
+
+
+Update:
+
+
+
+Navigation
+
+
+
+Sidebar
+
+
+
+Authentication
+
+
+
+Loading screens
+
+
+
+Splash screens
+
+
+
+Headers
+
+
+
+Footers
+
+
+
+Browser favicon
+
+
+
+App icon
+
+
+
+Email templates
+
+
+
+PDF exports
+
+
+
+Receipts
+
+
+
+Invoices
+
+
+
+Reports
+
+
+
+Public pages
+
+
+
+Organization dashboards
+
+
+
+Admin dashboard
+
+
+
+Marketing pages
+
+
+
+Documentation
+
+
+
+Everywhere the placeholder currently exists.
+
+
+
+Maintain visual consistency across the platform.
+
+
+
+---
+
+
+
+# Regression Safety
+
+
+
+Do **not** modify business logic.
+
+
+
+Do **not** modify APIs.
+
+
+
+Do **not** modify routing.
+
+
+
+Do **not** modify authentication.
+
+
+
+Do **not** modify financial systems.
+
+
+
+Do **not** modify payment systems.
+
+
+
+Do **not** modify data structures.
+
+
+
+Do **not** modify performance optimizations.
+
+
+
+Do **not** modify Phase 1 or Phase 2 production architecture.
+
+
+
+This refinement is strictly visual.
+
+
+
+---
+
+
+
+# Quality Standard
+
+
+
+The branding should feel comparable in quality to products from companies that invest heavily in design systems.
+
+
+
+Every detail should look deliberate.
+
+
+
+Every proportion should feel balanced.
+
+
+
+Every color should have purpose.
+
+
+
+Every visual element should reinforce Evenum's identity as a world-class professional platform.
+
+
+
+The final result should make someone immediately recognize that this is a serious, premium product—not a template, not an MVP, and not a generic web application.
+
+
+
+---
+
+
+
+# Final Objective
+
+
+
+When this refinement is complete:
+
+
+
+* Evenum should have a distinctive, original, and memorable visual identity.
+
+* The placeholder "E" should be fully replaced by a professional brand system.
+
+* The logo, iconography, typography, and color palette should form a cohesive design language.
+
+* All branding assets should integrate seamlessly across the application without introducing regressions or affecting existing functionality.
+
+* The branding should elevate the perceived quality of the platform and serve as the long-term visual foundation for Evenum as it scales into a globally recognized participation platform.
+
+
+
+**Treat this as the official birth of the Evenum brand. Do not generate a generic logo—craft a complete, enduring identity that reflects the ambition, professionalism, and scale of the platform.**
