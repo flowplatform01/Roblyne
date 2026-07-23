@@ -6,7 +6,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, and, desc } from "drizzle-orm";
 import {
   db, financialTransactionsTable, settlementsTable, commissionConfigsTable, organizationsTable,
-  electionsTable, votesTable, eventsTable, ticketsTable, ticketTypesTable, campaignsTable, campaignResponsesTable,
+  electionsTable, votesTable, voteSelectionsTable, eventsTable, ticketsTable, ticketTypesTable, campaignsTable, campaignResponsesTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requireOrgRole } from "../middlewares/orgAccess";
@@ -505,9 +505,11 @@ router.get("/organizations/:orgId/analytics",
       .orderBy(desc(electionsTable.createdAt));
 
     const electionAnalytics = await Promise.all(elections.map(async (election) => {
+      // Count individual candidate selections (each selection = one vote unit), consistent with results page
       const [{ totalVotes }] = await db
-        .select({ totalVotes: sql<number>`count(*)::int` })
-        .from(votesTable)
+        .select({ totalVotes: sql<number>`COALESCE(COUNT(${voteSelectionsTable.id}), 0)::int` })
+        .from(voteSelectionsTable)
+        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
         .where(eq(votesTable.electionId, election.id));
 
       const { rows: [financialRow] } = await db.execute(sql`
@@ -529,6 +531,7 @@ router.get("/organizations/:orgId/analytics",
         startsAt: election.startsAt,
         endsAt: election.endsAt,
         requiresPayment: election.requiresPayment,
+        currency: election.currency ?? 'XAF',
         totalVotes: total,
         paidVotes,
         freeVotes: total - paidVotes,

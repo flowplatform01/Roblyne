@@ -877,8 +877,8 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
     query: { enabled: !!orgId, queryKey: getGetOrgAnalyticsQueryKey(orgId) },
   });
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v || 0);
+  const formatCurrency = (v: number, currency = 'XAF') =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(v || 0);
 
   const formatPct = (v: number | null | undefined) =>
     v != null ? `${v.toFixed(1)}%` : '—';
@@ -898,6 +898,8 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
   const totalVotes = elections.reduce((s: number, e: any) => s + (e.totalVotes || 0), 0);
   const totalTickets = events.reduce((s: number, e: any) => s + (e.ticketsSold || 0), 0);
   const totalRaised = campaigns.reduce((s: number, c: any) => s + (c.amountRaised || 0), 0);
+  // Detect dominant currency from paid elections (fall back to XAF)
+  const electionCurrency = elections.find((e: any) => e.currency)?.currency || 'XAF';
 
   return (
     <div className="space-y-8">
@@ -944,7 +946,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                 <Megaphone className="h-4 w-4 text-amber-600" />
               </div>
             </div>
-            <p className="text-3xl font-serif font-bold tabular-nums">{formatCurrency(totalRaised)}</p>
+            <p className="text-3xl font-serif font-bold tabular-nums">{formatCurrency(totalRaised, electionCurrency)}</p>
             <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Total Raised</p>
             <p className="text-[11px] text-muted-foreground/60 mt-0.5">{campaigns.length} campaigns</p>
           </CardContent>
@@ -991,7 +993,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                     <TableCell className="text-right font-bold">{(e.totalVotes || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right hidden md:table-cell text-sm text-primary">{(e.paidVotes || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right hidden md:table-cell text-sm text-muted-foreground">{(e.freeVotes || 0).toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(e.revenue || 0)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(e.revenue || 0, e.currency || electionCurrency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
