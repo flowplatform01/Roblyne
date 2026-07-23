@@ -29,8 +29,7 @@ function campaignRow(campaign: any, orgName: string | null, submissionsCount: nu
   };
 }
 
-// List campaigns
-// Unauthenticated callers always get public-only results.
+// List campaigns — uses a single aggregated query to avoid N+1 count lookups
 router.get("/campaigns", async (req, res): Promise<void> => {
   const queryParsed = ListCampaignsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -48,15 +47,21 @@ router.get("/campaigns", async (req, res): Promise<void> => {
     filters.push(eq(campaignsTable.visibility, "public"));
   }
 
-  const rows = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
-    .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
+  // Single query: LEFT JOIN organizations + subquery count — no N+1
+  const rows = await db
+    .select({
+      campaign: campaignsTable,
+      orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
+      submissionsCount: sql<number>`(SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = ${campaignsTable.id})`,
+    })
+    .from(campaignsTable)
+    .leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const campaigns = await Promise.all(rows.map(async ({ campaign, orgName, orgLogoUrl }) => {
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, campaign.id));
-    return campaignRow(campaign, orgName ?? null, count ?? 0, orgLogoUrl);
-  }));
-  res.json(campaigns);
+  res.json(rows.map(({ campaign, orgName, orgLogoUrl, submissionsCount }) =>
+    campaignRow(campaign, orgName ?? null, submissionsCount ?? 0, orgLogoUrl)
+  ));
 });
 
 // Create campaign
@@ -76,22 +81,30 @@ router.post("/campaigns", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(campaignRow(campaign, null, 0));
 });
 
-// Get campaign
+// Get campaign — with subquery count to avoid a separate round-trip
 router.get("/campaigns/:campaignId", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = GetCampaignParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [row] = await db.select({ campaign: campaignsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
-    .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
-    .where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1);
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
+  const [row] = await db
+    .select({
+      campaign: campaignsTable,
+      orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
+      submissionsCount: sql<number>`(SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = ${campaignsTable.id})`,
+    })
+    .from(campaignsTable)
+    .leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
+    .where(eq(campaignsTable.id, parsed.data.campaignId))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   if (row.campaign.visibility !== "public" && !req.session?.userId) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, row.campaign.id));
-  res.json(campaignRow(row.campaign, row.orgName ?? null, count ?? 0, row.orgLogoUrl));
+  res.json(campaignRow(row.campaign, row.orgName ?? null, row.submissionsCount ?? 0, row.orgLogoUrl));
 });
 
 // Update campaign — must be org owner/admin
@@ -131,7 +144,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
 
-  // ── Lifecycle enforcement ─────────────────────────────────────────────────
+  // ── Lifecycle enforcement ───────────────────────────────────────────────
   if (campaign.status !== "active") {
     const reason =
       campaign.status === "ended" ? "This campaign has ended and is no longer accepting submissions" :
@@ -145,19 +158,25 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
     res.status(403).json({ error: "This campaign's submission deadline has passed" });
     return;
   }
-
   if (campaign.startsAt && new Date(campaign.startsAt) > now) {
     res.status(403).json({ error: "This campaign has not opened for submissions yet" });
     return;
   }
 
-  const [response] = await db.insert(campaignResponsesTable).values({
-    campaignId: paramParsed.data.campaignId, submitterName, submitterEmail, data,
-  }).returning();
+  // ── Atomic: insert response + update current_amount in one transaction ──
+  const response = await db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(campaignResponsesTable).values({
+      campaignId: paramParsed.data.campaignId, submitterName, submitterEmail, data,
+    }).returning();
 
-  if (campaign.requiresPayment && campaign.paymentAmount) {
-    await db.execute(sql`UPDATE campaigns SET current_amount = current_amount + ${campaign.paymentAmount} WHERE id = ${campaign.id}`);
-  }
+    if (campaign.requiresPayment && campaign.paymentAmount) {
+      await tx.execute(
+        sql`UPDATE campaigns SET current_amount = current_amount + ${campaign.paymentAmount} WHERE id = ${campaign.id}`
+      );
+    }
+
+    return inserted;
+  });
 
   res.status(201).json({
     ...response,
@@ -182,21 +201,25 @@ router.get("/campaigns/:campaignId/analytics", requireAuth, requireResourceOrgRo
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const campaignId = parsed.data.campaignId;
 
-  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, campaignId));
-  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, campaignId)).limit(1);
+  // Fetch campaign + count in parallel
+  const [[campaign], countResult, byDayResult] = await Promise.all([
+    db.select().from(campaignsTable).where(eq(campaignsTable.id, campaignId)).limit(1),
+    db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, campaignId)),
+    db.execute(
+      sql`SELECT date_trunc('day', submitted_at)::date::text as date, count(*)::int as count FROM campaign_responses WHERE campaign_id = ${campaignId} GROUP BY 1 ORDER BY 1`
+    ),
+  ]);
+
+  const count = countResult[0]?.count ?? 0;
   const currentAmount = parseFloat(campaign?.currentAmount ?? "0");
   const goalAmount = campaign?.goalAmount ? parseFloat(campaign.goalAmount) : null;
 
-  const byDay = await db.execute(
-    sql`SELECT date_trunc('day', submitted_at)::date::text as date, count(*)::int as count FROM campaign_responses WHERE campaign_id = ${campaignId} GROUP BY 1 ORDER BY 1`
-  );
-
   res.json({
     campaignId,
-    submissionsCount: count ?? 0,
+    submissionsCount: count,
     totalRevenue: currentAmount,
     goalProgress: goalAmount && goalAmount > 0 ? Math.round((currentAmount / goalAmount) * 1000) / 10 : null,
-    submissionsByDay: (byDay.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
+    submissionsByDay: (byDayResult.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });
 });
 
@@ -207,8 +230,10 @@ router.get("/campaigns/:campaignId/export", requireAuth, requireResourceOrgRole(
   const parsed = ExportCampaignSubmissionsParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1);
-  const submissions = await db.select().from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId));
+  const [[campaign], submissions] = await Promise.all([
+    db.select().from(campaignsTable).where(eq(campaignsTable.id, parsed.data.campaignId)).limit(1),
+    db.select().from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId)),
+  ]);
 
   const fieldIds = (campaign?.fields as { id: string; label: string }[] | null) ?? [];
   const header = ["Name", "Email", "Amount Paid", "Status", "Submitted At", ...fieldIds.map(f => f.label)];

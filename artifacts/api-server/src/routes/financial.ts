@@ -311,10 +311,10 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { status } = req.body as { status: string };
-  const validStatuses = ["pending_settlement", "ready", "released", "completed"];
-  if (!validStatuses.includes(status)) {
-    res.status(400).json({ error: "Invalid status" }); return;
+  const validStatuses = ["pending_settlement", "ready", "released", "completed"] as const;
+  const status = req.body?.status;
+  if (typeof status !== "string" || !validStatuses.includes(status as typeof validStatuses[number])) {
+    res.status(400).json({ error: "Invalid or missing status" }); return;
   }
 
   const updateData: any = { status };
@@ -344,8 +344,8 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
  * Create a settlement batch for an organization.
  */
 router.post("/admin/finance/settlements", async (req, res): Promise<void> => {
-  const { orgId } = req.body as { orgId: number };
-  if (!orgId) { res.status(400).json({ error: "orgId required" }); return; }
+  const orgId = typeof req.body?.orgId === "number" ? req.body.orgId : parseInt(String(req.body?.orgId), 10);
+  if (!orgId || isNaN(orgId)) { res.status(400).json({ error: "orgId is required and must be a valid integer" }); return; }
 
   // Find pending transactions for this org
   const pending = await db
@@ -489,6 +489,7 @@ router.get("/admin/finance/export", async (_req, res): Promise<void> => {
 /**
  * GET /api/organizations/:orgId/analytics
  * Per-pillar performance analytics for an organization.
+ * Uses bulk GROUP BY queries to avoid N+1 per election/event/campaign.
  */
 router.get("/organizations/:orgId/analytics",
   requireAuth,
@@ -497,136 +498,166 @@ router.get("/organizations/:orgId/analytics",
     const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-    // ── Elections analytics ──────────────────────────────────────────────────
-    const elections = await db
-      .select()
-      .from(electionsTable)
-      .where(eq(electionsTable.orgId, orgId))
-      .orderBy(desc(electionsTable.createdAt));
+    // Run all three pillar analytics in parallel, each as a single aggregated query
+    const [electionsResult, eventsResult, campaignsResult] = await Promise.all([
 
-    const electionAnalytics = await Promise.all(elections.map(async (election) => {
-      // Count individual candidate selections (each selection = one vote unit), consistent with results page
-      const [{ totalVotes }] = await db
-        .select({ totalVotes: sql<number>`COALESCE(COUNT(${voteSelectionsTable.id}), 0)::int` })
-        .from(voteSelectionsTable)
-        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-        .where(eq(votesTable.electionId, election.id));
-
-      const { rows: [financialRow] } = await db.execute(sql`
+      // ── Elections: one query aggregates votes + financial per election ──────
+      db.execute(sql`
         SELECT
-          COALESCE(SUM(CASE WHEN transaction_type = 'vote' THEN 1 ELSE 0 END), 0)::int AS paid_votes,
-          COALESCE(SUM(gross_amount), 0)::float AS revenue
-        FROM financial_transactions
-        WHERE org_id = ${orgId} AND entity_id = ${election.id} AND pillar = 'election' AND status = 'completed'
-      `);
+          e.id,
+          e.title,
+          e.status,
+          e.starts_at    AS "startsAt",
+          e.ends_at      AS "endsAt",
+          e.requires_payment AS "requiresPayment",
+          e.currency,
+          COALESCE(vote_agg.total_votes, 0)    AS total_votes,
+          COALESCE(fin_agg.paid_votes, 0)      AS paid_votes,
+          COALESCE(fin_agg.revenue, 0)         AS revenue
+        FROM elections e
+        LEFT JOIN (
+          SELECT v.election_id, COUNT(vs.id)::int AS total_votes
+          FROM vote_selections vs
+          INNER JOIN votes v ON v.id = vs.vote_id
+          GROUP BY v.election_id
+        ) vote_agg ON vote_agg.election_id = e.id
+        LEFT JOIN (
+          SELECT
+            entity_id,
+            COUNT(*) FILTER (WHERE transaction_type = 'vote')::int AS paid_votes,
+            COALESCE(SUM(gross_amount), 0)::float                  AS revenue
+          FROM financial_transactions
+          WHERE org_id = ${orgId} AND pillar = 'election' AND status = 'completed'
+          GROUP BY entity_id
+        ) fin_agg ON fin_agg.entity_id = e.id
+        WHERE e.org_id = ${orgId}
+        ORDER BY e.created_at DESC
+      `),
 
-      const total = totalVotes ?? 0;
-      const paidVotes = parseInt(String((financialRow as any)?.paid_votes ?? 0));
-      const revenue = parseFloat(String((financialRow as any)?.revenue ?? 0));
+      // ── Events: one query aggregates tickets + check-ins + financial ────────
+      db.execute(sql`
+        SELECT
+          e.id,
+          e.title,
+          e.status,
+          e.starts_at  AS "startsAt",
+          e.ends_at    AS "endsAt",
+          e.capacity,
+          COALESCE(t_agg.tickets_sold, 0)   AS tickets_sold,
+          COALESCE(t_agg.checked_in, 0)     AS checked_in,
+          COALESCE(fin_agg.revenue, 0)      AS revenue
+        FROM events e
+        LEFT JOIN (
+          SELECT
+            event_id,
+            COUNT(*) FILTER (WHERE status != 'cancelled')::int AS tickets_sold,
+            COUNT(*) FILTER (WHERE status = 'used')::int       AS checked_in
+          FROM tickets
+          GROUP BY event_id
+        ) t_agg ON t_agg.event_id = e.id
+        LEFT JOIN (
+          SELECT entity_id, COALESCE(SUM(gross_amount), 0)::float AS revenue
+          FROM financial_transactions
+          WHERE org_id = ${orgId} AND pillar = 'event' AND status = 'completed'
+          GROUP BY entity_id
+        ) fin_agg ON fin_agg.entity_id = e.id
+        WHERE e.org_id = ${orgId}
+        ORDER BY e.created_at DESC
+      `),
 
+      // ── Campaigns: one query aggregates submissions + financial ─────────────
+      db.execute(sql`
+        SELECT
+          c.id,
+          c.title,
+          c.status,
+          c.type,
+          c.starts_at    AS "startsAt",
+          c.ends_at      AS "endsAt",
+          c.goal_amount  AS "goalAmount",
+          c.current_amount AS "currentAmount",
+          COALESCE(sub_agg.submissions_count, 0) AS submissions_count,
+          COALESCE(fin_agg.revenue, 0)           AS revenue,
+          COALESCE(fin_agg.avg_contribution, 0)  AS avg_contribution,
+          COALESCE(fin_agg.paid_contributors, 0) AS paid_contributors
+        FROM campaigns c
+        LEFT JOIN (
+          SELECT campaign_id, COUNT(*)::int AS submissions_count
+          FROM campaign_responses
+          GROUP BY campaign_id
+        ) sub_agg ON sub_agg.campaign_id = c.id
+        LEFT JOIN (
+          SELECT
+            entity_id,
+            COALESCE(SUM(gross_amount), 0)::float  AS revenue,
+            COALESCE(AVG(gross_amount), 0)::float  AS avg_contribution,
+            COUNT(*)::int                           AS paid_contributors
+          FROM financial_transactions
+          WHERE org_id = ${orgId} AND pillar = 'campaign' AND status = 'completed'
+          GROUP BY entity_id
+        ) fin_agg ON fin_agg.entity_id = c.id
+        WHERE c.org_id = ${orgId}
+        ORDER BY c.created_at DESC
+      `),
+    ]);
+
+    const electionAnalytics = (electionsResult.rows as any[]).map(row => {
+      const total = row.total_votes ?? 0;
+      const paidVotes = row.paid_votes ?? 0;
       return {
-        id: election.id,
-        title: election.title,
-        status: election.status,
-        startsAt: election.startsAt,
-        endsAt: election.endsAt,
-        requiresPayment: election.requiresPayment,
-        currency: election.currency ?? 'XAF',
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        requiresPayment: row.requiresPayment,
+        currency: row.currency ?? "XAF",
         totalVotes: total,
         paidVotes,
         freeVotes: total - paidVotes,
-        revenue,
+        revenue: row.revenue ?? 0,
       };
-    }));
+    });
 
-    // ── Events analytics ─────────────────────────────────────────────────────
-    const events = await db
-      .select()
-      .from(eventsTable)
-      .where(eq(eventsTable.orgId, orgId))
-      .orderBy(desc(eventsTable.createdAt));
-
-    const eventAnalytics = await Promise.all(events.map(async (event) => {
-      const [{ ticketsSold }] = await db
-        .select({ ticketsSold: sql<number>`count(*)::int` })
-        .from(ticketsTable)
-        .where(and(eq(ticketsTable.eventId, event.id), sql`${ticketsTable.status} != 'cancelled'`));
-
-      const [{ checkedIn }] = await db
-        .select({ checkedIn: sql<number>`count(*)::int` })
-        .from(ticketsTable)
-        .where(and(eq(ticketsTable.eventId, event.id), eq(ticketsTable.status, "used")));
-
-      const { rows: [financialRow] } = await db.execute(sql`
-        SELECT COALESCE(SUM(gross_amount), 0)::float AS revenue
-        FROM financial_transactions
-        WHERE org_id = ${orgId} AND entity_id = ${event.id} AND pillar = 'event' AND status = 'completed'
-      `);
-
-      const sold = ticketsSold ?? 0;
-      const capacity = event.capacity;
-      const revenue = parseFloat(String((financialRow as any)?.revenue ?? 0));
-      const checkInsCount = checkedIn ?? 0;
-
+    const eventAnalytics = (eventsResult.rows as any[]).map(row => {
+      const sold = row.tickets_sold ?? 0;
+      const checkInsCount = row.checked_in ?? 0;
+      const capacity = row.capacity ?? null;
       return {
-        id: event.id,
-        title: event.title,
-        status: event.status,
-        startsAt: event.startsAt,
-        endsAt: event.endsAt,
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
         capacity,
         ticketsSold: sold,
         checkedIn: checkInsCount,
         checkInRate: sold > 0 ? Math.round((checkInsCount / sold) * 1000) / 10 : 0,
         capacityUtilization: capacity && capacity > 0 ? Math.round((sold / capacity) * 1000) / 10 : null,
-        revenue,
+        revenue: row.revenue ?? 0,
       };
-    }));
+    });
 
-    // ── Campaigns analytics ──────────────────────────────────────────────────
-    const campaigns = await db
-      .select()
-      .from(campaignsTable)
-      .where(eq(campaignsTable.orgId, orgId))
-      .orderBy(desc(campaignsTable.createdAt));
-
-    const campaignAnalytics = await Promise.all(campaigns.map(async (campaign) => {
-      const [{ submissionsCount }] = await db
-        .select({ submissionsCount: sql<number>`count(*)::int` })
-        .from(campaignResponsesTable)
-        .where(eq(campaignResponsesTable.campaignId, campaign.id));
-
-      const { rows: [financialRow] } = await db.execute(sql`
-        SELECT
-          COALESCE(SUM(gross_amount), 0)::float       AS revenue,
-          COALESCE(AVG(gross_amount), 0)::float        AS avg_contribution,
-          COUNT(*)::int                                AS paid_contributors
-        FROM financial_transactions
-        WHERE org_id = ${orgId} AND entity_id = ${campaign.id} AND pillar = 'campaign' AND status = 'completed'
-      `);
-
-      const goalAmount = campaign.goalAmount ? parseFloat(campaign.goalAmount) : null;
-      const amountRaised = parseFloat(String(campaign.currentAmount ?? "0"));
-      const revenue = parseFloat(String((financialRow as any)?.revenue ?? 0));
-      const avgContribution = parseFloat(String((financialRow as any)?.avg_contribution ?? 0));
-      const contributors = parseInt(String((financialRow as any)?.paid_contributors ?? 0));
-
+    const campaignAnalytics = (campaignsResult.rows as any[]).map(row => {
+      const goalAmount = row.goalAmount ? parseFloat(row.goalAmount) : null;
+      const amountRaised = parseFloat(String(row.currentAmount ?? "0"));
+      const contributors = row.paid_contributors ?? 0;
       return {
-        id: campaign.id,
-        title: campaign.title,
-        status: campaign.status,
-        type: campaign.type,
-        startsAt: campaign.startsAt,
-        endsAt: campaign.endsAt,
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        type: row.type,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
         goalAmount,
         amountRaised,
-        revenue,
+        revenue: row.revenue ?? 0,
         goalCompletion: goalAmount && goalAmount > 0 ? Math.round((amountRaised / goalAmount) * 1000) / 10 : null,
-        submissionsCount: submissionsCount ?? 0,
+        submissionsCount: row.submissions_count ?? 0,
         paidContributors: contributors,
-        avgContribution: contributors > 0 ? Math.round(avgContribution * 100) / 100 : 0,
+        avgContribution: contributors > 0 ? Math.round((row.avg_contribution ?? 0) * 100) / 100 : 0,
       };
-    }));
+    });
 
     res.json({
       elections: electionAnalytics,

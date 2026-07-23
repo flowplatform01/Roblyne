@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, uniqueIndex, decimal } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, uniqueIndex, decimal, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -23,7 +23,11 @@ export const electionsTable = pgTable("elections", {
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdIdx: index("elections_org_id_idx").on(table.orgId),
+  statusIdx: index("elections_status_idx").on(table.status),
+  visibilityIdx: index("elections_visibility_idx").on(table.visibility),
+}));
 
 // Allowlisted voter emails, used when eligibilityMode = "allowlist".
 export const electionEligibleVotersTable = pgTable("election_eligible_voters", {
@@ -41,7 +45,9 @@ export const positionsTable = pgTable("positions", {
   description: text("description"),
   maxSelections: integer("max_selections").notNull().default(1),
   sortOrder: integer("sort_order").notNull().default(0),
-});
+}, (table) => ({
+  electionIdIdx: index("positions_election_id_idx").on(table.electionId),
+}));
 
 export const candidatesTable = pgTable("candidates", {
   id: serial("id").primaryKey(),
@@ -54,7 +60,10 @@ export const candidatesTable = pgTable("candidates", {
   requiresPayment: boolean("requires_payment").notNull().default(false),
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
   currency: text("currency").notNull().default("USD"),
-});
+}, (table) => ({
+  electionIdIdx: index("candidates_election_id_idx").on(table.electionId),
+  positionIdIdx: index("candidates_position_id_idx").on(table.positionId),
+}));
 
 export const votesTable = pgTable("votes", {
   id: serial("id").primaryKey(),
@@ -72,7 +81,10 @@ export const voteSelectionsTable = pgTable("vote_selections", {
   voteId: integer("vote_id").notNull().references(() => votesTable.id, { onDelete: "cascade" }),
   positionId: integer("position_id").notNull().references(() => positionsTable.id),
   candidateId: integer("candidate_id").notNull().references(() => candidatesTable.id),
-});
+}, (table) => ({
+  voteIdIdx: index("vote_selections_vote_id_idx").on(table.voteId),
+  candidateIdIdx: index("vote_selections_candidate_id_idx").on(table.candidateId),
+}));
 
 export const platformSettingsTable = pgTable("platform_settings", {
   id: serial("id").primaryKey(),

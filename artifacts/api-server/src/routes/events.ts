@@ -21,8 +21,7 @@ function toCsvValue(value: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-// List events
-// Unauthenticated callers always get public-only results.
+// List events — single query with subquery counts to avoid N+1
 router.get("/events", async (req, res): Promise<void> => {
   const queryParsed = ListEventsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -39,17 +38,25 @@ router.get("/events", async (req, res): Promise<void> => {
     filters.push(eq(eventsTable.visibility, "public"));
   }
 
-  const rows = await db.select({ event: eventsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
+  const rows = await db
+    .select({
+      event: eventsTable,
+      orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
+      attendeesCount: sql<number>`(SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = ${eventsTable.id})`,
+      ticketTypesCount: sql<number>`(SELECT COUNT(*)::int FROM ticket_types tt WHERE tt.event_id = ${eventsTable.id})`,
+    })
     .from(eventsTable)
     .leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const events = await Promise.all(rows.map(async ({ event, orgName, orgLogoUrl }) => {
-    const [{ attendeesCount }] = await db.select({ attendeesCount: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, event.id));
-    const [{ ticketTypesCount }] = await db.select({ ticketTypesCount: sql<number>`count(*)::int` }).from(ticketTypesTable).where(eq(ticketTypesTable.eventId, event.id));
-    return { ...event, organizationName: orgName ?? null, organizationLogoUrl: orgLogoUrl ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 };
-  }));
-  res.json(events);
+  res.json(rows.map(({ event, orgName, orgLogoUrl, attendeesCount, ticketTypesCount }) => ({
+    ...event,
+    organizationName: orgName ?? null,
+    organizationLogoUrl: orgLogoUrl ?? null,
+    attendeesCount: attendeesCount ?? 0,
+    ticketTypesCount: ticketTypesCount ?? 0,
+  })));
 });
 
 // Create event
@@ -66,23 +73,37 @@ router.post("/events", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
-// Get event
+// Get event — subquery counts to avoid extra round-trips
 router.get("/events/:eventId", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = GetEventParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [row] = await db.select({ event: eventsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
-    .from(eventsTable).leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
-    .where(eq(eventsTable.id, parsed.data.eventId)).limit(1);
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
+  const [row] = await db
+    .select({
+      event: eventsTable,
+      orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
+      attendeesCount: sql<number>`(SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = ${eventsTable.id})`,
+      ticketTypesCount: sql<number>`(SELECT COUNT(*)::int FROM ticket_types tt WHERE tt.event_id = ${eventsTable.id})`,
+    })
+    .from(eventsTable)
+    .leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
+    .where(eq(eventsTable.id, parsed.data.eventId))
+    .limit(1);
+
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   if (row.event.visibility !== "public" && !req.session?.userId) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
-  const [{ attendeesCount }] = await db.select({ attendeesCount: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, row.event.id));
-  const [{ ticketTypesCount }] = await db.select({ ticketTypesCount: sql<number>`count(*)::int` }).from(ticketTypesTable).where(eq(ticketTypesTable.eventId, row.event.id));
-  res.json({ ...row.event, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, attendeesCount: attendeesCount ?? 0, ticketTypesCount: ticketTypesCount ?? 0 });
+  res.json({
+    ...row.event,
+    organizationName: row.orgName ?? null,
+    organizationLogoUrl: row.orgLogoUrl ?? null,
+    attendeesCount: row.attendeesCount ?? 0,
+    ticketTypesCount: row.ticketTypesCount ?? 0,
+  });
 });
 
 // Update event — must be org owner/admin
@@ -167,7 +188,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
 
-  // ── Lifecycle enforcement ─────────────────────────────────────────────────
+  // ── Lifecycle enforcement ─────────────────────────────────────────────
   if (event.status !== "published") {
     const reason =
       event.status === "cancelled" ? "This event has been cancelled" :
@@ -183,7 +204,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     return;
   }
 
-  // ── Invite code check ─────────────────────────────────────────────────────
+  // ── Invite code check ─────────────────────────────────────────────────
   if (event.visibility === "invite_only") {
     if (!inviteCode || inviteCode !== event.inviteCode) {
       res.status(403).json({ error: "A valid invite code is required to register for this event" });
@@ -191,7 +212,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     }
   }
 
-  // Verify ticket type belongs to this event and check availability
+  // Verify ticket type belongs to this event
   const [tt] = await db.select().from(ticketTypesTable)
     .where(and(eq(ticketTypesTable.id, ticketTypeId), eq(ticketTypesTable.eventId, paramParsed.data.eventId))).limit(1);
   if (!tt) { res.status(404).json({ error: "Ticket type not found for this event" }); return; }
@@ -206,27 +227,41 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     return;
   }
 
-  if (tt.quantity !== null && tt.sold >= tt.quantity) {
-    res.status(409).json({ error: "This ticket type is sold out" });
-    return;
-  }
-
+  // ── Atomic sold-count check and ticket issuance ───────────────────────
+  // The transaction re-reads ticket type FOR UPDATE to prevent overselling under concurrency.
   const ticketCode = uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase();
 
-  const ticket = await db.transaction(async (tx) => {
-    const [inserted] = await tx.insert(ticketsTable).values({
-      eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
-      ticketCode, status: "valid",
-    }).returning();
-    await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
-    return inserted;
-  });
+  try {
+    const ticket = await db.transaction(async (tx) => {
+      // Lock the ticket type row to prevent concurrent oversells
+      const lockResult = await tx.execute(
+        sql`SELECT id, quantity, sold FROM ticket_types WHERE id = ${ticketTypeId} FOR UPDATE`
+      );
+      const lockedTt = lockResult.rows[0] as any;
+      if (lockedTt.quantity !== null && lockedTt.sold >= lockedTt.quantity) {
+        throw Object.assign(new Error("Sold out"), { code: "SOLD_OUT" });
+      }
 
-  res.status(201).json({
-    ...ticket,
-    eventTitle: event.title,
-    ticketTypeName: tt?.name ?? null,
-  });
+      const [inserted] = await tx.insert(ticketsTable).values({
+        eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
+        ticketCode, status: "valid",
+      }).returning();
+      await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
+      return inserted;
+    });
+
+    res.status(201).json({
+      ...ticket,
+      eventTitle: event.title,
+      ticketTypeName: tt?.name ?? null,
+    });
+  } catch (err: any) {
+    if (err?.code === "SOLD_OUT") {
+      res.status(409).json({ error: "This ticket type is sold out" });
+      return;
+    }
+    throw err;
+  }
 });
 
 // ── ATTENDEES — org admin only ─────────────────────────────────────────────
@@ -253,14 +288,27 @@ router.post("/events/:eventId/checkin", requireAuth, requireResourceOrgRole(even
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
   const { ticketCode } = bodyParsed.data;
-  const [ticket] = await db.select().from(ticketsTable)
-    .where(and(eq(ticketsTable.eventId, paramParsed.data.eventId), eq(ticketsTable.ticketCode, ticketCode))).limit(1);
-  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
-  if (ticket.status === "used") { res.status(409).json({ error: "Already checked in" }); return; }
 
-  const [updated] = await db.update(ticketsTable).set({ status: "used", checkedInAt: new Date() })
-    .where(eq(ticketsTable.id, ticket.id)).returning();
-  const [tt] = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.id, ticket.ticketTypeId)).limit(1);
+  // Atomic check-in: update only if status is currently 'valid' to prevent double check-in
+  const [updated] = await db
+    .update(ticketsTable)
+    .set({ status: "used", checkedInAt: new Date() })
+    .where(and(
+      eq(ticketsTable.eventId, paramParsed.data.eventId),
+      eq(ticketsTable.ticketCode, ticketCode),
+      eq(ticketsTable.status, "valid"),
+    ))
+    .returning();
+
+  if (!updated) {
+    // Distinguish not-found from already-checked-in
+    const [ticket] = await db.select().from(ticketsTable)
+      .where(and(eq(ticketsTable.eventId, paramParsed.data.eventId), eq(ticketsTable.ticketCode, ticketCode))).limit(1);
+    if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+    res.status(409).json({ error: "Already checked in" }); return;
+  }
+
+  const [tt] = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.id, updated.ticketTypeId)).limit(1);
   res.json({ ...updated, ticketTypeName: tt?.name ?? null });
 });
 
@@ -272,23 +320,40 @@ router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eve
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const eventId = parsed.data.eventId;
 
-  const [{ totalAttendees }] = await db.select({ totalAttendees: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, eventId));
-  const [{ checkedIn }] = await db.select({ checkedIn: sql<number>`count(*)::int` }).from(ticketsTable).where(and(eq(ticketsTable.eventId, eventId), eq(ticketsTable.status, "used")));
+  // All aggregations in a single query; ticket type breakdown uses GROUP BY
+  const [summaryResult, ticketBreakdownResult, regByDayResult] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        COUNT(*)::int                                                                     AS total_attendees,
+        COUNT(*) FILTER (WHERE status = 'used')::int                                     AS checked_in
+      FROM tickets WHERE event_id = ${eventId}
+    `),
+    db.execute(sql`
+      SELECT
+        tt.id     AS ticket_type_id,
+        tt.name,
+        tt.price,
+        COUNT(t.id)::int AS sold
+      FROM ticket_types tt
+      LEFT JOIN tickets t ON t.ticket_type_id = tt.id AND t.event_id = ${eventId}
+      WHERE tt.event_id = ${eventId}
+      GROUP BY tt.id, tt.name, tt.price
+    `),
+    db.execute(
+      sql`SELECT date_trunc('day', issued_at)::date::text as date, count(*)::int as count FROM tickets WHERE event_id = ${eventId} GROUP BY 1 ORDER BY 1`
+    ),
+  ]);
 
-  const ticketTypes = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.eventId, eventId));
-  const ticketsByType = await Promise.all(ticketTypes.map(async (tt) => {
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(ticketsTable).where(and(eq(ticketsTable.eventId, eventId), eq(ticketsTable.ticketTypeId, tt.id)));
-    const sold = count ?? 0;
-    const price = parseFloat(tt.price);
-    return { ticketTypeId: tt.id, name: tt.name, sold, revenue: sold * price };
+  const summary = summaryResult.rows[0] as any;
+  const totalAttend = summary?.total_attendees ?? 0;
+  const checkedInCount = summary?.checked_in ?? 0;
+
+  const ticketsByType = (ticketBreakdownResult.rows as any[]).map((row: any) => ({
+    ticketTypeId: row.ticket_type_id,
+    name: row.name,
+    sold: row.sold,
+    revenue: row.sold * parseFloat(row.price),
   }));
-
-  const regByDay = await db.execute(
-    sql`SELECT date_trunc('day', issued_at)::date::text as date, count(*)::int as count FROM tickets WHERE event_id = ${eventId} GROUP BY 1 ORDER BY 1`
-  );
-
-  const totalAttend = totalAttendees ?? 0;
-  const checkedInCount = checkedIn ?? 0;
 
   res.json({
     eventId,
@@ -297,7 +362,7 @@ router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eve
     checkInRate: totalAttend > 0 ? Math.round((checkedInCount / totalAttend) * 1000) / 10 : 0,
     revenue: ticketsByType.reduce((sum, t) => sum + t.revenue, 0),
     ticketsByType,
-    registrationsByDay: (regByDay.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
+    registrationsByDay: (regByDayResult.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });
 });
 

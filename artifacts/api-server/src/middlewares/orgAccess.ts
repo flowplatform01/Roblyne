@@ -10,12 +10,22 @@ export type OrgRole = "owner" | "admin" | "member";
  * everyone else comes from organization_members.
  */
 export async function getOrgRole(orgId: number, userId: number): Promise<OrgRole | null> {
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
-  if (!org) return null;
-  if (org.ownerId === userId) return "owner";
-  const [member] = await db.select().from(organizationMembersTable)
-    .where(and(eq(organizationMembersTable.orgId, orgId), eq(organizationMembersTable.userId, userId))).limit(1);
-  return (member?.role as OrgRole) ?? null;
+  // Single JOIN query instead of two sequential round-trips
+  const [row] = await db
+    .select({ ownerId: organizationsTable.ownerId, memberRole: organizationMembersTable.role })
+    .from(organizationsTable)
+    .leftJoin(
+      organizationMembersTable,
+      and(
+        eq(organizationMembersTable.orgId, organizationsTable.id),
+        eq(organizationMembersTable.userId, userId),
+      ),
+    )
+    .where(eq(organizationsTable.id, orgId))
+    .limit(1);
+  if (!row) return null;
+  if (row.ownerId === userId) return "owner";
+  return (row.memberRole as OrgRole) ?? null;
 }
 
 /**

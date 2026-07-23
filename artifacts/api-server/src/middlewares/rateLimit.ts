@@ -30,3 +30,13 @@ export const writeLimiter = rateLimit({
   skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
   message: { error: "Too many submissions in a short time. Please slow down." },
 });
+
+// Targeted limit on the public search/discover endpoints to prevent scraping or DoS.
+// These endpoints are read-only but can be expensive (ILIKE queries across multiple tables).
+export const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: isDev ? 10_000 : 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many search requests. Please slow down." },
+});

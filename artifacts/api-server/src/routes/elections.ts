@@ -28,9 +28,7 @@ function toCsvValue(value: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-// List elections
-// Unauthenticated callers always get public-only results.
-// Authenticated callers (org workspace) may filter by orgId and see all visibility levels.
+// List elections — single query with subquery counts to avoid N+1
 router.get("/elections", async (req, res): Promise<void> => {
   const queryParsed = ListElectionsQueryParams.safeParse(req.query);
   const filters: any[] = [];
@@ -42,11 +40,9 @@ router.get("/elections", async (req, res): Promise<void> => {
     if (visibility) {
       filters.push(eq(electionsTable.visibility, visibility));
     } else if (!req.session?.userId) {
-      // No auth — restrict to public elections only
       filters.push(eq(electionsTable.visibility, "public"));
     }
   } else {
-    // Unparseable query — default safe: public only
     filters.push(eq(electionsTable.visibility, "public"));
   }
 
@@ -55,27 +51,22 @@ router.get("/elections", async (req, res): Promise<void> => {
       election: electionsTable,
       orgName: organizationsTable.name,
       orgLogoUrl: organizationsTable.logoUrl,
+      positionsCount: sql<number>`(SELECT COUNT(*)::int FROM positions p WHERE p.election_id = ${electionsTable.id})`,
+      candidatesCount: sql<number>`(SELECT COUNT(*)::int FROM candidates c WHERE c.election_id = ${electionsTable.id})`,
+      totalVotes: sql<number>`(SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v WHERE v.election_id = ${electionsTable.id})`,
     })
     .from(electionsTable)
     .leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
     .where(filters.length > 0 ? and(...filters) : undefined);
 
-  const elections = await Promise.all(rows.map(async ({ election, orgName, orgLogoUrl }) => {
-    const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, election.id));
-    const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, election.id));
-    const [{ voteCount }] = await db.select({ voteCount: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-      .from(voteSelectionsTable).innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-      .where(eq(votesTable.electionId, election.id));
-    return {
-      ...election,
-      organizationName: orgName ?? null,
-      organizationLogoUrl: orgLogoUrl ?? null,
-      positionsCount: posCount ?? 0,
-      candidatesCount: candCount ?? 0,
-      totalVotes: voteCount ?? 0,
-    };
-  }));
-  res.json(elections);
+  res.json(rows.map(({ election, orgName, orgLogoUrl, positionsCount, candidatesCount, totalVotes }) => ({
+    ...election,
+    organizationName: orgName ?? null,
+    organizationLogoUrl: orgLogoUrl ?? null,
+    positionsCount: positionsCount ?? 0,
+    candidatesCount: candidatesCount ?? 0,
+    totalVotes: totalVotes ?? 0,
+  })));
 });
 
 // Create election
@@ -92,30 +83,39 @@ router.post("/elections", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
 
-// Get election
+// Get election — subquery counts
 router.get("/elections/:electionId", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = GetElectionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [row] = await db.select({ election: electionsTable, orgName: organizationsTable.name, orgLogoUrl: organizationsTable.logoUrl })
+  const [row] = await db
+    .select({
+      election: electionsTable,
+      orgName: organizationsTable.name,
+      orgLogoUrl: organizationsTable.logoUrl,
+      positionsCount: sql<number>`(SELECT COUNT(*)::int FROM positions p WHERE p.election_id = ${electionsTable.id})`,
+      candidatesCount: sql<number>`(SELECT COUNT(*)::int FROM candidates c WHERE c.election_id = ${electionsTable.id})`,
+      totalVotes: sql<number>`(SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v WHERE v.election_id = ${electionsTable.id})`,
+    })
     .from(electionsTable)
     .leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
-    .where(eq(electionsTable.id, parsed.data.electionId)).limit(1);
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    .where(eq(electionsTable.id, parsed.data.electionId))
+    .limit(1);
 
-  // Non-public elections require the viewer to be authenticated and belong to the org
+  if (!row) { res.status(404).json({ error: "Not found" }); return; }
   if (row.election.visibility !== "public" && !req.session?.userId) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
-  const [{ posCount }] = await db.select({ posCount: sql<number>`count(*)::int` }).from(positionsTable).where(eq(positionsTable.electionId, row.election.id));
-  const [{ candCount }] = await db.select({ candCount: sql<number>`count(*)::int` }).from(candidatesTable).where(eq(candidatesTable.electionId, row.election.id));
-  const [{ voteCount }] = await db.select({ voteCount: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-    .from(voteSelectionsTable).innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-    .where(eq(votesTable.electionId, row.election.id));
-
-  res.json({ ...row.election, organizationName: row.orgName ?? null, organizationLogoUrl: row.orgLogoUrl ?? null, positionsCount: posCount ?? 0, candidatesCount: candCount ?? 0, totalVotes: voteCount ?? 0 });
+  res.json({
+    ...row.election,
+    organizationName: row.orgName ?? null,
+    organizationLogoUrl: row.orgLogoUrl ?? null,
+    positionsCount: row.positionsCount ?? 0,
+    candidatesCount: row.candidatesCount ?? 0,
+    totalVotes: row.totalVotes ?? 0,
+  });
 });
 
 // Update election — must be org owner/admin
@@ -167,6 +167,7 @@ router.post("/elections/:electionId/positions", requireAuth, requireResourceOrgR
   res.status(201).json(pos);
 });
 
+// Get position with candidates — single aggregated query for vote counts
 router.get("/elections/:electionId/positions/:positionId", async (req, res): Promise<void> => {
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
@@ -177,21 +178,22 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
   const [pos] = await db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1);
   if (!pos) { res.status(404).json({ error: "Not found" }); return; }
 
-  const candidates = await db
-    .select({ candidate: candidatesTable, positionTitle: positionsTable.title })
-    .from(candidatesTable)
-    .leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
-    .where(eq(candidatesTable.positionId, positionId));
+  // Aggregate vote counts in a single query — no N+1
+  const candidateRows = await db.execute(sql`
+    SELECT
+      c.id, c.election_id AS "electionId", c.position_id AS "positionId",
+      c.name, c.bio, c.photo_url AS "photoUrl", c.platform,
+      p.title AS "positionTitle",
+      COALESCE(SUM(v.quantity), 0)::int AS "voteCount"
+    FROM candidates c
+    LEFT JOIN positions p ON p.id = c.position_id
+    LEFT JOIN vote_selections vs ON vs.candidate_id = c.id
+    LEFT JOIN votes v ON v.id = vs.vote_id
+    WHERE c.position_id = ${positionId}
+    GROUP BY c.id, p.title
+  `);
 
-  const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-      .from(voteSelectionsTable)
-      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-      .where(eq(voteSelectionsTable.candidateId, candidate.id));
-    return { ...candidate, positionTitle: positionTitle ?? null, voteCount: count ?? 0 };
-  }));
-
-  res.json({ ...pos, candidates: withVotes });
+  res.json({ ...pos, candidates: candidateRows.rows });
 });
 
 router.patch("/elections/:electionId/positions/:positionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -216,32 +218,33 @@ router.delete("/elections/:electionId/positions/:positionId", requireAuth, requi
 
 // ── CANDIDATES ─────────────────────────────────────────────────────────────
 
+// List candidates — aggregate vote counts in a single GROUP BY query
 router.get("/elections/:electionId/candidates", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = ListCandidatesParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const queryParsed = ListCandidatesQueryParams.safeParse(req.query);
 
-  const conditions: any[] = [eq(candidatesTable.electionId, paramParsed.data.electionId)];
-  if (queryParsed.success && queryParsed.data.positionId) {
-    conditions.push(eq(candidatesTable.positionId, queryParsed.data.positionId));
-  }
+  const positionFilter = queryParsed.success && queryParsed.data.positionId
+    ? sql`AND c.position_id = ${queryParsed.data.positionId}`
+    : sql``;
 
-  const candidates = await db
-    .select({ candidate: candidatesTable, positionTitle: positionsTable.title })
-    .from(candidatesTable)
-    .leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
-    .where(and(...conditions));
+  const rows = await db.execute(sql`
+    SELECT
+      c.id, c.election_id AS "electionId", c.position_id AS "positionId",
+      c.name, c.bio, c.photo_url AS "photoUrl", c.platform,
+      p.title AS "positionTitle",
+      COALESCE(SUM(v.quantity), 0)::int AS "voteCount"
+    FROM candidates c
+    LEFT JOIN positions p ON p.id = c.position_id
+    LEFT JOIN vote_selections vs ON vs.candidate_id = c.id
+    LEFT JOIN votes v ON v.id = vs.vote_id
+    WHERE c.election_id = ${paramParsed.data.electionId}
+    ${positionFilter}
+    GROUP BY c.id, p.title
+  `);
 
-  const withVotes = await Promise.all(candidates.map(async ({ candidate, positionTitle }) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-      .from(voteSelectionsTable)
-      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-      .where(eq(voteSelectionsTable.candidateId, candidate.id));
-    return { ...candidate, positionTitle: positionTitle ?? null, voteCount: count ?? 0 };
-  }));
-
-  res.json(withVotes);
+  res.json(rows.rows);
 });
 
 router.post("/elections/:electionId/candidates", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -251,10 +254,12 @@ router.post("/elections/:electionId/candidates", requireAuth, requireResourceOrg
   const bodyParsed = CreateCandidateBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const { positionId, name, bio, photoUrl, platform } = bodyParsed.data;
-  const [candidate] = await db.insert(candidatesTable).values({
-    electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
-  }).returning();
-  const [pos] = await db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1);
+  const [[candidate], [pos]] = await Promise.all([
+    db.insert(candidatesTable).values({
+      electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
+    }).returning(),
+    db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1),
+  ]);
   res.status(201).json({ ...candidate, positionTitle: pos?.title ?? null, voteCount: 0 });
 });
 
@@ -263,15 +268,24 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const parsed = GetCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [row] = await db.select({ candidate: candidatesTable, positionTitle: positionsTable.title })
-    .from(candidatesTable).leftJoin(positionsTable, eq(candidatesTable.positionId, positionsTable.id))
-    .where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId))).limit(1);
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-    .from(voteSelectionsTable)
-    .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-    .where(eq(voteSelectionsTable.candidateId, row.candidate.id));
-  res.json({ ...row.candidate, positionTitle: row.positionTitle ?? null, voteCount: count ?? 0 });
+
+  const rows = await db.execute(sql`
+    SELECT
+      c.id, c.election_id AS "electionId", c.position_id AS "positionId",
+      c.name, c.bio, c.photo_url AS "photoUrl", c.platform,
+      p.title AS "positionTitle",
+      COALESCE(SUM(v.quantity), 0)::int AS "voteCount"
+    FROM candidates c
+    LEFT JOIN positions p ON p.id = c.position_id
+    LEFT JOIN vote_selections vs ON vs.candidate_id = c.id
+    LEFT JOIN votes v ON v.id = vs.vote_id
+    WHERE c.id = ${parsed.data.candidateId} AND c.election_id = ${parsed.data.electionId}
+    GROUP BY c.id, p.title
+    LIMIT 1
+  `);
+
+  if (rows.rows.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+  res.json(rows.rows[0]);
 });
 
 router.patch("/elections/:electionId/candidates/:candidateId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -319,7 +333,6 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
     return;
   }
 
-  // Enforce endsAt deadline server-side (status may not have been auto-updated yet)
   if (election.endsAt && new Date(election.endsAt) < new Date()) {
     res.status(403).json({ error: "This election has ended and is no longer accepting votes" });
     return;
@@ -352,7 +365,8 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
       ? `email:${bodyParsed.data.voterEmail.toLowerCase()}`
       : `session:${req.sessionID}`;
 
-  const existing = await db.select().from(votesTable)
+  // Pre-check (optimistic) — the unique constraint is the DB-level guarantee
+  const existing = await db.select({ id: votesTable.id }).from(votesTable)
     .where(and(eq(votesTable.electionId, electionId), eq(votesTable.voterIdentifier, voterIdentifier))).limit(1);
   if (existing.length > 0) {
     res.status(403).json({ error: "You have already participated in this election" });
@@ -362,10 +376,14 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   try {
     await db.transaction(async (tx) => {
       const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier, quantity: voteQuantity }).returning();
-      for (const selection of bodyParsed.data.selections) {
-        for (const candidateId of selection.candidateIds) {
-          await tx.insert(voteSelectionsTable).values({ voteId: vote.id, positionId: selection.positionId, candidateId });
-        }
+      // Bulk insert all selections in one statement
+      const selectionValues = bodyParsed.data.selections.flatMap(selection =>
+        selection.candidateIds.map(candidateId => ({
+          voteId: vote.id, positionId: selection.positionId, candidateId,
+        }))
+      );
+      if (selectionValues.length > 0) {
+        await tx.insert(voteSelectionsTable).values(selectionValues);
       }
 
       if (election.requiresPayment && Number(election.paymentAmount || 0) > 0) {
@@ -403,6 +421,7 @@ router.get("/elections/:electionId/eligible-voters", requireAuth, requireResourc
   res.json(voters);
 });
 
+// Add eligible voters — batch upsert instead of sequential loop to avoid N+1 and race conditions
 router.post("/elections/:electionId/eligible-voters", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = AddEligibleVotersParams.safeParse({ electionId: parseInt(rawId, 10) });
@@ -411,17 +430,24 @@ router.post("/elections/:electionId/eligible-voters", requireAuth, requireResour
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
   const electionId = paramParsed.data.electionId;
-  const inserted: (typeof electionEligibleVotersTable.$inferSelect)[] = [];
-  for (const rawEmail of bodyParsed.data.emails) {
-    const email = rawEmail.toLowerCase().trim();
-    if (!email) continue;
-    const [existing] = await db.select().from(electionEligibleVotersTable)
-      .where(and(eq(electionEligibleVotersTable.electionId, electionId), eq(electionEligibleVotersTable.email, email))).limit(1);
-    if (existing) { inserted.push(existing); continue; }
-    const [row] = await db.insert(electionEligibleVotersTable).values({ electionId, email }).returning();
-    inserted.push(row);
-  }
-  res.status(201).json(inserted);
+  const normalised = [...new Set(bodyParsed.data.emails.map(e => e.toLowerCase().trim()).filter(Boolean))];
+  if (normalised.length === 0) { res.status(201).json([]); return; }
+
+  // Batch upsert: ON CONFLICT DO NOTHING avoids duplicates atomically
+  const inserted = await db
+    .insert(electionEligibleVotersTable)
+    .values(normalised.map(email => ({ electionId, email })))
+    .onConflictDoNothing()
+    .returning();
+
+  // Return all current rows for these emails (including pre-existing ones)
+  const all = await db.select().from(electionEligibleVotersTable)
+    .where(and(
+      eq(electionEligibleVotersTable.electionId, electionId),
+      sql`email = ANY(${normalised})`
+    ));
+
+  res.status(201).json(all);
 });
 
 router.delete("/elections/:electionId/eligible-voters/:voterId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -436,25 +462,32 @@ router.delete("/elections/:electionId/eligible-voters/:voterId", requireAuth, re
 
 // ── EXPORT ─────────────────────────────────────────────────────────────────
 
+// Export results — single aggregated query instead of deeply nested N+1
 router.get("/elections/:electionId/export", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = ExportElectionResultsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const electionId = parsed.data.electionId;
 
-  const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
-  const rows = [["Position", "Candidate", "Votes"]];
-  for (const pos of positions) {
-    const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
-    for (const c of candidates) {
-      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-        .from(voteSelectionsTable)
-        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-        .where(eq(voteSelectionsTable.candidateId, c.id));
-      rows.push([pos.title, c.name, String(count ?? 0)]);
-    }
+  const rows = await db.execute(sql`
+    SELECT
+      p.title AS position,
+      c.name  AS candidate,
+      COALESCE(SUM(v.quantity), 0)::int AS votes
+    FROM positions p
+    LEFT JOIN candidates c ON c.position_id = p.id
+    LEFT JOIN vote_selections vs ON vs.candidate_id = c.id
+    LEFT JOIN votes v ON v.id = vs.vote_id
+    WHERE p.election_id = ${electionId}
+    GROUP BY p.id, p.title, c.id, c.name
+    ORDER BY p.sort_order, p.title, votes DESC
+  `);
+
+  const csvRows = [["Position", "Candidate", "Votes"]];
+  for (const row of rows.rows as any[]) {
+    csvRows.push([row.position, row.candidate ?? "", String(row.votes ?? 0)]);
   }
-  const csv = rows.map(r => r.map(toCsvValue).join(",")).join("\n");
+  const csv = csvRows.map(r => r.map(toCsvValue).join(",")).join("\n");
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", `attachment; filename="election-${electionId}-results.csv"`);
   res.send(csv);
@@ -462,80 +495,109 @@ router.get("/elections/:electionId/export", requireAuth, requireResourceOrgRole(
 
 // ── RESULTS ────────────────────────────────────────────────────────────────
 
+// Results — single aggregated query for all candidate vote counts
 router.get("/elections/:electionId/results", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = GetElectionResultsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const electionId = parsed.data.electionId;
 
-  // Verify election exists and is accessible
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Not found" }); return; }
   if (election.visibility !== "public" && !req.session?.userId) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
-  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-    .from(voteSelectionsTable).innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-    .where(eq(votesTable.electionId, electionId));
-  const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
+  // Fetch everything needed in parallel
+  const [totalResult, resultsRows] = await Promise.all([
+    db.execute(sql`
+      SELECT COALESCE(SUM(v.quantity), 0)::int AS total_votes
+      FROM votes v WHERE v.election_id = ${electionId}
+    `),
+    db.execute(sql`
+      SELECT
+        p.id   AS position_id,
+        p.title AS position_title,
+        p.sort_order,
+        c.id   AS candidate_id,
+        c.name AS candidate_name,
+        c.photo_url AS candidate_photo,
+        COALESCE(SUM(v.quantity), 0)::int AS vote_count
+      FROM positions p
+      LEFT JOIN candidates c ON c.position_id = p.id
+      LEFT JOIN vote_selections vs ON vs.candidate_id = c.id
+      LEFT JOIN votes v ON v.id = vs.vote_id
+      WHERE p.election_id = ${electionId}
+      GROUP BY p.id, p.title, p.sort_order, c.id, c.name, c.photo_url
+      ORDER BY p.sort_order, p.title, vote_count DESC
+    `),
+  ]);
 
-  const positionResults = await Promise.all(positions.map(async (pos) => {
-    const candidates = await db.select().from(candidatesTable).where(eq(candidatesTable.positionId, pos.id));
-    const total = totalVotes ?? 0;
-    const candidateResults = await Promise.all(candidates.map(async (c) => {
-      const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-        .from(voteSelectionsTable)
-        .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-        .where(eq(voteSelectionsTable.candidateId, c.id));
-      return {
-        candidateId: c.id,
-        name: c.name,
-        photoUrl: c.photoUrl ?? null,
-        voteCount: count ?? 0,
-        percentage: total > 0 ? Math.round(((count ?? 0) / total) * 1000) / 10 : 0,
-      };
-    }));
-    return { positionId: pos.id, title: pos.title, candidates: candidateResults.sort((a, b) => b.voteCount - a.voteCount) };
-  }));
+  const totalVotes = (totalResult.rows[0] as any)?.total_votes ?? 0;
 
-  res.json({ electionId, totalVotes: totalVotes ?? 0, positions: positionResults });
+  // Group rows into positions
+  const posMap = new Map<number, { positionId: number; title: string; candidates: any[] }>();
+  for (const row of resultsRows.rows as any[]) {
+    if (!posMap.has(row.position_id)) {
+      posMap.set(row.position_id, { positionId: row.position_id, title: row.position_title, candidates: [] });
+    }
+    if (row.candidate_id) {
+      posMap.get(row.position_id)!.candidates.push({
+        candidateId: row.candidate_id,
+        name: row.candidate_name,
+        photoUrl: row.candidate_photo ?? null,
+        voteCount: row.vote_count ?? 0,
+        percentage: totalVotes > 0 ? Math.round(((row.vote_count ?? 0) / totalVotes) * 1000) / 10 : 0,
+      });
+    }
+  }
+
+  res.json({ electionId, totalVotes, positions: Array.from(posMap.values()) });
 });
 
 // ── ANALYTICS — org admin only ─────────────────────────────────────────────
 
+// Analytics — parallel queries, no N+1
 router.get("/elections/:electionId/analytics", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = GetElectionAnalyticsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const electionId = parsed.data.electionId;
 
-  const [{ totalVotes }] = await db.select({ totalVotes: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` })
-    .from(voteSelectionsTable).innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-    .where(eq(votesTable.electionId, electionId));
+  const [totalResult, votesByHour, positionCounts] = await Promise.all([
+    db.execute(sql`
+      SELECT COALESCE(SUM(v.quantity), 0)::int AS total_votes FROM votes v WHERE v.election_id = ${electionId}
+    `),
+    db.execute(sql`
+      SELECT date_trunc('hour', v.voted_at) AS hour, COALESCE(SUM(v.quantity), 0)::int AS count
+      FROM votes v
+      WHERE v.election_id = ${electionId}
+      GROUP BY 1 ORDER BY 1
+    `),
+    db.execute(sql`
+      SELECT
+        p.id AS position_id,
+        p.title,
+        COALESCE(SUM(v.quantity), 0)::int AS vote_count
+      FROM positions p
+      LEFT JOIN vote_selections vs ON vs.position_id = p.id
+      LEFT JOIN votes v ON v.id = vs.vote_id
+      WHERE p.election_id = ${electionId}
+      GROUP BY p.id, p.title
+      ORDER BY vote_count DESC
+    `),
+  ]);
 
-  const votesByHour = await db.execute(
-    sql`SELECT date_trunc('hour', v.voted_at) as hour, COALESCE(SUM(v.quantity), 0)::int as count
-        FROM votes v
-        INNER JOIN vote_selections vs ON vs.vote_id = v.id
-        WHERE v.election_id = ${electionId}
-        GROUP BY 1 ORDER BY 1`
-  );
-
-  const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, electionId));
-  const topPositions = await Promise.all(positions.map(async (pos) => {
-    const [{ count }] = await db.select({ count: sql<number>`COALESCE(SUM(${votesTable.quantity}), 0)::int` }).from(voteSelectionsTable)
-      .innerJoin(votesTable, eq(voteSelectionsTable.voteId, votesTable.id))
-      .where(eq(voteSelectionsTable.positionId, pos.id));
-    return { positionId: pos.id, title: pos.title, voteCount: count ?? 0 };
-  }));
+  const totalVotes = (totalResult.rows[0] as any)?.total_votes ?? 0;
 
   res.json({
     electionId,
-    totalVotes: totalVotes ?? 0,
+    totalVotes,
     turnoutRate: 0,
     votesByHour: (votesByHour.rows ?? []).map((r: any) => ({ hour: r.hour, count: r.count })),
-    topPositions: topPositions.sort((a, b) => b.voteCount - a.voteCount),
+    topPositions: (positionCounts.rows as any[]).map(r => ({
+      positionId: r.position_id, title: r.title, voteCount: r.vote_count ?? 0,
+    })),
   });
 });
 

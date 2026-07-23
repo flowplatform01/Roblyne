@@ -1,25 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, or, ilike, and } from "drizzle-orm";
-import { db, electionsTable, eventsTable, campaignsTable, organizationsTable, votesTable, ticketsTable, campaignResponsesTable } from "@workspace/db";
+import { db, electionsTable, eventsTable, campaignsTable, organizationsTable } from "@workspace/db";
 import { DiscoverQueryParams, SearchQueryParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-async function toDiscoveryItem(type: "election" | "event" | "campaign", row: any, orgName: string | null, participantsCount: number) {
-  return {
-    id: row.id,
-    type,
-    title: row.title,
-    description: row.description ?? null,
-    coverImageUrl: row.coverImageUrl ?? null,
-    organizationName: orgName ?? "",
-    status: row.status,
-    startsAt: row.startsAt ?? null,
-    endsAt: row.endsAt ?? null,
-    participantsCount,
-    createdAt: row.createdAt,
-  };
-}
+// ── DISCOVER ────────────────────────────────────────────────────────────────
 
 router.get("/discover", async (req, res): Promise<void> => {
   const queryParsed = DiscoverQueryParams.safeParse(req.query);
@@ -27,37 +13,62 @@ router.get("/discover", async (req, res): Promise<void> => {
   const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
   const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
 
-  const items: any[] = [];
+  // Fetch all three pillars in parallel using a single aggregated query each.
+  // Participant counts come from a correlated subquery, avoiding N+1 loops.
+  const [elections, events, campaigns] = await Promise.all([
+    (!typeFilter || typeFilter === "all" || typeFilter === "elections")
+      ? db.execute(sql`
+          SELECT
+            e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
+            e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM vote_selections vs
+             INNER JOIN votes v ON v.id = vs.vote_id
+             WHERE v.election_id = e.id) AS "participantsCount"
+          FROM elections e
+          LEFT JOIN organizations o ON o.id = e.org_id
+          WHERE e.visibility = 'public'
+          ORDER BY e.created_at DESC
+          LIMIT ${limit}
+        `)
+      : { rows: [] },
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "elections") {
-    const elections = await db.select({ e: electionsTable, orgName: organizationsTable.name })
-      .from(electionsTable).leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
-      .where(eq(electionsTable.visibility, "public")).limit(limit);
-    for (const { e, orgName } of elections) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, e.id));
-      items.push(await toDiscoveryItem("election", e, orgName ?? null, count ?? 0));
-    }
-  }
+    (!typeFilter || typeFilter === "all" || typeFilter === "events")
+      ? db.execute(sql`
+          SELECT
+            e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
+            e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id) AS "participantsCount"
+          FROM events e
+          LEFT JOIN organizations o ON o.id = e.org_id
+          WHERE e.visibility = 'public'
+          ORDER BY e.created_at DESC
+          LIMIT ${limit}
+        `)
+      : { rows: [] },
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "events") {
-    const events = await db.select({ e: eventsTable, orgName: organizationsTable.name })
-      .from(eventsTable).leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
-      .where(eq(eventsTable.visibility, "public")).limit(limit);
-    for (const { e, orgName } of events) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, e.id));
-      items.push(await toDiscoveryItem("event", e, orgName ?? null, count ?? 0));
-    }
-  }
+    (!typeFilter || typeFilter === "all" || typeFilter === "campaigns")
+      ? db.execute(sql`
+          SELECT
+            c.id, c.title, c.description, c.cover_image_url AS "coverImageUrl",
+            c.status, c.starts_at AS "startsAt", c.ends_at AS "endsAt", c.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = c.id) AS "participantsCount"
+          FROM campaigns c
+          LEFT JOIN organizations o ON o.id = c.org_id
+          WHERE c.visibility = 'public'
+          ORDER BY c.created_at DESC
+          LIMIT ${limit}
+        `)
+      : { rows: [] },
+  ]);
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "campaigns") {
-    const campaigns = await db.select({ c: campaignsTable, orgName: organizationsTable.name })
-      .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
-      .where(eq(campaignsTable.visibility, "public")).limit(limit);
-    for (const { c, orgName } of campaigns) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, c.id));
-      items.push(await toDiscoveryItem("campaign", c as any, orgName ?? null, count ?? 0));
-    }
-  }
+  const items: any[] = [
+    ...elections.rows.map((r: any) => ({ ...r, type: "election" })),
+    ...events.rows.map((r: any) => ({ ...r, type: "event" })),
+    ...campaigns.rows.map((r: any) => ({ ...r, type: "campaign" })),
+  ];
 
   if (sort === "trending" || sort === "popular") {
     items.sort((a, b) => {
@@ -72,15 +83,14 @@ router.get("/discover", async (req, res): Promise<void> => {
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  // Featured: active/published public items
   const featured = items.filter(i => i.status === "active" || i.status === "published").slice(0, 4);
-  // Trending: highest participation
   const trending = [...items].sort((a, b) => b.participantsCount - a.participantsCount).slice(0, 4);
 
   res.json({ items: items.slice(0, limit), featured, trending });
 });
 
-// Search — always restricted to public items
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+
 router.get("/search", async (req, res): Promise<void> => {
   const queryParsed = SearchQueryParams.safeParse(req.query);
   if (!queryParsed.success || !queryParsed.data.q) {
@@ -89,46 +99,59 @@ router.get("/search", async (req, res): Promise<void> => {
   }
   const { q, type: typeFilter } = queryParsed.data;
   const pattern = `%${q}%`;
-  const items: any[] = [];
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "elections") {
-    const elections = await db.select({ e: electionsTable, orgName: organizationsTable.name })
-      .from(electionsTable).leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
-      .where(and(
-        eq(electionsTable.visibility, "public"),
-        or(ilike(electionsTable.title, pattern), ilike(electionsTable.description ?? sql`''`, pattern))
-      ));
-    for (const { e, orgName } of elections) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(votesTable).where(eq(votesTable.electionId, e.id));
-      items.push(await toDiscoveryItem("election", e, orgName ?? null, count ?? 0));
-    }
-  }
+  // All three searches run in parallel; participant counts are subqueries.
+  const [elections, events, campaigns] = await Promise.all([
+    (!typeFilter || typeFilter === "all" || typeFilter === "elections")
+      ? db.execute(sql`
+          SELECT
+            e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
+            e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM vote_selections vs
+             INNER JOIN votes v ON v.id = vs.vote_id
+             WHERE v.election_id = e.id) AS "participantsCount"
+          FROM elections e
+          LEFT JOIN organizations o ON o.id = e.org_id
+          WHERE e.visibility = 'public'
+            AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
+        `)
+      : { rows: [] },
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "events") {
-    const events = await db.select({ e: eventsTable, orgName: organizationsTable.name })
-      .from(eventsTable).leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
-      .where(and(
-        eq(eventsTable.visibility, "public"),
-        or(ilike(eventsTable.title, pattern), ilike(eventsTable.description ?? sql`''`, pattern))
-      ));
-    for (const { e, orgName } of events) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(ticketsTable).where(eq(ticketsTable.eventId, e.id));
-      items.push(await toDiscoveryItem("event", e, orgName ?? null, count ?? 0));
-    }
-  }
+    (!typeFilter || typeFilter === "all" || typeFilter === "events")
+      ? db.execute(sql`
+          SELECT
+            e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
+            e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id) AS "participantsCount"
+          FROM events e
+          LEFT JOIN organizations o ON o.id = e.org_id
+          WHERE e.visibility = 'public'
+            AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
+        `)
+      : { rows: [] },
 
-  if (!typeFilter || typeFilter === "all" || typeFilter === "campaigns") {
-    const campaigns = await db.select({ c: campaignsTable, orgName: organizationsTable.name })
-      .from(campaignsTable).leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
-      .where(and(
-        eq(campaignsTable.visibility, "public"),
-        or(ilike(campaignsTable.title, pattern), ilike(campaignsTable.description ?? sql`''`, pattern))
-      ));
-    for (const { c, orgName } of campaigns) {
-      const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, c.id));
-      items.push(await toDiscoveryItem("campaign", c as any, orgName ?? null, count ?? 0));
-    }
-  }
+    (!typeFilter || typeFilter === "all" || typeFilter === "campaigns")
+      ? db.execute(sql`
+          SELECT
+            c.id, c.title, c.description, c.cover_image_url AS "coverImageUrl",
+            c.status, c.starts_at AS "startsAt", c.ends_at AS "endsAt", c.created_at AS "createdAt",
+            o.name AS "organizationName",
+            (SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = c.id) AS "participantsCount"
+          FROM campaigns c
+          LEFT JOIN organizations o ON o.id = c.org_id
+          WHERE c.visibility = 'public'
+            AND (c.title ILIKE ${pattern} OR c.description ILIKE ${pattern})
+        `)
+      : { rows: [] },
+  ]);
+
+  const items: any[] = [
+    ...elections.rows.map((r: any) => ({ ...r, type: "election" })),
+    ...events.rows.map((r: any) => ({ ...r, type: "event" })),
+    ...campaigns.rows.map((r: any) => ({ ...r, type: "campaign" })),
+  ];
 
   res.json({ query: q, total: items.length, items });
 });

@@ -12,18 +12,18 @@ import { requireOrgRole, getOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
 
-async function memberRow(member: typeof organizationMembersTable.$inferSelect) {
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, member.userId)).limit(1);
-  return { ...member, email: user?.email ?? null, name: user?.name ?? null };
-}
-
-// List organizations for current user
+// List organizations for current user — includes owned + member orgs
 router.get("/organizations", requireAuth, async (req, res): Promise<void> => {
-  const orgs = await db
-    .select()
-    .from(organizationsTable)
-    .where(eq(organizationsTable.ownerId, req.session.userId!));
-  res.json(orgs);
+  const userId = req.session.userId!;
+  // Single query: orgs owned OR where user is an explicit member
+  const orgs = await db.execute(sql`
+    SELECT DISTINCT o.*
+    FROM organizations o
+    LEFT JOIN organization_members om ON om.org_id = o.id AND om.user_id = ${userId}
+    WHERE o.owner_id = ${userId} OR om.user_id IS NOT NULL
+    ORDER BY o.created_at DESC
+  `);
+  res.json(orgs.rows);
 });
 
 // Create organization
@@ -52,17 +52,17 @@ router.get("/organizations/:orgId", requireAuth, async (req, res): Promise<void>
   const parsed = GetOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, parsed.data.orgId)).limit(1);
+  const [[org], role] = await Promise.all([
+    db.select().from(organizationsTable).where(eq(organizationsTable.id, parsed.data.orgId)).limit(1),
+    getOrgRole(parsed.data.orgId, req.session.userId!),
+  ]);
+
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
-
-  // Verify requester has a role in this org (owner or member)
-  const role = await getOrgRole(parsed.data.orgId, req.session.userId!);
   if (!role) { res.status(403).json({ error: "Access denied" }); return; }
-
   res.json(org);
 });
 
-// Get public organization profile (with stats and recent activity) — public, no auth required
+// Get public organization profile — public, no auth required
 router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const parsed = GetOrganizationParams.safeParse({ orgId: parseInt(rawId, 10) });
@@ -72,32 +72,44 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
 
-  const [electionsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(and(eq(electionsTable.orgId, orgId), eq(electionsTable.visibility, "public")));
-  const [eventsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(and(eq(eventsTable.orgId, orgId), eq(eventsTable.visibility, "public")));
-  const [campaignsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(and(eq(campaignsTable.orgId, orgId), eq(campaignsTable.visibility, "public")));
-  const [activeElections] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.status} = 'active' AND ${electionsTable.visibility} = 'public'`);
-  const [upcomingEvents] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.status} = 'published' AND ${eventsTable.visibility} = 'public'`);
-  const [activeCampaigns] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.status} = 'active' AND ${campaignsTable.visibility} = 'public'`);
+  // Run all count queries and recent activity queries in parallel
+  const [
+    countsResult,
+    recentElections,
+    recentEvents,
+    recentCampaigns,
+  ] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND visibility = 'public')       AS elections_count,
+        (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND visibility = 'public')       AS events_count,
+        (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND visibility = 'public')       AS campaigns_count,
+        (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND status = 'active'    AND visibility = 'public') AS active_elections,
+        (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND status = 'published' AND visibility = 'public') AS upcoming_events,
+        (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND status = 'active'    AND visibility = 'public') AS active_campaigns
+    `),
+    db.select().from(electionsTable)
+      .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public'`)
+      .orderBy(sql`${electionsTable.createdAt} DESC`).limit(3),
+    db.select().from(eventsTable)
+      .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public'`)
+      .orderBy(sql`${eventsTable.createdAt} DESC`).limit(3),
+    db.select().from(campaignsTable)
+      .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
+      .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3),
+  ]);
 
-  const recentElections = await db.select().from(electionsTable)
-    .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public'`)
-    .orderBy(sql`${electionsTable.createdAt} DESC`).limit(3);
-  const recentEvents = await db.select().from(eventsTable)
-    .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public'`)
-    .orderBy(sql`${eventsTable.createdAt} DESC`).limit(3);
-  const recentCampaigns = await db.select().from(campaignsTable)
-    .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
-    .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3);
+  const counts = countsResult.rows[0] as any;
 
   res.json({
     ...org,
-    electionsCount: electionsCount?.count ?? 0,
-    eventsCount: eventsCount?.count ?? 0,
-    campaignsCount: campaignsCount?.count ?? 0,
+    electionsCount: counts?.elections_count ?? 0,
+    eventsCount: counts?.events_count ?? 0,
+    campaignsCount: counts?.campaigns_count ?? 0,
     totalParticipants: 0,
-    activeElectionsCount: activeElections?.count ?? 0,
-    upcomingEventsCount: upcomingEvents?.count ?? 0,
-    activeCampaignsCount: activeCampaigns?.count ?? 0,
+    activeElectionsCount: counts?.active_elections ?? 0,
+    upcomingEventsCount: counts?.upcoming_events ?? 0,
+    activeCampaignsCount: counts?.active_campaigns ?? 0,
     recentElections: recentElections.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, positionsCount: 0, candidatesCount: 0, totalVotes: 0 })),
     recentEvents: recentEvents.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, attendeesCount: 0, ticketTypesCount: 0 })),
     recentCampaigns: recentCampaigns.map(c => ({ ...c, organizationName: org.name, organizationLogoUrl: org.logoUrl, submissionsCount: 0, currentAmount: c.currentAmount ?? "0" })),
@@ -128,43 +140,64 @@ router.get("/organizations/:orgId/stats", requireAuth, requireOrgRole(["owner", 
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const orgId = parsed.data.orgId;
 
-  const [electionsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(eq(electionsTable.orgId, orgId));
-  const [eventsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(eq(eventsTable.orgId, orgId));
-  const [campaignsCount] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(eq(campaignsTable.orgId, orgId));
-  const [activeElections] = await db.select({ count: sql<number>`count(*)::int` }).from(electionsTable).where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.status} = 'active'`);
-  const [upcomingEvents] = await db.select({ count: sql<number>`count(*)::int` }).from(eventsTable).where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.status} = 'published'`);
-  const [activeCampaigns] = await db.select({ count: sql<number>`count(*)::int` }).from(campaignsTable).where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.status} = 'active'`);
+  // Single query for all counts
+  const result = await db.execute(sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId})                                AS elections_count,
+      (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId})                                AS events_count,
+      (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId})                                AS campaigns_count,
+      (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND status = 'active')          AS active_elections,
+      (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND status = 'published')       AS upcoming_events,
+      (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND status = 'active')          AS active_campaigns
+  `);
 
+  const counts = result.rows[0] as any;
   res.json({
-    electionsCount: electionsCount?.count ?? 0,
-    eventsCount: eventsCount?.count ?? 0,
-    campaignsCount: campaignsCount?.count ?? 0,
+    electionsCount: counts?.elections_count ?? 0,
+    eventsCount: counts?.events_count ?? 0,
+    campaignsCount: counts?.campaigns_count ?? 0,
     totalParticipants: 0,
-    activeElectionsCount: activeElections?.count ?? 0,
-    upcomingEventsCount: upcomingEvents?.count ?? 0,
-    activeCampaignsCount: activeCampaigns?.count ?? 0,
+    activeElectionsCount: counts?.active_elections ?? 0,
+    upcomingEventsCount: counts?.upcoming_events ?? 0,
+    activeCampaignsCount: counts?.active_campaigns ?? 0,
   });
 });
 
 // ── MEMBERS ────────────────────────────────────────────────────────────────
 
-// Members list — must be an org member to see the team
+// Members list — JOIN to avoid N+1 user lookups
 router.get("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner", "admin", "member"]), async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.orgId) ? req.params.orgId[0] : req.params.orgId;
   const paramParsed = AddOrganizationMemberParams.pick({ orgId: true }).safeParse({ orgId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const orgId = paramParsed.data.orgId;
 
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
-  if (!org) { res.status(404).json({ error: "Not found" }); return; }
-  const [owner] = await db.select().from(usersTable).where(eq(usersTable.id, org.ownerId)).limit(1);
+  // Fetch org + owner in parallel, members with a JOIN
+  const [[org], memberRows] = await Promise.all([
+    db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1),
+    db
+      .select({
+        id: organizationMembersTable.id,
+        orgId: organizationMembersTable.orgId,
+        userId: organizationMembersTable.userId,
+        role: organizationMembersTable.role,
+        invitedAt: organizationMembersTable.invitedAt,
+        email: usersTable.email,
+        name: usersTable.name,
+      })
+      .from(organizationMembersTable)
+      .leftJoin(usersTable, eq(organizationMembersTable.userId, usersTable.id))
+      .where(eq(organizationMembersTable.orgId, orgId)),
+  ]);
 
-  const members = await db.select().from(organizationMembersTable).where(eq(organizationMembersTable.orgId, orgId));
-  const memberRows = await Promise.all(members.map(memberRow));
+  if (!org) { res.status(404).json({ error: "Not found" }); return; }
+
+  const [owner] = await db.select({ email: usersTable.email, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, org.ownerId)).limit(1);
 
   res.json([
     { id: 0, orgId, userId: org.ownerId, email: owner?.email ?? null, name: owner?.name ?? null, role: "owner", invitedAt: org.createdAt },
-    ...memberRows,
+    ...memberRows.map(m => ({ ...m, email: m.email ?? null, name: m.name ?? null })),
   ]);
 });
 
@@ -176,10 +209,13 @@ router.post("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const orgId = paramParsed.data.orgId;
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, bodyParsed.data.email)).limit(1);
-  if (!user) { res.status(404).json({ error: "No user found with that email" }); return; }
+  // Fetch user + org in parallel
+  const [[user], [org]] = await Promise.all([
+    db.select().from(usersTable).where(eq(usersTable.email, bodyParsed.data.email)).limit(1),
+    db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1),
+  ]);
 
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  if (!user) { res.status(404).json({ error: "No user found with that email" }); return; }
   if (org?.ownerId === user.id) { res.status(409).json({ error: "User already owns this organization" }); return; }
 
   const existing = await db.select().from(organizationMembersTable)
@@ -189,7 +225,8 @@ router.post("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner
   const [member] = await db.insert(organizationMembersTable).values({
     orgId, userId: user.id, role: bodyParsed.data.role ?? "member",
   }).returning();
-  res.status(201).json(await memberRow(member));
+
+  res.status(201).json({ ...member, email: user.email ?? null, name: user.name ?? null });
 });
 
 router.patch("/organizations/:orgId/members/:memberId", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
@@ -204,7 +241,10 @@ router.patch("/organizations/:orgId/members/:memberId", requireAuth, requireOrgR
     .where(and(eq(organizationMembersTable.id, paramParsed.data.memberId), eq(organizationMembersTable.orgId, paramParsed.data.orgId)))
     .returning();
   if (!member) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(await memberRow(member));
+
+  const [user] = await db.select({ email: usersTable.email, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, member.userId)).limit(1);
+  res.json({ ...member, email: user?.email ?? null, name: user?.name ?? null });
 });
 
 router.delete("/organizations/:orgId/members/:memberId", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {

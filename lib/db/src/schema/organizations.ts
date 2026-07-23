@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -16,7 +16,9 @@ export const organizationsTable = pgTable("organizations", {
   theme: text("theme").notNull().default("evenum"), // evenum | light | dark
   ownerId: integer("owner_id").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  ownerIdIdx: index("organizations_owner_id_idx").on(table.ownerId),
+}));
 
 // Team membership: every org automatically has its owner as an implicit "owner" member.
 // Additional members are explicit rows here with a role granting scoped permissions.

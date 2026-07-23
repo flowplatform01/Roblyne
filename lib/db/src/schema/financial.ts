@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, decimal } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, decimal, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -40,7 +40,13 @@ export const financialTransactionsTable = pgTable("financial_transactions", {
   payerName: text("payer_name"),
   payerEmail: text("payer_email"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdIdx: index("financial_transactions_org_id_idx").on(table.orgId),
+  entityIdx: index("financial_transactions_entity_idx").on(table.pillar, table.entityId),
+  settlementIdIdx: index("financial_transactions_settlement_id_idx").on(table.settlementId),
+  settlementStatusIdx: index("financial_transactions_settlement_status_idx").on(table.settlementStatus),
+  createdAtIdx: index("financial_transactions_created_at_idx").on(table.createdAt),
+}));
 
 // Settlement records — groups pending transactions for payout
 export const settlementsTable = pgTable("settlements", {
@@ -55,7 +61,10 @@ export const settlementsTable = pgTable("settlements", {
   releasedAt: timestamp("released_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdIdx: index("settlements_org_id_idx").on(table.orgId),
+  statusIdx: index("settlements_status_idx").on(table.status),
+}));
 
 export const insertCommissionConfigSchema = createInsertSchema(commissionConfigsTable).omit({ id: true, updatedAt: true });
 export type InsertCommissionConfig = z.infer<typeof insertCommissionConfigSchema>;

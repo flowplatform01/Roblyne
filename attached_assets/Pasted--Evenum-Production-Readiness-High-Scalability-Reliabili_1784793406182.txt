@@ -1,0 +1,243 @@
+
+Evenum — Production Readiness, High Scalability, Reliability & Performance Hardening
+Context
+Evenum has reached a mature implementation stage.
+The core vision, pillars, workflows, monetization model, organization management, public experiences, voting, events, campaigns, financial architecture, and administration already exist.
+This is NOT a feature-building task.
+This is a production engineering and platform hardening mission.
+Review the entire application from frontend to backend.
+Review every architectural decision.
+Review every service.
+Review every API.
+Review every database interaction.
+Review every background operation.
+Review every public experience.
+Review every internal workflow.
+Identify bottlenecks.
+Identify inefficient operations.
+Identify expensive database queries.
+Identify blocking operations.
+Identify synchronous work that should become asynchronous.
+Identify duplicated logic.
+Identify race conditions.
+Identify memory leaks.
+Identify scalability risks.
+Identify reliability issues.
+Identify security weaknesses.
+Identify consistency problems.
+Identify anything that could prevent Evenum from confidently operating at production scale.
+Do not simply make the application "work."
+Engineer it to operate like a professional SaaS platform capable of serving large organizations and high-concurrency participation.
+
+Mission
+Transform Evenum into a production-grade platform that is:
+* Fast
+* Stable
+* Reliable
+* Concurrent
+* Fault tolerant
+* Horizontally scalable
+* Efficient
+* Secure
+* Observable
+* Maintainable
+* Production-ready
+Every architectural improvement should preserve existing functionality while strengthening the platform.
+There should be no regressions.
+
+1. Production Architecture Review
+Conduct a complete architectural review.
+Evaluate:
+* Backend structure
+* Frontend rendering
+* API architecture
+* Authentication
+* Authorization
+* Database design
+* File handling
+* Media storage
+* Payment processing
+* Voting engine
+* Event engine
+* Campaign engine
+* Notification architecture
+* Commission engine
+* Public rendering
+* Organization isolation
+* Admin services
+Anything that can become cleaner, more modular, or more scalable should be improved.
+
+2. High Concurrency Engineering
+Evenum must assume that thousands of people may perform actions simultaneously.
+Examples include:
+* Voting
+* Purchasing tickets
+* Participating in campaigns
+* Uploading media
+* Logging in
+* Viewing public pages
+* Creating organizations
+* Paying simultaneously
+* Opening shared links
+The platform must remain responsive.
+No request should unnecessarily block another.
+Critical operations must remain consistent even under heavy concurrent load.
+
+3. Database Optimization
+Review every query.
+Remove inefficient database access.
+Avoid repeated queries.
+Reduce unnecessary joins.
+Introduce proper indexing.
+Optimize filtering.
+Optimize sorting.
+Optimize pagination.
+Avoid N+1 query problems.
+Ensure database operations remain efficient as records grow into the millions.
+
+4. API Optimization
+Review every endpoint.
+Reduce unnecessary payloads.
+Return only required data.
+Support efficient pagination.
+Avoid duplicated requests.
+Improve validation.
+Improve serialization.
+Reduce latency.
+Ensure APIs remain predictable under heavy usage.
+
+5. Frontend Performance
+Review the entire frontend.
+Optimize:
+* Rendering
+* State management
+* Component lifecycle
+* Navigation
+* Route loading
+* Image loading
+* Lazy loading
+* Bundle size
+* Asset loading
+Avoid unnecessary rerenders.
+Keep navigation smooth.
+Maintain consistent responsiveness across desktop, tablet, and mobile.
+
+6. Media & File Handling
+Review uploads.
+Ensure uploaded media is processed efficiently.
+Support:
+* Progressive uploads
+* Validation
+* Compression where appropriate
+* Secure storage
+* Efficient retrieval
+* Proper caching
+* Reliable cleanup
+Media should never become a bottleneck.
+
+7. Caching Strategy
+Introduce intelligent caching wherever appropriate.
+Cache only data that benefits from caching.
+Maintain cache consistency.
+Invalidate cache intelligently.
+Do not compromise data correctness.
+Caching should improve responsiveness without introducing stale or inconsistent behaviour.
+
+8. Reliability
+Review every critical workflow.
+Voting.
+Ticket purchasing.
+Campaign participation.
+Payments.
+Organization management.
+Commission calculation.
+Authentication.
+Profile updates.
+Media uploads.
+Ensure failures cannot leave the system in inconsistent states.
+Critical operations should be atomic wherever appropriate.
+
+9. Security Hardening
+Review security throughout the platform.
+Strengthen:
+* Authentication
+* Authorization
+* Session management
+* Input validation
+* Output encoding
+* Rate limiting
+* CSRF protection
+* XSS protection
+* SQL injection protection
+* Upload validation
+* File security
+* Permission boundaries
+Protect all sensitive operations.
+
+10. Observability
+Improve production diagnostics.
+Introduce comprehensive:
+* Structured logging
+* Error tracking
+* Request tracing
+* Performance metrics
+* Health checks
+* Monitoring hooks
+Production issues should become easy to identify and diagnose.
+
+11. Fault Tolerance
+Evenum should degrade gracefully.
+Temporary failures should not crash the platform.
+Recoverable failures should recover automatically where possible.
+Unexpected situations should produce meaningful logs without exposing sensitive information to users.
+
+12. Horizontal Scalability
+Assume Evenum will eventually run across multiple application instances.
+Avoid architecture that depends on in-memory state.
+Design services to operate correctly in distributed environments.
+Maintain consistency across instances.
+
+13. Maintainability
+Reduce technical debt.
+Improve readability.
+Improve modularity.
+Improve service boundaries.
+Reduce duplicated code.
+Improve naming.
+Improve documentation.
+Improve internal consistency.
+Future developers should understand the architecture quickly.
+
+14. Preserve Existing Functionality
+Do not remove existing capabilities.
+Do not break workflows.
+Do not simplify the product.
+Do not replace rich functionality with minimal implementations.
+Every improvement should preserve or strengthen the current behaviour.
+
+15. Comprehensive Quality Review
+Before considering the work complete, perform a comprehensive engineering review.
+Inspect:
+* UI behaviour
+* UX consistency
+* APIs
+* Database
+* Services
+* Security
+* Performance
+* Payments
+* Voting
+* Events
+* Campaigns
+* Admin
+* Organization portals
+* Public experiences
+* Mobile responsiveness
+* Accessibility
+* Error handling
+Identify and resolve production-level issues proactively.
+The objective is to leave the platform in a state where it reflects the quality expected from a mature commercial SaaS product.
+
+Final Objective
+By the end of this refinement, Evenum should not merely be a functional application—it should operate like an enterprise-grade platform. It should be capable of supporting high-traffic elections, large-scale ticketed events, fundraising campaigns, and future growth without compromising performance, reliability, fairness, or user experience. Every optimization should reinforce the existing product vision while ensuring the platform is engineered for long-term production use, operational excellence, and confident scalability.
+

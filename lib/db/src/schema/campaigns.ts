@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, decimal, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -24,7 +24,11 @@ export const campaignsTable = pgTable("campaigns", {
   startsAt: timestamp("starts_at"),
   endsAt: timestamp("ends_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdIdx: index("campaigns_org_id_idx").on(table.orgId),
+  statusIdx: index("campaigns_status_idx").on(table.status),
+  visibilityIdx: index("campaigns_visibility_idx").on(table.visibility),
+}));
 
 export const campaignResponsesTable = pgTable("campaign_responses", {
   id: serial("id").primaryKey(),
@@ -35,7 +39,11 @@ export const campaignResponsesTable = pgTable("campaign_responses", {
   amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }),
   status: text("status").notNull().default("pending"), // pending | confirmed | rejected
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  campaignIdIdx: index("campaign_responses_campaign_id_idx").on(table.campaignId),
+  statusIdx: index("campaign_responses_status_idx").on(table.status),
+  submitterEmailIdx: index("campaign_responses_submitter_email_idx").on(table.submitterEmail),
+}));
 
 export const insertCampaignSchema = createInsertSchema(campaignsTable).omit({ id: true, createdAt: true, currentAmount: true });
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;

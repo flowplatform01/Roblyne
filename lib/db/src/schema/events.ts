@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, boolean, decimal } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean, decimal, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -22,7 +22,11 @@ export const eventsTable = pgTable("events", {
   endsAt: timestamp("ends_at"),
   capacity: integer("capacity"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdIdx: index("events_org_id_idx").on(table.orgId),
+  statusIdx: index("events_status_idx").on(table.status),
+  visibilityIdx: index("events_visibility_idx").on(table.visibility),
+}));
 
 export const ticketTypesTable = pgTable("ticket_types", {
   id: serial("id").primaryKey(),
@@ -35,7 +39,9 @@ export const ticketTypesTable = pgTable("ticket_types", {
   sold: integer("sold").notNull().default(0),
   saleStartsAt: timestamp("sale_starts_at"),
   saleEndsAt: timestamp("sale_ends_at"),
-});
+}, (table) => ({
+  eventIdIdx: index("ticket_types_event_id_idx").on(table.eventId),
+}));
 
 export const ticketsTable = pgTable("tickets", {
   id: serial("id").primaryKey(),
@@ -47,7 +53,11 @@ export const ticketsTable = pgTable("tickets", {
   status: text("status").notNull().default("valid"), // valid | used | cancelled
   checkedInAt: timestamp("checked_in_at"),
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  eventIdIdx: index("tickets_event_id_idx").on(table.eventId),
+  ticketTypeIdIdx: index("tickets_ticket_type_id_idx").on(table.ticketTypeId),
+  attendeeEmailIdx: index("tickets_attendee_email_idx").on(table.attendeeEmail),
+}));
 
 export const insertEventSchema = createInsertSchema(eventsTable).omit({ id: true, createdAt: true });
 export type InsertEvent = z.infer<typeof insertEventSchema>;
