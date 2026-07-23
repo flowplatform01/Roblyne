@@ -10,14 +10,16 @@ export function EvenumMark({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
+      viewBox="0 0 150 150"
       fill="currentColor"
       aria-hidden="true"
       className={className}
     >
-      <rect x="6"    y="65" width="23" height="29" rx="2.5" />
-      <rect x="38.5" y="40" width="23" height="54" rx="2.5" />
-      <rect x="71"   y="8"  width="23" height="86" rx="2.5" />
+      {/* Concept 2 — 3D hexagonal diamond mark */}
+      <polygon points="44.7 99.1 8.9 133.2 54.8 116.6 44.7 110.8" />
+      <polygon points="75.2 16.8 65.4 63.9 75.1 57.9 84.9 64" />
+      <polygon points="105.3 99.1 105.3 110.8 95.5 116.6 141.1 133.2" />
+      <polygon points="47.9 77.4 47.9 108.9 75.2 124.5 102.2 109 102.3 77.4 75.2 61.7" />
     </svg>
   );
 }
