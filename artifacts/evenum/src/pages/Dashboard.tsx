@@ -63,7 +63,7 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <CardTitle className="font-serif text-2xl mb-2 line-clamp-1 group-hover:text-primary transition-colors">{org.name}</CardTitle>
                       <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        Since {format(new Date(org.createdAt), 'MMM yyyy')}
+                        Since {org.createdAt ? format(new Date(org.createdAt), 'MMM yyyy') : '—'}
                       </div>
                     </div>
                   </div>

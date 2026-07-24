@@ -15,9 +15,22 @@ const router: IRouter = Router();
 // List organizations for current user — includes owned + member orgs
 router.get("/organizations", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
-  // Single query: orgs owned OR where user is an explicit member
+  // Single query: orgs owned OR where user is an explicit member.
+  // Use explicit camelCase aliases so the response matches the TypeScript Organization type.
   const orgs = await db.execute(sql`
-    SELECT DISTINCT o.*
+    SELECT DISTINCT
+      o.id,
+      o.name,
+      o.slug,
+      o.description,
+      o.logo_url            AS "logoUrl",
+      o.cover_image_url     AS "coverImageUrl",
+      o.hero_image_url      AS "heroImageUrl",
+      o.website,
+      o.accent_color        AS "accentColor",
+      o.theme,
+      o.owner_id            AS "ownerId",
+      o.created_at          AS "createdAt"
     FROM organizations o
     LEFT JOIN organization_members om ON om.org_id = o.id AND om.user_id = ${userId}
     WHERE o.owner_id = ${userId} OR om.user_id IS NOT NULL
