@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetEvent, useListTicketTypes, useRegisterForEvent } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,23 +100,12 @@ export default function EventRegister() {
 
   const shareUrl = `${window.location.origin}/events/${eventId}/register`;
 
-  useEffect(() => {
-    if (event) {
-      document.title = `${event.title} | Evenum`;
-      const setMeta = (name: string, content: string, prop = false) => {
-        const attr = prop ? 'property' : 'name';
-        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-        el.content = content;
-      };
-      setMeta('og:title', event.title, true);
-      setMeta('og:description', event.description || `Register for ${event.title}`, true);
-      setMeta('og:url', shareUrl, true);
-      setMeta('og:type', 'website', true);
-      const ogImage = (event as any).heroImageUrl || event.coverImageUrl;
-      if (ogImage) setMeta('og:image', ogImage, true);
-    }
-  }, [event, shareUrl]);
+  usePageMeta(event ? {
+    title: event.title,
+    description: event.description || `Register for ${event.title} — secure your spot on Evenum.`,
+    image: (event as any).heroImageUrl || event.coverImageUrl || null,
+    url: shareUrl,
+  } : null);
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();

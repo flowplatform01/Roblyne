@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetElection, useListPositions, useListCandidates, useSubmitVote } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,13 @@ export default function ElectionVote() {
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
   const submitVote = useSubmitVote();
+
+  usePageMeta(election ? {
+    title: `Vote Now — ${election.title}`,
+    description: election.description || `Cast your vote in ${election.title}. Participate securely on Evenum.`,
+    image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
+    url: `${window.location.origin}/elections/${electionId}/vote`,
+  } : null);
 
   const [step, setStep] = useState<'landing' | 'payment' | number | 'review' | 'success'>('landing');
   const [paymentProcessing, setPaymentProcessing] = useState(false);

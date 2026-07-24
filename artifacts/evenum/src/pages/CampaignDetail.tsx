@@ -154,6 +154,7 @@ export default function CampaignDetail() {
               url={`${window.location.origin}/campaigns/${campaign.id}/participate`}
               title={campaign.title}
               description={campaign.description || `Participate in ${campaign.title}`}
+              ctaLabel="Share Campaign"
               variant="icon"
             />
             

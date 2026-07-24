@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetPublicOrganization } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,6 @@ import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Vote, CalendarDays, Megaphone, ExternalLink, Globe } from "lucide-react";
 
-function setOgMeta(name: string, content: string, prop = false) {
-  const attr = prop ? 'property' : 'name';
-  let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-  if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-  el.content = content;
-}
-
 export default function OrganizationPublic() {
   const [, params] = useRoute("/organizations/:id/public");
   const orgId = params?.id ? parseInt(params.id, 10) : 0;
@@ -23,16 +17,12 @@ export default function OrganizationPublic() {
   const { data: org, isLoading } = useGetPublicOrganization(orgId);
   const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
 
-  useEffect(() => {
-    if (org) {
-      document.title = `${org.name} | Evenum`;
-      setOgMeta('og:title', org.name, true);
-      setOgMeta('og:description', org.description || `${org.name} on Evenum`, true);
-      setOgMeta('og:url', shareUrl, true);
-      setOgMeta('og:type', 'website', true);
-      if (org.logoUrl) setOgMeta('og:image', org.logoUrl, true);
-    }
-  }, [org, shareUrl]);
+  usePageMeta(org ? {
+    title: `${org.name} · Evenum`,
+    description: org.description || `${org.name} uses Evenum to run elections, events, and campaigns. Explore their public profile.`,
+    image: org.logoUrl || null,
+    url: shareUrl,
+  } : null);
 
   if (isLoading) {
     return (

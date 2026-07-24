@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetElection, useGetElectionResults, useGetElectionAnalytics } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,21 +26,12 @@ export default function ElectionResults() {
 
   const shareUrl = `${window.location.origin}/elections/${electionId}/results`;
 
-  useEffect(() => {
-    if (election) {
-      document.title = `${election.title} — Results | Evenum`;
-      const setMeta = (name: string, content: string, prop = false) => {
-        const attr = prop ? 'property' : 'name';
-        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-        el.content = content;
-      };
-      setMeta('og:title', `${election.title} — Official Results`, true);
-      setMeta('og:description', `View the official results for ${election.title}`, true);
-      setMeta('og:url', shareUrl, true);
-      setMeta('og:type', 'website', true);
-    }
-  }, [election, shareUrl]);
+  usePageMeta(election ? {
+    title: `${election.title} — Official Results`,
+    description: `View the official results for ${election.title}. Powered by Evenum.`,
+    image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
+    url: shareUrl,
+  } : null);
 
 
   if (isElectionLoading || isResultsLoading) {

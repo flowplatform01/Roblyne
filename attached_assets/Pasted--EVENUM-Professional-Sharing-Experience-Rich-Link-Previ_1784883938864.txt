@@ -1,0 +1,201 @@
+
+EVENUM — Professional Sharing Experience & Rich Link Preview Refinement
+Context
+Evenum has matured into a production-ready participation platform.
+The platform already supports sharing public resources such as candidates, elections, events, campaigns, organizations, and other public experiences.
+However, the current sharing experience is still too technical and URL-focused.
+Simply exposing a raw URL does not create a professional first impression and reduces engagement.
+This refinement is focused entirely on improving the complete sharing experience across the platform.
+Do not rebuild existing sharing functionality.
+Instead, review, refine, and elevate every shareable experience to production quality.
+
+Mission
+Every public Evenum link should feel like a professionally branded invitation.
+A shared link should immediately communicate what it represents before the recipient even opens it.
+Sharing should increase trust, curiosity, participation, and engagement.
+The experience should feel comparable to modern platforms where shared links generate rich previews rather than appearing as plain URLs.
+
+1. Rich Link Preview (Open Graph & Social Metadata)
+Implement complete rich metadata for every public shareable page.
+Every shared URL should generate a professional preview on platforms that support link previews (such as WhatsApp, Telegram, Facebook, LinkedIn, X, Discord, iMessage, etc.).
+The preview should include, where applicable:
+* Page title
+* Short descriptive summary
+* Featured image
+* Platform branding
+* Organization name
+* Relevant context
+* Canonical URL
+* Social metadata (Open Graph and Twitter/X cards)
+The preview should never appear as a plain raw URL unless the platform itself does not support previews.
+
+2. Dynamic Preview Content
+Preview content should adapt to the resource being shared.
+For example:
+Candidate
+Display:
+* Candidate photo
+* Candidate name
+* Position being contested
+* Election name
+* Organization
+* Evenum branding
+* Call-to-action (e.g. "View Candidate" or "Participate in this Election")
+
+Election
+Display:
+* Election banner
+* Election title
+* Organization
+* Election status
+* Short description
+* Evenum branding
+
+Event
+Display:
+* Event cover image
+* Event name
+* Date
+* Venue or online indicator
+* Organization
+* Short description
+
+Campaign
+Display:
+* Campaign cover
+* Campaign title
+* Organization
+* Campaign objective
+* Call-to-action
+
+Organization
+Display:
+* Organization logo
+* Organization name
+* Short profile
+* Public verification status (if applicable)
+* Evenum branding
+Every shared entity should have its own meaningful preview.
+
+3. Intelligent Share Titles
+Avoid generic page titles.
+Generate contextual titles that feel natural.
+Examples:
+"Vote for Sarah Johnson — Student Union President"
+"Annual Tech Conference 2026"
+"Support Clean City Campaign"
+"View XYZ Organization"
+The title should immediately explain what the recipient is opening.
+
+4. Better Share Descriptions
+Every shared resource should include a concise, engaging description.
+Examples:
+"Participate in this professional election hosted on Evenum."
+"Register for this upcoming event."
+"Support this campaign and follow its progress."
+"Discover this verified organization on Evenum."
+Descriptions should encourage interaction without feeling promotional or spammy.
+
+5. Beautiful Featured Images
+Whenever possible, use existing uploaded media.
+Examples:
+Candidate photo
+Election banner
+Campaign cover
+Event banner
+Organization logo
+If custom media does not exist, generate a clean fallback preview using the platform branding rather than leaving previews empty.
+Every preview should remain visually attractive.
+
+6. Professional URL Structure
+Review every public URL.
+URLs should be:
+* Clean
+* Human-readable
+* Predictable
+* Stable
+* Easy to share
+Avoid unnecessary query parameters.
+Avoid unreadable identifiers whenever possible.
+Examples:
+/candidate/jane-doe
+/event/annual-tech-conference
+/election/student-union-election
+/campaign/save-the-forest
+/org/open-tech-foundation
+If uniqueness requires an identifier, combine it naturally with a readable slug rather than exposing opaque IDs alone.
+
+7. Platform Branding
+Every shared experience should subtly reinforce Evenum.
+Include platform branding without overwhelming the organization's identity.
+Recipients should understand:
+"This experience is powered by Evenum."
+The platform should appear trustworthy and professional.
+
+8. Smarter Share Experience
+Review every Share action throughout the platform.
+Ensure sharing works consistently for:
+* Candidates
+* Elections
+* Positions (where appropriate)
+* Events
+* Campaigns
+* Organizations
+* Tickets
+* Public result pages
+* Future public resources
+Provide a consistent sharing experience regardless of the pillar.
+
+9. Optimized Call-to-Action
+Shared links should naturally encourage participation.
+Examples:
+* View Candidate
+* Vote Now
+* Register for Event
+* Join Campaign
+* Learn More
+* View Organization
+Avoid generic labels such as "Open Link."
+The call-to-action should reflect the actual destination.
+
+10. Mobile-First Sharing
+Optimize the experience for mobile devices.
+Most sharing occurs on mobile platforms.
+Ensure:
+* Fast preview generation
+* Correct image dimensions
+* Proper cropping
+* High-resolution preview images
+* Responsive metadata
+* Consistent behaviour across messaging applications
+
+11. Future-Proof Architecture
+Design the sharing system as reusable infrastructure.
+Do not hardcode metadata for individual pages.
+Instead, build a centralized metadata generation layer that automatically produces the correct preview for any public entity.
+Future modules should automatically benefit from this system without duplicating logic.
+
+12. Performance & Reliability
+Rich previews must not negatively impact application performance.
+Generate metadata efficiently.
+Cache preview metadata where appropriate.
+Avoid unnecessary database queries.
+Ensure preview generation remains fast, scalable, and production-ready even under high traffic.
+
+Regression Safety
+This refinement must not introduce regressions.
+Do not modify authentication.
+Do not modify business logic.
+Do not modify permissions.
+Do not modify payment systems.
+Do not modify routing behaviour.
+Only enhance the public sharing and metadata experience while preserving all existing functionality.
+
+Final Objective
+When this refinement is complete:
+* Every Evenum public URL should generate a rich, professional preview instead of appearing as a plain link.
+* Candidates, elections, events, campaigns, organizations, and future public resources should each have contextual previews with appropriate titles, descriptions, and imagery.
+* Shared links should encourage engagement through clear calls-to-action and polished presentation.
+* URLs should be clean, human-readable, and suitable for sharing.
+* The sharing system should be centralized, reusable, scalable, and easy to extend as Evenum grows.
+* The entire sharing experience should reinforce Evenum's identity as a premium, production-ready participation platform where every shared link acts as a polished invitation rather than a simple URL.

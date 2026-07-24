@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRoute } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetCampaign, useSubmitCampaignResponse, useGetCampaignAnalytics } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,23 +34,12 @@ export default function CampaignParticipate() {
 
   const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
 
-  React.useEffect(() => {
-    if (campaign) {
-      document.title = `${campaign.title} | Evenum`;
-      const setMeta = (name: string, content: string, prop = false) => {
-        const attr = prop ? 'property' : 'name';
-        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-        el.content = content;
-      };
-      setMeta('og:title', campaign.title, true);
-      setMeta('og:description', campaign.description || `Participate in ${campaign.title}`, true);
-      setMeta('og:url', shareUrl, true);
-      setMeta('og:type', 'website', true);
-      const ogImage = (campaign as any).heroImageUrl || campaign.coverImageUrl;
-      if (ogImage) setMeta('og:image', ogImage, true);
-    }
-  }, [campaign, shareUrl]);
+  usePageMeta(campaign ? {
+    title: campaign.title,
+    description: campaign.description || `Participate in ${campaign.title} — join the campaign on Evenum.`,
+    image: (campaign as any).heroImageUrl || campaign.coverImageUrl || null,
+    url: shareUrl,
+  } : null);
 
   const handleFieldChange = (id: string, value: any) => {
     setFormData(prev => ({ ...prev, [id]: value }));

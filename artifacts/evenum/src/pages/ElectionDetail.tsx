@@ -321,7 +321,8 @@ export default function ElectionDetail() {
             <ShareButton
               url={`${window.location.origin}/elections/${election.id}/vote`}
               title={election.title}
-              description={election.description || `Vote in ${election.title}`}
+              description={election.description || `Cast your vote in ${election.title}`}
+              ctaLabel="Share Election"
               variant="icon"
             />
             

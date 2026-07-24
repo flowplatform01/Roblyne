@@ -321,6 +321,7 @@ export default function EventDetail() {
               url={`${window.location.origin}/events/${event.id}/register`}
               title={event.title}
               description={event.description || `Register for ${event.title}`}
+              ctaLabel="Share Event"
               variant="icon"
             />
             

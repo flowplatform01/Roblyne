@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { ogPrerenderPlugin } from './plugins/og-prerender';
 
 const rawPort = process.env.PORT;
 
@@ -30,6 +31,7 @@ if (!basePath) {
 export default defineConfig({
   base: basePath,
   plugins: [
+    ogPrerenderPlugin(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),

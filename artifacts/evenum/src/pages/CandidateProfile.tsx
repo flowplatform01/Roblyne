@@ -1,19 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetCandidate, useGetElection, useListPositions } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Loader2, Vote, Building2, ArrowLeft, User } from "lucide-react";
-
-function setOgMeta(name: string, content: string, prop = false) {
-  const attr = prop ? 'property' : 'name';
-  let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-  if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-  el.content = content;
-}
 
 export default function CandidateProfile() {
   const [, params] = useRoute("/candidates/:electionId/:candidateId");
@@ -27,16 +21,15 @@ export default function CandidateProfile() {
   const position = positions?.find(p => p.id === candidate?.positionId);
   const shareUrl = `${window.location.origin}/candidates/${electionId}/${candidateId}`;
 
-  useEffect(() => {
-    if (candidate && election) {
-      document.title = `${candidate.name} — ${election.title} | Evenum`;
-      setOgMeta('og:title', `${candidate.name} — ${election.title}`, true);
-      setOgMeta('og:description', candidate.bio || `Candidate for ${position?.title || 'office'} in ${election.title}`, true);
-      setOgMeta('og:url', shareUrl, true);
-      setOgMeta('og:type', 'profile', true);
-      if (candidate.photoUrl) setOgMeta('og:image', candidate.photoUrl, true);
-    }
-  }, [candidate, election, position, shareUrl]);
+  usePageMeta(candidate && election ? {
+    title: position
+      ? `${candidate.name} — ${position.title} · ${election.title}`
+      : `${candidate.name} — ${election.title}`,
+    description: candidate.bio || `Meet ${candidate.name}, a candidate for ${position?.title || 'office'} in ${election.title}. View their profile and platform on Evenum.`,
+    image: candidate.photoUrl || null,
+    type: "profile",
+    url: shareUrl,
+  } : null);
 
   if (isCandidateLoading || isElectionLoading) {
     return (
