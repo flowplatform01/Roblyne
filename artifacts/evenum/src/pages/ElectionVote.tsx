@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
-import { useGetElection, useListPositions, useListCandidates, useSubmitVote } from "@workspace/api-client-react";
+import {
+  useGetElection, useListPositions, useListCandidates,
+  useSubmitVote, useGetElectionResults,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -11,26 +14,25 @@ import {
   Loader2, Vote as VoteIcon, AlertCircle, CheckCircle2, Key, Mail,
   ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2,
   ChevronRight, Users, Info, Lock, ExternalLink,
-  Wallet
+  Wallet, LayoutGrid, List, Hash, ExternalLink as LinkIcon,
+  Sparkles, Trophy,
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 
+// ── Countdown ─────────────────────────────────────────────────────────────────
+
 function useCountdown(targetDate: string | null | undefined) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
-
   useEffect(() => {
     if (!targetDate) return;
     const target = new Date(targetDate).getTime();
     const tick = () => {
       const now = Date.now();
       const diff = target - now;
-      if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
-        return;
-      }
+      if (diff <= 0) { setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }); return; }
       setTimeLeft({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -43,7 +45,6 @@ function useCountdown(targetDate: string | null | undefined) {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [targetDate]);
-
   return timeLeft;
 }
 
@@ -58,12 +59,14 @@ function CountdownBlock({ value, label }: { value: number; label: string }) {
   );
 }
 
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function ElectionVote() {
   const [, params] = useRoute("/elections/:id/vote");
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
   const { toast } = useToast();
 
-  // Read ?positionId=X&candidateId=Y from URL to deep-link from candidate profile
+  // Deep-link support: ?positionId=X&candidateId=Y from candidate profile page
   const directPositionId = (() => {
     const raw = new URLSearchParams(window.location.search).get('positionId');
     return raw ? parseInt(raw, 10) : null;
@@ -76,6 +79,7 @@ export default function ElectionVote() {
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
   const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
+  const { data: liveResults } = useGetElectionResults(electionId);
   const submitVote = useSubmitVote();
 
   usePageMeta(election ? {
@@ -85,6 +89,7 @@ export default function ElectionVote() {
     url: `${window.location.origin}/elections/${electionId}/vote`,
   } : null);
 
+  // ── Wizard state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<'landing' | 'payment' | number | 'review' | 'success'>('landing');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
@@ -94,6 +99,13 @@ export default function ElectionVote() {
   const [voteQuantity, setVoteQuantity] = useState(1);
   const [paymentAmountInput, setPaymentAmountInput] = useState('');
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
+
+  // ── Display preferences ───────────────────────────────────────────────────
+  const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('list');
+  const [showNumbers, setShowNumbers] = useState(false);
+
+  // ── Position section refs (for chip-nav scroll-to) ────────────────────────
+  const positionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
     fetch('/api/admin/platform-settings/public')
@@ -106,14 +118,12 @@ export default function ElectionVote() {
       .catch(() => undefined);
   }, []);
 
-  // When coming from a candidate profile, jump straight to that position and pre-select the candidate
+  // Jump to position when arriving from a candidate profile deep-link
   useEffect(() => {
     if (!directPositionId || !positions || positions.length === 0) return;
     const idx = positions.findIndex(p => p.id === directPositionId);
     if (idx !== -1) {
-      if (directCandidateId) {
-        setSelections(prev => ({ ...prev, [directPositionId]: [directCandidateId] }));
-      }
+      if (directCandidateId) setSelections(prev => ({ ...prev, [directPositionId]: [directCandidateId] }));
       setStep(idx);
       const url = new URL(window.location.href);
       url.searchParams.delete('positionId');
@@ -125,29 +135,24 @@ export default function ElectionVote() {
   const countdown = useCountdown(election?.endsAt);
   const shareUrl = `${window.location.origin}/elections/${electionId}/vote`;
 
-  useEffect(() => {
-    if (election) {
-      document.title = `${election.title} | Evenum`;
-      const setMeta = (name: string, content: string, prop = false) => {
-        const attr = prop ? 'property' : 'name';
-        let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-        if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
-        el.content = content;
-      };
-      setMeta('og:title', election.title, true);
-      setMeta('og:description', election.description || `Vote in ${election.title}`, true);
-      setMeta('og:url', shareUrl, true);
-      setMeta('og:type', 'website', true);
-      if ((election as any).heroImageUrl) setMeta('og:image', (election as any).heroImageUrl, true);
-    }
-  }, [election, shareUrl]);
-
+  // ── Selection logic ───────────────────────────────────────────────────────
+  // Single-select positions auto-switch (no error); multi-select enforces the cap.
   const toggleSelection = (positionId: number, candidateId: number, maxSelections: number) => {
     setSelections(prev => {
       const cur = prev[positionId] || [];
+      // Clicking an already-selected candidate deselects it
       if (cur.includes(candidateId)) return { ...prev, [positionId]: cur.filter(id => id !== candidateId) };
+      // Single-select: silently switch to the new candidate
+      if (maxSelections === 1 && cur.length >= 1) {
+        return { ...prev, [positionId]: [candidateId] };
+      }
+      // Multi-select: enforce the cap with a toast
       if (cur.length >= maxSelections) {
-        toast({ title: 'Selection limit reached', description: `You may select up to ${maxSelections} candidate(s) for this position.`, variant: 'destructive' });
+        toast({
+          title: 'Selection limit reached',
+          description: `You may select up to ${maxSelections} candidate${maxSelections !== 1 ? 's' : ''} for this position.`,
+          variant: 'destructive',
+        });
         return prev;
       }
       return { ...prev, [positionId]: [...cur, candidateId] };
@@ -163,11 +168,11 @@ export default function ElectionVote() {
       {
         electionId,
         data: {
-           selections: Object.entries(selections).map(([positionId, candidateIds]) => ({
+          selections: Object.entries(selections).map(([positionId, candidateIds]) => ({
             positionId: parseInt(positionId, 10),
             candidateIds,
           })),
-           voteQuantity: computedQuantity,
+          voteQuantity: computedQuantity,
           inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
           voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
         },
@@ -182,6 +187,7 @@ export default function ElectionVote() {
     );
   };
 
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (isElectionLoading || isPositionsLoading || isCandidatesLoading) {
     return (
       <Layout>
@@ -205,6 +211,36 @@ export default function ElectionVote() {
   const totalPositions = positionList.length;
   const allCandidates = candidates || [];
   const selectedCandidateCount = Object.values(selections).reduce((total, ids) => total + ids.length, 0);
+  const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
+  const orgId = (election as any).orgId;
+  const orgPublicUrl = orgId ? `/organizations/${orgId}/public` : null;
+
+  // Payment helpers
+  const feeRequired = Boolean(election.requiresPayment);
+  const feeCur = 'XAF';
+  const feeSym = 'XAF ';
+  const pricePerVote = Number(election.paymentAmount || 0);
+  const amountInput = paymentAmountInput === ''
+    ? pricePerVote * Math.max(selectedCandidateCount, 1)
+    : Number(paymentAmountInput);
+  const amountToPay = paymentMode === 'amount_first'
+    ? Math.max(0, amountInput || 0)
+    : pricePerVote * selectedCandidateCount * voteQuantity;
+  const computedQuantity = paymentMode === 'amount_first' && pricePerVote > 0
+    ? Math.floor(amountToPay / (pricePerVote * Math.max(selectedCandidateCount, 1)))
+    : voteQuantity;
+  const totalVoteUnits = selectedCandidateCount * computedQuantity;
+
+  // Build a quick lookup: candidateId → vote percentage from live results
+  const percentageMap: Record<number, string> = {};
+  if (liveResults?.totalVotes && liveResults.totalVotes > 0 && liveResults.positions) {
+    for (const pos of liveResults.positions) {
+      for (const c of pos.candidates) {
+        percentageMap[c.candidateId] = ((c.voteCount / liveResults.totalVotes) * 100).toFixed(1);
+      }
+    }
+  }
+  const hasLiveData = Object.keys(percentageMap).length > 0;
 
   // ── Guards ────────────────────────────────────────────────────────────────
 
@@ -238,62 +274,115 @@ export default function ElectionVote() {
   // ── Success ───────────────────────────────────────────────────────────────
 
   if (step === 'success') {
+    const submittedAt = format(new Date(), "MMMM d, yyyy 'at' h:mm a");
+    const voteSelections = positionList.map(pos => ({
+      position: pos.title,
+      candidates: allCandidates.filter(c => (selections[pos.id] || []).includes(c.id)),
+      abstained: (selections[pos.id] || []).length === 0,
+    }));
+    const anySelections = voteSelections.some(v => !v.abstained);
+
     return (
       <Layout>
-        <div className="min-h-[80vh] flex items-center justify-center">
-          <div className="container mx-auto px-4 py-24 text-center max-w-2xl animate-in zoom-in-95 fade-in duration-700">
-            <div className="relative inline-flex mb-12 justify-center">
-              <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-primary/5 flex items-center justify-center">
-                <div className="w-24 h-24 rounded-full border-2 border-primary/30 bg-primary/8 flex items-center justify-center">
-                  <CheckCircle2 className="h-12 w-12 text-primary" />
+        <div className="min-h-[85vh] flex items-center justify-center bg-gradient-to-b from-background to-muted/20" style={primaryStyle}>
+          <div className="container mx-auto px-4 py-20 text-center max-w-2xl animate-in zoom-in-95 fade-in duration-700">
+
+            {/* Animated success icon */}
+            <div className="relative inline-flex mb-10 justify-center">
+              <div className="absolute inset-0 animate-ping rounded-full bg-primary/10" style={{ animationDuration: '2.5s' }} />
+              <div className="w-28 h-28 rounded-full border-4 border-primary/20 bg-primary/5 flex items-center justify-center relative">
+                <div className="w-20 h-20 rounded-full border-2 border-primary/30 bg-primary/8 flex items-center justify-center">
+                  <CheckCircle2 className="h-10 w-10 text-primary animate-in zoom-in-50 duration-500" />
                 </div>
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-6">
-              <ShieldCheck className="h-4 w-4" /> Ballot Recorded
+
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-4 bg-primary/8 border border-primary/20 px-4 py-2 rounded-full">
+              <ShieldCheck className="h-3.5 w-3.5" /> Ballot Officially Recorded
             </div>
-            <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6 tracking-tight">Vote Cast</h1>
-            <p className="text-xl text-muted-foreground font-light leading-relaxed mb-4">
-              Your vote has been securely recorded in{' '}
-              <span className="font-medium text-foreground">{election.organizationName || 'this election'}</span>.
+
+            <h1 className="text-5xl md:text-6xl font-serif font-bold mb-4 tracking-tight">Your Vote Is Cast</h1>
+
+            <p className="text-xl text-muted-foreground font-light leading-relaxed mb-2">
+              Submitted to{' '}
+              <span className="font-semibold text-foreground">
+                {orgPublicUrl
+                  ? <Link href={orgPublicUrl} className="hover:text-primary transition-colors">{election.organizationName}</Link>
+                  : election.organizationName || 'this election'
+                }
+              </span>{' '}
+              on {submittedAt}.
             </p>
-            <p className="text-sm text-muted-foreground mb-10">
-              Submitted {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
-            </p>
-            <div className="inline-flex items-center gap-3 text-sm font-medium text-muted-foreground bg-muted/50 px-6 py-3 rounded-sm border border-border/60 mb-12">
+
+            {/* Security assurance */}
+            <div className="inline-flex items-center gap-3 text-sm font-medium text-muted-foreground bg-muted/60 border border-border/60 px-5 py-3 rounded-sm mb-10 mt-4">
               <Lock className="h-4 w-4 text-primary shrink-0" />
-              Your vote is cryptographically anonymous and immutable
+              Cryptographically sealed · Anonymous · Immutable
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild variant="outline" className="h-12 px-8 rounded-sm">
-                <Link href={`/elections/${electionId}/results`}>View Results</Link>
+
+            {/* Vote summary */}
+            {anySelections && (
+              <div className="bg-card border-2 border-border rounded-sm shadow-lg overflow-hidden text-left mb-10">
+                <div className="bg-foreground/5 px-6 py-4 border-b border-border/60 flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Your Ballot</span>
+                </div>
+                <div className="divide-y divide-border/40">
+                  {voteSelections.map(({ position, candidates: voted, abstained }) => (
+                    <div key={position} className="flex items-center justify-between px-6 py-4 gap-4">
+                      <span className="text-sm text-muted-foreground shrink-0 truncate max-w-[140px]">{position}</span>
+                      {abstained ? (
+                        <span className="text-sm text-muted-foreground/50 italic">Abstained</span>
+                      ) : (
+                        <div className="flex items-center gap-2 justify-end flex-wrap">
+                          {voted.map(c => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              {c.photoUrl ? (
+                                <img src={c.photoUrl} alt={c.name} className="w-7 h-7 rounded-sm object-cover object-top border border-primary/20 shrink-0" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-sm bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                                  <span className="font-serif font-bold text-xs text-primary">{c.name.charAt(0)}</span>
+                                </div>
+                              )}
+                              <span className="font-serif font-bold text-sm text-primary">{c.name}</span>
+                              <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button asChild variant="outline" size="lg" className="h-12 px-8 rounded-sm">
+                <Link href={`/elections/${electionId}/results`}>
+                  View Live Results <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
+              <ShareButton
+                url={`${window.location.origin}/elections/${electionId}/results`}
+                title={`${election.title} — Results`}
+                description={`I just voted in ${election.title}. See the live results.`}
+                ctaLabel="Share Results"
+              />
             </div>
+
+            {/* Sparkle accent */}
+            <p className="text-xs text-muted-foreground/50 mt-10 flex items-center justify-center gap-1.5">
+              <Sparkles className="h-3 w-3" /> Powered by Evenum — Organized Participation
+            </p>
           </div>
         </div>
       </Layout>
     );
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
-  const feeRequired = Boolean(election.requiresPayment);
-  const feeCur = 'XAF';
-  const feeSym = 'XAF ';
-  const pricePerVote = Number(election.paymentAmount || 0);
-  const amountInput = paymentAmountInput === ''
-    ? pricePerVote * Math.max(selectedCandidateCount, 1)
-    : Number(paymentAmountInput);
-  const amountToPay = paymentMode === 'amount_first'
-    ? Math.max(0, amountInput || 0)
-    : pricePerVote * selectedCandidateCount * voteQuantity;
-  const computedQuantity = paymentMode === 'amount_first' && pricePerVote > 0
-    ? Math.floor(amountToPay / (pricePerVote * Math.max(selectedCandidateCount, 1)))
-    : voteQuantity;
-  const totalVoteUnits = selectedCandidateCount * computedQuantity;
-
-  // ── Payment gate (after review, before submit) ─────────────────────────────
+  // ── Payment gate ──────────────────────────────────────────────────────────
 
   if (step === 'payment') {
     const handlePayment = () => {
@@ -357,7 +446,6 @@ export default function ElectionVote() {
             </div>
           </div>
 
-          {/* Ballot summary */}
           <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-3">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Your Selections</p>
             {positionList.map(position => {
@@ -373,7 +461,6 @@ export default function ElectionVote() {
             })}
           </div>
 
-          {/* Payment CTA */}
           <div className="rounded-sm border border-border overflow-hidden shadow-xl mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-foreground/5 px-6 py-4 border-b border-border/60 flex items-center gap-3">
               <Wallet className="h-5 w-5 text-primary" />
@@ -384,11 +471,7 @@ export default function ElectionVote() {
               <span className="ml-auto text-lg">🔒</span>
             </div>
             <div className="p-6">
-              <Button
-                className="w-full h-14 text-base rounded-sm"
-                 onClick={handlePayment}
-                disabled={paymentProcessing}
-              >
+              <Button className="w-full h-14 text-base rounded-sm" onClick={handlePayment} disabled={paymentProcessing}>
                 {paymentProcessing ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Confirming payment…</>
                 ) : (
@@ -408,9 +491,11 @@ export default function ElectionVote() {
   // ── Landing (Election Identity) ───────────────────────────────────────────
 
   if (step === 'landing') {
+    const showChipNav = totalPositions > 4;
+
     return (
       <Layout>
-        {/* Election hero — dark, ceremonial */}
+        {/* Election hero */}
         <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
           {heroImageUrl ? (
             <>
@@ -426,19 +511,36 @@ export default function ElectionVote() {
             </>
           )}
           <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
+
+            {/* Organization identity — clickable to org public profile */}
             {election.organizationName && (
-              <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
-                {(election as any).organizationLogoUrl ? (
-                  <img
-                    src={(election as any).organizationLogoUrl}
-                    alt={election.organizationName}
-                    className="w-5 h-5 rounded object-cover border border-background/20"
-                  />
-                ) : (
-                  <Building2 className="h-3.5 w-3.5" />
-                )}
-                {election.organizationName}
-              </div>
+              orgPublicUrl ? (
+                <Link
+                  href={orgPublicUrl}
+                  className="inline-flex items-center justify-center gap-2 text-background/60 text-xs font-bold uppercase tracking-widest mb-6 hover:text-background/90 transition-colors group"
+                >
+                  {(election as any).organizationLogoUrl ? (
+                    <img
+                      src={(election as any).organizationLogoUrl}
+                      alt={election.organizationName}
+                      className="w-7 h-7 rounded object-cover border border-background/20 group-hover:border-background/50 transition-colors"
+                    />
+                  ) : (
+                    <Building2 className="h-3.5 w-3.5" />
+                  )}
+                  {election.organizationName}
+                  <LinkIcon className="h-3 w-3 opacity-40 group-hover:opacity-80 transition-opacity" />
+                </Link>
+              ) : (
+                <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
+                  {(election as any).organizationLogoUrl ? (
+                    <img src={(election as any).organizationLogoUrl} alt={election.organizationName} className="w-7 h-7 rounded object-cover border border-background/20" />
+                  ) : (
+                    <Building2 className="h-3.5 w-3.5" />
+                  )}
+                  {election.organizationName}
+                </div>
+              )
             )}
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight mb-6 text-background">
@@ -491,25 +593,89 @@ export default function ElectionVote() {
           </div>
         </div>
 
-        {/* Candidates by position — independent voting from landing */}
+        {/* Sticky position chip nav — shown when there are many positions */}
+        {showChipNav && totalPositions > 0 && (
+          <div className="sticky top-16 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm">
+            <div className="container mx-auto px-4 max-w-3xl">
+              <div className="flex items-center gap-2 overflow-x-auto py-2.5 scrollbar-none no-scrollbar">
+                {positionList.map((position, idx) => (
+                  <button
+                    key={position.id}
+                    onClick={() => {
+                      positionRefs.current[position.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-border/60 text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all whitespace-nowrap"
+                  >
+                    <span className="text-[10px] font-bold text-muted-foreground/50 tabular-nums">{idx + 1}</span>
+                    {position.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Candidates by position */}
         {totalPositions > 0 && (
           <div className="border-b border-border/50 bg-muted/20">
             <div className="container mx-auto px-4 py-12 max-w-3xl">
-              <div className="flex items-center gap-3 mb-2">
+              {/* Section header with display controls */}
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <VoteIcon className="h-5 w-5 text-primary shrink-0" />
                 <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
                   Candidates &middot; {totalPositions} {totalPositions === 1 ? 'Position' : 'Positions'}
                 </h2>
+                <div className="ml-auto flex items-center gap-1.5">
+                  {/* Candidate numbering toggle */}
+                  <button
+                    onClick={() => setShowNumbers(v => !v)}
+                    title={showNumbers ? 'Hide numbering' : 'Show numbering'}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-sm border text-xs font-bold transition-all ${
+                      showNumbers
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border/60 text-muted-foreground hover:border-primary/50 hover:text-primary'
+                    }`}
+                  >
+                    <Hash className="h-3 w-3" />
+                  </button>
+                  {/* Layout toggle */}
+                  <button
+                    onClick={() => setLayoutMode('list')}
+                    title="List view"
+                    className={`inline-flex items-center px-2.5 py-1.5 rounded-sm border text-xs font-bold transition-all ${
+                      layoutMode === 'list'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border/60 text-muted-foreground hover:border-primary/50 hover:text-primary'
+                    }`}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setLayoutMode('grid')}
+                    title="Grid view"
+                    className={`inline-flex items-center px-2.5 py-1.5 rounded-sm border text-xs font-bold transition-all ${
+                      layoutMode === 'grid'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border/60 text-muted-foreground hover:border-primary/50 hover:text-primary'
+                    }`}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-6 pl-8">
-                Vote for individual candidates directly, or cast a full ballot across all positions.
+              <p className="text-sm text-muted-foreground mb-8 pl-8">
+                View individual candidates, or cast a full ballot across all positions below.
               </p>
-              <div className="space-y-8">
+
+              <div className="space-y-10">
                 {positionList.map((position, idx) => {
                   const posCandidates = allCandidates.filter(c => c.positionId === position.id);
                   return (
-                    <div key={position.id}>
-                      <div className="flex items-center gap-3 mb-3">
+                    <div
+                      key={position.id}
+                      ref={el => { positionRefs.current[position.id] = el; }}
+                    >
+                      <div className="flex items-center gap-3 mb-4">
                         <div className="w-6 h-6 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
                           <span className="font-serif font-bold text-xs">{idx + 1}</span>
                         </div>
@@ -518,30 +684,87 @@ export default function ElectionVote() {
                           <Badge variant="outline" className="text-xs ml-auto shrink-0">Select up to {position.maxSelections}</Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-9">
-                        {posCandidates.map(candidate => (
-                          <Link
-                            key={candidate.id}
-                            href={`/elections/${electionId}/vote?positionId=${position.id}&candidateId=${candidate.id}`}
-                            className="flex items-center gap-3 bg-card border border-border/50 rounded-sm px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-all group cursor-pointer"
-                          >
-                            {candidate.photoUrl ? (
-                              <img src={candidate.photoUrl} alt={candidate.name} className="w-8 h-8 rounded-sm object-cover object-top border border-border/30 shrink-0" />
-                            ) : (
-                              <div className="w-8 h-8 rounded-sm bg-muted flex items-center justify-center border border-border/30 shrink-0">
-                                <span className="font-serif font-bold text-xs text-muted-foreground">{candidate.name.charAt(0)}</span>
+
+                      {layoutMode === 'list' ? (
+                        /* ── List layout ── */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-9">
+                          {posCandidates.map((candidate, ci) => (
+                            <Link
+                              key={candidate.id}
+                              href={`/elections/${electionId}/vote?positionId=${position.id}&candidateId=${candidate.id}`}
+                              className="flex items-center gap-3 bg-card border border-border/50 rounded-sm px-4 py-3 hover:border-primary/40 hover:bg-primary/5 transition-all group cursor-pointer"
+                            >
+                              {showNumbers && (
+                                <span className="text-[10px] font-bold text-muted-foreground/50 tabular-nums shrink-0 w-5 text-center">#{ci + 1}</span>
+                              )}
+                              {candidate.photoUrl ? (
+                                <img src={candidate.photoUrl} alt={candidate.name} className="w-8 h-8 rounded-sm object-cover object-top border border-border/30 shrink-0" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-sm bg-muted flex items-center justify-center border border-border/30 shrink-0">
+                                  <span className="font-serif font-bold text-xs text-muted-foreground">{candidate.name.charAt(0)}</span>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-serif font-bold text-sm truncate group-hover:text-primary transition-colors">{candidate.name}</p>
+                                {hasLiveData && percentageMap[candidate.id] !== undefined && (
+                                  <p className="text-[10px] text-muted-foreground/60 font-medium tabular-nums">{percentageMap[candidate.id]}% of votes</p>
+                                )}
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-serif font-bold text-sm truncate group-hover:text-primary transition-colors">{candidate.name}</p>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />
-                          </Link>
-                        ))}
-                        {posCandidates.length === 0 && (
-                          <p className="text-sm text-muted-foreground italic col-span-2">No candidates yet</p>
-                        )}
-                      </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />
+                            </Link>
+                          ))}
+                          {posCandidates.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic col-span-2">No candidates yet</p>
+                          )}
+                        </div>
+                      ) : (
+                        /* ── Grid layout ── */
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pl-9">
+                          {posCandidates.map((candidate, ci) => (
+                            <Link
+                              key={candidate.id}
+                              href={`/elections/${electionId}/vote?positionId=${position.id}&candidateId=${candidate.id}`}
+                              className="group flex flex-col bg-card border border-border/50 rounded-sm overflow-hidden hover:border-primary/40 hover:shadow-md transition-all"
+                            >
+                              {/* Photo */}
+                              <div className="aspect-[3/4] bg-muted relative overflow-hidden">
+                                {candidate.photoUrl ? (
+                                  <img
+                                    src={candidate.photoUrl}
+                                    alt={candidate.name}
+                                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/70">
+                                    <span className="font-serif font-bold text-4xl text-muted-foreground/30">{candidate.name.charAt(0)}</span>
+                                  </div>
+                                )}
+                                {showNumbers && (
+                                  <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-sm border border-border/40 tabular-nums">
+                                    #{ci + 1}
+                                  </div>
+                                )}
+                                {hasLiveData && percentageMap[candidate.id] !== undefined && (
+                                  <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-sm border border-border/40 tabular-nums">
+                                    {percentageMap[candidate.id]}%
+                                  </div>
+                                )}
+                                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
+                              </div>
+                              {/* Name + CTA */}
+                              <div className="p-3 flex-1 flex flex-col gap-2">
+                                <p className="font-serif font-bold text-sm leading-tight group-hover:text-primary transition-colors line-clamp-2">{candidate.name}</p>
+                                <div className="mt-auto pt-1 flex items-center gap-1 text-[10px] font-bold text-primary/70 group-hover:text-primary transition-colors uppercase tracking-wider">
+                                  <VoteIcon className="h-3 w-3" /> Vote
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                          {posCandidates.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic col-span-4">No candidates yet</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -552,13 +775,14 @@ export default function ElectionVote() {
 
         {/* Election credentials + full-ballot CTA */}
         <div className="container mx-auto px-4 py-16 max-w-2xl" style={primaryStyle}>
-
           <div className="flex items-start gap-4 bg-primary/5 border border-primary/15 rounded-sm p-5 mb-8">
             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-foreground mb-1">About This Election</p>
               <p className="text-sm text-muted-foreground font-light leading-relaxed">
-                This is a {election.visibility?.replace('_', ' ')} election managed by{' '}
+                {election.visibility === 'public' ? 'This is a public election' :
+                 election.visibility === 'private' ? 'This is a private election' :
+                 'This is an invite-only election'} managed by{' '}
                 {election.organizationName || 'the organizing body'}. Each eligible voter may cast one ballot.
                 Votes are recorded anonymously and cannot be changed after submission.
               </p>
@@ -581,13 +805,7 @@ export default function ElectionVote() {
                     <Label htmlFor="invite-code" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       <Key className="h-3.5 w-3.5" /> Invite Code
                     </Label>
-                    <Input
-                      id="invite-code"
-                      placeholder="Enter the code provided by the organizer"
-                      value={inviteCode}
-                      onChange={e => setInviteCode(e.target.value)}
-                      className="font-mono h-12 text-base rounded-sm"
-                    />
+                    <Input id="invite-code" placeholder="Enter the code provided by the organizer" value={inviteCode} onChange={e => setInviteCode(e.target.value)} className="font-mono h-12 text-base rounded-sm" />
                   </div>
                 )}
                 {needsVoterEmail && (
@@ -595,14 +813,7 @@ export default function ElectionVote() {
                     <Label htmlFor="voter-email" className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       <Mail className="h-3.5 w-3.5" /> Registered Email
                     </Label>
-                    <Input
-                      id="voter-email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={voterEmail}
-                      onChange={e => setVoterEmail(e.target.value)}
-                      className="h-12 text-base rounded-sm"
-                    />
+                    <Input id="voter-email" type="email" placeholder="your@email.com" value={voterEmail} onChange={e => setVoterEmail(e.target.value)} className="h-12 text-base rounded-sm" />
                   </div>
                 )}
               </div>
@@ -618,16 +829,13 @@ export default function ElectionVote() {
               <Button
                 size="lg"
                 className="h-16 px-14 text-lg shadow-xl hover:shadow-2xl transition-all rounded-sm"
-                disabled={
-                  (needsInviteCode && !inviteCode.trim()) ||
-                  (needsVoterEmail && !voterEmail.trim())
-                }
+                disabled={(needsInviteCode && !inviteCode.trim()) || (needsVoterEmail && !voterEmail.trim())}
                 onClick={() => setStep(0)}
               >
-                 <VoteIcon className="mr-3 h-5 w-5" /> Cast Full Ballot <ArrowRight className="ml-3 h-5 w-5" />
+                <VoteIcon className="mr-3 h-5 w-5" /> Cast Full Ballot <ArrowRight className="ml-3 h-5 w-5" />
               </Button>
-               <p className="text-sm text-muted-foreground">
-                 Vote through all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'}; each selected candidate counts as a separate vote.
+              <p className="text-sm text-muted-foreground">
+                Vote through all {totalPositions} {totalPositions === 1 ? 'position' : 'positions'} — each selected candidate counts as a separate vote.
               </p>
             </div>
           )}
@@ -636,7 +844,7 @@ export default function ElectionVote() {
     );
   }
 
-  // ── Ballot: position by position ──────────────────────────────────────────
+  // ── Ballot: position-by-position wizard ───────────────────────────────────
 
   if (typeof step === 'number') {
     const position = positionList[step];
@@ -646,18 +854,16 @@ export default function ElectionVote() {
     const isLast = step === totalPositions - 1;
     const progressPct = ((step + 1) / totalPositions) * 100;
     const hasAnySelection = Object.values(selections).some(ids => ids.length > 0);
+
     return (
       <Layout>
-        {/* Sticky ballot header */}
+        {/* Sticky ballot progress header */}
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm" style={primaryStyle}>
           <div className="container mx-auto px-4 max-w-4xl">
             <div className="py-3 flex items-center gap-4">
               <span className="text-xs font-bold text-muted-foreground hidden sm:block truncate">{election.title}</span>
               <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                />
+                <div className="h-full bg-primary rounded-full transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
               </div>
               <div className="shrink-0 flex items-center gap-3">
                 <span className="text-xs font-bold tabular-nums text-primary">
@@ -672,7 +878,8 @@ export default function ElectionVote() {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-14 max-w-4xl">
+        {/* Ballot content — extra bottom padding for the sticky nav bar */}
+        <div className="container mx-auto px-4 pt-14 pb-36 max-w-4xl">
           {/* Position header */}
           <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-xs font-bold uppercase tracking-widest text-primary mb-3">
@@ -689,7 +896,10 @@ export default function ElectionVote() {
               <span className="font-semibold text-foreground">
                 {position.maxSelections === 1 ? 'one candidate' : `up to ${position.maxSelections} candidates`}
               </span>{' '}
-              for this position
+              for this position.
+              {position.maxSelections === 1 && currentSelections.length === 1 && (
+                <span className="text-muted-foreground/60"> Selecting another will replace your current choice.</span>
+              )}
             </p>
           </div>
 
@@ -702,6 +912,7 @@ export default function ElectionVote() {
             <div className="space-y-6">
               {posCandidates.map((candidate, idx) => {
                 const isSelected = currentSelections.includes(candidate.id);
+                const pct = percentageMap[candidate.id];
                 return (
                   <div
                     key={candidate.id}
@@ -734,6 +945,11 @@ export default function ElectionVote() {
                             </span>
                           </div>
                         )}
+                        {showNumbers && (
+                          <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-sm border border-border/40 tabular-nums">
+                            #{idx + 1}
+                          </div>
+                        )}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent h-16 hidden sm:block" />
                       </div>
 
@@ -744,11 +960,16 @@ export default function ElectionVote() {
                               {candidate.name}
                             </h3>
                             <div className="flex items-center gap-2 flex-wrap">
+                              {showNumbers && (
+                                <span className="text-xs font-bold text-muted-foreground/50 tabular-nums">#{idx + 1}</span>
+                              )}
                               {isSelected && (
                                 <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Selected
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Selected
                                 </div>
+                              )}
+                              {hasLiveData && pct !== undefined && (
+                                <span className="text-xs text-muted-foreground/60 font-medium tabular-nums">{pct}% of votes</span>
                               )}
                             </div>
                           </div>
@@ -770,9 +991,7 @@ export default function ElectionVote() {
                         {candidate.platform && (
                           <div className={`mt-4 border-l-[3px] pl-5 py-1 transition-colors
                             ${isSelected ? 'border-primary' : 'border-border/40 group-hover:border-primary/30'}`}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-                              Platform
-                            </p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Platform</p>
                             <p className={`text-sm leading-relaxed font-medium italic
                               ${isSelected ? 'text-foreground' : 'text-foreground/70'}`}>
                               &ldquo;{candidate.platform}&rdquo;
@@ -806,43 +1025,67 @@ export default function ElectionVote() {
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="mt-14 space-y-4 border-t border-border/40 pt-10">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+          {/* Optional early submit */}
+          {!isLast && hasAnySelection && (
+            <div className="text-center pt-10 mt-6">
+              <button
+                className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
+                onClick={() => setStep('review')}
+              >
+                Skip remaining positions and review my ballot
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sticky bottom navigation bar ─────────────────────────────────── */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border/60 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]" style={primaryStyle}>
+          <div className="container mx-auto px-4 max-w-4xl py-3">
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto h-13 px-8 rounded-sm"
+                className="h-11 px-6 rounded-sm shrink-0"
                 onClick={() => setStep(step === 0 ? 'landing' : step - 1)}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                {step === 0 ? 'Back to Election' : 'Previous Position'}
+                <span className="hidden sm:inline">{step === 0 ? 'Back to Election' : 'Previous'}</span>
+                <span className="sm:hidden">Back</span>
               </Button>
+
+              {/* Position quick-jump pills (mobile-friendly) */}
+              <div className="flex-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 justify-center">
+                  {positionList.map((pos, i) => {
+                    const sel = (selections[pos.id] || []).length;
+                    return (
+                      <button
+                        key={pos.id}
+                        onClick={() => setStep(i)}
+                        className={`shrink-0 w-7 h-7 rounded-full text-[10px] font-bold tabular-nums border-2 transition-all
+                          ${i === step ? 'bg-primary border-primary text-primary-foreground scale-110' :
+                            sel > 0 ? 'border-primary/40 text-primary bg-primary/10' :
+                            'border-border/50 text-muted-foreground hover:border-primary/40'}`}
+                      >
+                        {i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <Button
                 size="lg"
-                className="w-full sm:w-auto h-13 px-10 shadow-lg rounded-sm"
+                className="h-11 px-7 shadow-md rounded-sm shrink-0"
                 onClick={() => setStep(isLast ? 'review' : step + 1)}
               >
                 {isLast ? (
-                  <>Review My Ballot <ChevronRight className="ml-2 h-5 w-5" /></>
+                  <><span className="hidden sm:inline">Review Ballot</span><span className="sm:hidden">Review</span> <ChevronRight className="ml-2 h-5 w-5" /></>
                 ) : (
-                  <>Next Position <ArrowRight className="ml-2 h-5 w-5" /></>
+                  <><span className="hidden sm:inline">Next Position</span><span className="sm:hidden">Next</span> <ArrowRight className="ml-2 h-5 w-5" /></>
                 )}
               </Button>
             </div>
-
-            {/* Optional: submit early without going through all positions */}
-            {!isLast && hasAnySelection && (
-              <div className="text-center pt-2">
-                <button
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
-                  onClick={() => setStep('review')}
-                >
-                  Skip remaining positions and review my ballot
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </Layout>
@@ -866,7 +1109,7 @@ export default function ElectionVote() {
             </p>
           </div>
 
-          {/* Official ballot */}
+          {/* Official ballot card */}
           <div className="bg-card border-2 border-border rounded-sm shadow-2xl overflow-hidden mb-10">
             <div className="bg-foreground text-background px-8 py-6 relative overflow-hidden">
               <div className="absolute inset-0 opacity-[0.04]" style={{
@@ -893,7 +1136,6 @@ export default function ElectionVote() {
               {positionList.map((position, idx) => {
                 const selectedIds = selections[position.id] || [];
                 const selectedCandidates = allCandidates.filter(c => selectedIds.includes(c.id));
-
                 return (
                   <div key={position.id} className="px-8 py-7">
                     <div className="flex items-start justify-between gap-4 mb-4">
@@ -903,10 +1145,7 @@ export default function ElectionVote() {
                         </div>
                         <h4 className="font-serif font-bold text-xl">{position.title}</h4>
                       </div>
-                      <button
-                        onClick={() => setStep(idx)}
-                        className="text-xs text-primary hover:underline font-bold shrink-0 mt-1 uppercase tracking-wide"
-                      >
+                      <button onClick={() => setStep(idx)} className="text-xs text-primary hover:underline font-bold shrink-0 mt-1 uppercase tracking-wide">
                         Edit
                       </button>
                     </div>
@@ -940,7 +1179,6 @@ export default function ElectionVote() {
               })}
             </div>
 
-            {/* Fee summary if any */}
             {feeRequired && !hasPaid && (
               <div className="px-8 py-4 bg-amber-50/60 border-t border-amber-200/40 flex items-center gap-3">
                 <Wallet className="h-4 w-4 text-amber-600 shrink-0" />
@@ -964,7 +1202,7 @@ export default function ElectionVote() {
               size="lg"
               className="h-14 px-12 text-base shadow-xl hover:shadow-2xl transition-all rounded-sm"
               onClick={() => feeRequired && !hasPaid ? setStep('payment') : submitBallot()}
-               disabled={submitVote.isPending || selectedCandidateCount === 0 || (feeRequired && computedQuantity < 1)}
+              disabled={submitVote.isPending || selectedCandidateCount === 0 || (feeRequired && computedQuantity < 1)}
             >
               {submitVote.isPending ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -973,7 +1211,7 @@ export default function ElectionVote() {
               ) : (
                 <ShieldCheck className="mr-2 h-5 w-5" />
               )}
-               {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
+              {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
             </Button>
           </div>
         </div>

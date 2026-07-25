@@ -1,0 +1,269 @@
+Prompt: Refine & Harden the Evenum Voting Pillar (Production Readiness)
+This is not a redesign request and not a request to imitate another platform.
+The Evenum Voting pillar is already in a very good state. The objective is to investigate, identify genuine UX or product gaps, and implement only improvements that strengthen the platform while preserving the existing architecture, identity and design language.
+Approach every item as a senior product engineer and UX architect.
+Do not blindly implement everything exactly as written. Evaluate each suggestion, determine the best implementation, and only introduce changes where they genuinely improve usability, scalability, accessibility, consistency and production quality.
+
+Primary Goal
+Take the current public voting experience and polish it until it feels completely production-grade.
+This is a hardening and refinement pass, not a rebuild.
+Every change should make the experience:
+* smoother
+* more scalable
+* easier to navigate
+* more customizable
+* more semantically correct
+* more delightful
+* more memorable
+* easier for organizations to brand
+
+1. Improve Public Homepage Navigation for Large Elections
+The current homepage works well for small elections.
+However, if an election contains many positions (10, 20 or more), users must continuously scroll before reaching another position.
+This does not scale.
+Investigate the best UX.
+A possible direction is introducing a persistent horizontal position selector near the top.
+For example:
+* searchable position selector
+* horizontally scrollable chips/tabs
+* instant jump to any position 
+* current position highlighted
+* works beautifully on mobile
+Example:
+Search Positions...
+
+[President]
+[Vice President]
+[Treasurer]
+[Board Chair]
+[Secretary]
+...
+This should not replace the current experience if unnecessary.
+Choose the most elegant solution.
+
+2. Candidate Presentation Layout Must Be Customizable
+Current candidate presentation is good.
+However, organizations should be able to choose how candidates are initially displayed.
+Instead of enforcing only one layout, support presentation modes configurable by the organization through Branding or Public Experience settings.
+Possible layouts:
+Layout A (Current)
+Board Chair
+
+👤 Robert
+👤 Patricia
+
+View Candidates →
+Layout B (Grid)
+Board Chair
+
+[Photo]   [Photo]
+Robert    Patricia
+
+Vote Now
+Both layouts should remain responsive.
+The organization should be able to configure:
+* default layout
+* allow visitors to switch layouts (optional)
+* branding preference
+* mobile optimization
+The objective is flexibility, not imitation.
+
+3. Election Terminology & Semantic Hardening
+Investigate the entire election domain.
+Review whether concepts are semantically represented correctly throughout the product.
+Examples include (where applicable):
+* Election
+* Term
+* Session
+* Mandate
+* Cycle
+* Position
+* Office
+* Candidate
+* Ballot
+* Voting Round
+* Election Status
+Ensure terminology is:
+* internally consistent
+* semantically correct
+* future-proof
+* internationally understandable
+If improvements are needed, implement them carefully without breaking compatibility.
+
+4. Review the Entire Public Voting Journey
+Perform a complete audit of the public voting experience.
+Investigate whether every stage is polished enough for production.
+Review and improve where necessary:
+* landing page
+* election homepage
+* candidate page
+* position page
+* voting wizard
+* payment flow
+* payment waiting screen
+* confirmation screen
+* success screen
+* vote receipt
+* QR verification
+* email receipt
+* PDF receipt/export
+* public result page
+* share pages
+* public result links
+Do not redesign unnecessarily.
+Only strengthen areas that require refinement.
+
+5. Candidate Numbering
+Support optional candidate numbering.
+Examples:
+#1
+#2
+#3
+This should be configurable by the organization.
+Brand Settings should allow:
+* show numbering
+* hide numbering
+* numbering style
+This is not ranking.
+It is simply candidate numbering.
+
+6. Optional Live Vote Percentage
+Organizations may optionally display live percentages beside candidates where appropriate.
+Example:
+Robert
+27%
+
+Vote Now
+Should be configurable.
+Should automatically respect election visibility rules.
+
+7. Results Visualization
+The current result visualization should be reviewed.
+Investigate whether it can communicate results more effectively.
+Instead of relying heavily on donut charts (maybe if even used) consider cleaner visualizations where appropriate.
+Examples include:
+* horizontal progress bars
+* sortable rankings
+* filtered by position
+* turnout metrics
+* participation summaries
+Choose whichever visualization best communicates information while remaining simple and elegant.
+
+8. Strengthen Branding Beyond Accent Colors
+Current branding already supports accent colors.
+Investigate opportunities to make organizational branding richer across the public voting experience.
+Potential areas include:
+* public homepage identity
+* headers
+* cards
+* illustrations
+* election banners
+* typography hierarchy
+* spacing
+* imagery
+* organization personality
+Without compromising Evenum's design language.
+
+9. Candidate Cards
+Where the organization chooses the grid layout, candidate cards should feel richer.
+Possible contents include:
+* candidate photo
+* name
+* optional candidate number
+* optional live percentage
+* Vote Now button
+Cards should remain lightweight and responsive.
+
+10. Make Success Moments Memorable
+This is extremely important.
+The voting experience should not feel like completing a form.
+Every important milestone should feel rewarding.
+Investigate opportunities to improve:
+* confirmation
+* payment success
+* vote submitted
+* verification success
+* completed election participation
+The objective is:
+* memorable moments
+* premium interactions
+* trust
+* delight
+* screenshots worth sharing
+* organic promotion
+Every success screen should reinforce confidence in Evenum.
+
+11. Improve Candidate Selection Behaviour
+Current behaviour should be reviewed.
+If an election allows only one candidate per position:
+Current behaviour feels overly punitive when another candidate is selected.
+Instead of presenting an aggressive error state, investigate whether the experience should intelligently switch selection.
+Example:
+Current:
+Error
+Only one candidate can be selected.
+Preferred behaviour:
+Selecting another candidate automatically deselects the previous one.
+Optionally display a subtle confirmation such as:
+Selection updated.
+Avoid making users feel like they made a serious mistake.
+Reserve red error states for genuine validation failures.
+
+12. Improve Wizard Navigation for Large Candidate Lists
+This is an important scalability issue.
+If a position contains:
+* 20 candidates
+* 30 candidates
+* 50 candidates
+Users currently may need to scroll through the entire list before reaching the Next button.
+Investigate better navigation.
+Possible improvements include:
+* persistent bottom navigation
+* sticky Next button
+* floating action area
+* intelligent positioning
+* responsive pagination
+The objective is ensuring users never need excessive scrolling simply to continue voting.
+
+13. Persistent Public Header
+The primary public header should remain easily accessible.
+Currently it disappears completely during scrolling.
+Investigate introducing an appropriate sticky or collapsing header that preserves quick access to:
+* organization identity
+* navigation
+* menu
+* search
+Without reducing available screen space.
+
+14. Organization Public Profile Discoverability
+Investigate discoverability of organization public pages.
+Currently organizations have public-facing pages, but they appear difficult to discover naturally unless users already possess a direct public URL.
+Review whether there is a discoverability gap.
+Where appropriate, make organization profiles naturally reachable from the public experience.
+Potential entry points include:
+* organization logo
+* organization name
+* election header
+* footer
+* event pages
+* profile links
+Users should be able to naturally discover an organization's public presence without requiring someone to manually share a URL.
+The solution should remain clean, intentional and scalable.
+
+Engineering Expectations
+Throughout this work:
+* preserve the current architecture
+* preserve existing functionality
+* avoid unnecessary redesigns
+* improve scalability for large elections
+* improve UX consistency
+* improve semantic correctness
+* improve accessibility
+* improve responsiveness
+* improve branding flexibility
+* improve production polish
+* harden edge cases
+* maintain performance
+Where a suggestion is not appropriate after investigation, choose the better engineering solution instead.
+The goal is not to implement every suggestion literally, but to make the best product decisions.
+The final result should feel like a mature, enterprise-grade, production-ready voting experience that reflects Evenum's long-term vision rather than an MVP.

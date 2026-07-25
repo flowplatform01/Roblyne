@@ -5,7 +5,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetElection, useGetElectionResults, useGetElectionAnalytics } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trophy, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Medal } from "lucide-react";
+import { Loader2, Trophy, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { format } from 'date-fns';
@@ -86,7 +86,25 @@ export default function ElectionResults() {
             {election.title}
           </h1>
           {election.organizationName && (
-            <p className="text-background/50 font-medium mb-6 text-lg">{election.organizationName}</p>
+            (() => {
+              const orgId = (election as any).orgId;
+              return orgId ? (
+                <Link
+                  href={`/organizations/${orgId}/public`}
+                  className="inline-flex items-center gap-2 text-background/50 hover:text-background/80 transition-colors font-medium mb-6 text-lg group"
+                >
+                  {(election as any).organizationLogoUrl ? (
+                    <img src={(election as any).organizationLogoUrl} alt={election.organizationName} className="w-6 h-6 rounded object-cover border border-background/20" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
+                  {election.organizationName}
+                  <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-80 transition-opacity" />
+                </Link>
+              ) : (
+                <p className="text-background/50 font-medium mb-6 text-lg">{election.organizationName}</p>
+              );
+            })()
           )}
           {election.endsAt && isEnded && (
             <p className="text-background/30 text-sm mb-10">
@@ -126,6 +144,53 @@ export default function ElectionResults() {
       </div>
 
       <div className="container mx-auto px-4 py-20 max-w-4xl space-y-20">
+
+        {/* Winners at a Glance — compact summary across all positions */}
+        {isEnded && results.positions && results.positions.length > 0 && (() => {
+          const winners = results.positions
+            .map(p => {
+              const sorted = [...p.candidates].sort((a, b) => b.voteCount - a.voteCount);
+              const w = sorted[0];
+              return w && w.voteCount > 0 ? { position: p.title, winner: w, totalVotes: results.totalVotes } : null;
+            })
+            .filter(Boolean) as { position: string; winner: { candidateId: number; name: string; photoUrl?: string | null; voteCount: number }; totalVotes: number }[];
+
+          if (winners.length === 0) return null;
+          return (
+            <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="flex items-center gap-3 mb-6">
+                <Trophy className="h-5 w-5 text-amber-500 fill-amber-500/30 shrink-0" />
+                <h2 className="text-2xl font-serif font-bold">Winners</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {winners.map(({ position, winner, totalVotes }) => {
+                  const pct = totalVotes > 0 ? ((winner.voteCount / totalVotes) * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={winner.candidateId} className="flex items-center gap-4 bg-gradient-to-r from-amber-50 to-amber-50/30 border border-amber-200/60 rounded-sm px-5 py-4">
+                      <div className="w-12 h-12 rounded-sm overflow-hidden border border-amber-200/60 shrink-0 bg-amber-100">
+                        {winner.photoUrl ? (
+                          <img src={winner.photoUrl} alt={winner.name} className="w-full h-full object-cover object-top" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="font-serif font-bold text-xl text-amber-500">{winner.name.charAt(0)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/70 mb-0.5 truncate">{position}</p>
+                        <p className="font-serif font-bold text-lg leading-tight truncate">{winner.name}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-serif font-bold text-xl text-amber-700 tabular-nums">{winner.voteCount}</p>
+                        <p className="text-[10px] font-bold text-amber-600/60 tabular-nums">{pct}%</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Voting Activity Chart */}
         {votesByHour.length >= 1 && (() => {
