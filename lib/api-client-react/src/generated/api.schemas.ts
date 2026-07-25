@@ -9,8 +9,42 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ClientDiagnosticInputEvent = typeof ClientDiagnosticInputEvent[keyof typeof ClientDiagnosticInputEvent];
+
+
+export const ClientDiagnosticInputEvent = {
+  error: 'error',
+  unhandledrejection: 'unhandledrejection',
+} as const;
+
+export interface ClientDiagnosticInput {
+  event: ClientDiagnosticInputEvent;
+  /**
+     * @minLength 1
+     * @maxLength 8000
+     */
+  message: string;
+  /**
+     * @maxLength 8000
+     * @nullable
+     */
+  stack?: string | null;
+  /**
+     * @maxLength 8000
+     * @nullable
+     */
+  componentStack?: string | null;
+  /**
+     * @maxLength 8000
+     * @nullable
+     */
+  route?: string | null;
+}
+
 export interface ErrorResponse {
   error: string;
+  /** @nullable */
+  requestId?: string | null;
 }
 
 export interface MessageResponse {

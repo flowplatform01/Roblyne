@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportClientDiagnostic } from '@/lib/diagnostics';
 
 interface Props {
   children: ReactNode;
@@ -25,8 +26,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log to the console so it's visible in workflow / browser devtools
-    console.error('[ErrorBoundary] Uncaught render error:', error, info.componentStack);
+    reportClientDiagnostic({
+      event: 'error',
+      message: error.message || 'Uncaught render error',
+      stack: error.stack,
+      componentStack: info.componentStack ?? undefined,
+    });
   }
 
   render() {
@@ -34,7 +39,6 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4 text-center">
-          <div className="text-4xl">⚠️</div>
           <h1 className="text-xl font-semibold text-foreground">Something went wrong</h1>
           <p className="text-sm text-muted-foreground max-w-sm">
             An unexpected error occurred. Refresh the page to try again.

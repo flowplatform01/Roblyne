@@ -42,6 +42,11 @@ app.use(
   }),
 );
 
+app.use((req, res, next) => {
+  res.setHeader("X-Request-Id", String(req.id));
+  next();
+});
+
 app.use(cors({
   origin: true,
   credentials: true,
@@ -86,12 +91,30 @@ app.use("/api", writeLimiter);
 app.use(["/api/search", "/api/discover"], searchLimiter);
 app.use("/api", router);
 
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) {
+    next();
+    return;
+  }
+  res.status(404).json({ error: "Not found", requestId: req.id });
+});
+
 // Global error handler — must be the last middleware registered.
 // Catches any error thrown (or passed to next()) by route handlers.
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error({ err, method: req.method, url: req.url?.split("?")[0] }, "Unhandled route error");
+  req.log.error(
+    {
+      err,
+      method: req.method,
+      route: req.route?.path,
+      url: req.url?.split("?")[0],
+      requestId: req.id,
+      userId: req.session.userId,
+    },
+    "Unhandled route error",
+  );
   if (res.headersSent) return;
-  res.status(500).json({ error: "Internal server error" });
+  res.status(500).json({ error: "Internal server error", requestId: req.id });
 });
 
 export default app;

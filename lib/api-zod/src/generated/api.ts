@@ -16,6 +16,32 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Record a non-sensitive client diagnostic
+ */
+export const reportClientDiagnosticBodyMessageMax = 8000;
+
+export const reportClientDiagnosticBodyStackMax = 8000;
+
+export const reportClientDiagnosticBodyComponentStackMax = 8000;
+
+export const reportClientDiagnosticBodyRouteMax = 8000;
+
+
+
+export const ReportClientDiagnosticBody = zod.object({
+  "event": zod.enum(['error', 'unhandledrejection']),
+  "message": zod.string().min(1).max(reportClientDiagnosticBodyMessageMax),
+  "stack": zod.string().max(reportClientDiagnosticBodyStackMax).nullish(),
+  "componentStack": zod.string().max(reportClientDiagnosticBodyComponentStackMax).nullish(),
+  "route": zod.string().max(reportClientDiagnosticBodyRouteMax).nullish()
+})
+
+export const ReportClientDiagnosticResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Register a new user
  */
 export const registerBodyPasswordMin = 8;

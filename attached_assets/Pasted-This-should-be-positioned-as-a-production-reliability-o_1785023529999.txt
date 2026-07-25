@@ -1,0 +1,226 @@
+This should be positioned as a **production reliability, observability and cross-pillar stability audit**, rather than simply fixing the individual bugs you found.
+
+---
+
+# Final Production Reliability, Cross-Pillar Stability & Observability Audit
+
+## Context
+
+Evenum has reached production readiness through multiple refinement, hardening and optimisation phases.
+
+The core architecture, scalability, performance, PWA capabilities, branding, sharing, financial systems, multilingual support and user experience have already been completed.
+
+This phase is **not** about introducing new features.
+
+Instead, perform a comprehensive engineering audit focused on **stability, reliability, observability and production confidence**.
+
+Investigate the platform holistically rather than addressing only the individual examples listed below.
+
+The examples simply reveal areas where similar hidden issues may still exist.
+
+Do not introduce regressions.
+
+Do not redesign completed functionality.
+
+Strengthen the implementation while preserving the current architecture and user experience.
+
+---
+
+# 1. Cross-Pillar Stability Audit
+
+Conduct a complete audit across every Evenum pillar.
+
+Examples include:
+
+* Elections
+* Campaigns
+* Events
+* Organisations
+* Discovery
+* Public experiences
+* Administrative workspaces
+* Shared resources
+* Future participation modules
+
+Verify that every navigation path, interaction, detail page, creation flow, management flow and public experience behaves consistently and without unexpected failures.
+
+The objective is to identify hidden runtime issues before users encounter them.
+
+---
+
+# 2. Runtime Error Investigation
+
+During normal platform exploration, unexpected runtime errors have been observed.
+
+Examples include:
+
+* Opening certain campaign pages
+* Navigating between discovery experiences
+* Certain public interactions
+* Platform-specific actions
+
+These examples should be treated as indicators rather than isolated bugs.
+
+Investigate the entire application for similar situations that could trigger runtime failures.
+
+Review:
+
+* component lifecycle
+* asynchronous loading
+* route transitions
+* lazy-loaded modules
+* state management
+* conditional rendering
+* null handling
+* API responses
+* edge cases
+* race conditions
+* hydration issues
+* browser compatibility
+
+Resolve root causes rather than masking symptoms.
+
+---
+
+# 3. Platform-Specific Behaviour Audit
+
+Review behaviour across supported platforms.
+
+Examples include:
+
+* iOS Safari
+* Installed iOS PWA
+* Android Chrome
+* Android PWA
+* Desktop browsers
+* Responsive layouts
+
+One observed example is an unexpected runtime error occurring immediately after invoking the native iOS Share Sheet while preparing to install the application as a PWA.
+
+Investigate platform-specific APIs and lifecycle behaviour to ensure they integrate safely with the application.
+
+Verify all platform-specific interactions remain stable regardless of operating system or browser.
+
+---
+
+# 4. Production Observability & Error Traceability
+
+Strengthen the application's ability to diagnose production issues.
+
+The platform should never fail silently.
+
+Whenever unexpected errors occur, authorised administrators and developers should be able to determine:
+
+* what failed
+* where it failed
+* why it failed
+* when it failed
+* which component was involved
+* which route triggered the issue
+* relevant contextual information
+* stack traces where appropriate
+* affected services
+* correlation identifiers where appropriate
+
+Build observability into the platform itself rather than relying solely on browser error overlays.
+
+---
+
+# 5. Intelligent Error Handling
+
+Replace unhelpful runtime failures with graceful recovery wherever possible.
+
+Review every major workflow and ensure unexpected failures:
+
+* fail safely
+* preserve user progress where practical
+* communicate appropriately
+* avoid application crashes
+* avoid blank screens
+* isolate failures
+* recover automatically where appropriate
+
+Users should experience a stable application even when unexpected situations occur.
+
+---
+
+# 6. Centralised Logging Architecture
+
+Review the application's logging strategy.
+
+Implement a structured logging approach suitable for production.
+
+Where appropriate, capture:
+
+* application errors
+* API failures
+* background task failures
+* queue failures
+* Socket.IO events
+* authentication failures
+* payment failures
+* unexpected exceptions
+* client-side errors
+* server-side errors
+
+Ensure logging remains secure, structured and useful for diagnostics without exposing sensitive information.
+
+---
+
+# 7. Production Monitoring Readiness
+
+Prepare the platform for real-world operation.
+
+Design the architecture so that production monitoring tools can integrate naturally.
+
+Support future integration with monitoring, alerting and analytics platforms without requiring architectural changes.
+
+Keep the implementation provider-agnostic and avoid unnecessary vendor lock-in.
+
+---
+
+# 8. Defensive Engineering Review
+
+Review the application with a defensive engineering mindset.
+
+Assume users will:
+
+* navigate unpredictably
+* refresh unexpectedly
+* open multiple tabs
+* interrupt requests
+* lose connectivity
+* revisit expired links
+* open outdated pages
+* trigger edge cases
+
+Ensure these situations are handled gracefully and consistently.
+
+---
+
+# 9. Regression Protection
+
+Every improvement in this phase must preserve the stability already achieved.
+
+Do not modify business logic unless a genuine issue is identified.
+
+Do not redesign completed experiences.
+
+Do not introduce unnecessary architectural changes.
+
+Every improvement should increase confidence without affecting existing functionality.
+
+---
+
+# Final Objective
+
+When this audit is complete:
+
+* Every Evenum pillar should behave consistently under normal and edge-case usage.
+* Navigation throughout the platform should be reliable and free from hidden runtime failures.
+* Platform-specific behaviours, including PWA installation flows and mobile browser interactions, should operate correctly.
+* Unexpected errors should be traceable through structured logging and observability rather than being difficult to reproduce.
+* Runtime failures should be handled gracefully with meaningful diagnostics and safe recovery wherever possible.
+* The platform should provide the level of stability, resilience and operational visibility expected of a production-grade participation platform.
+
+Treat this as the **final production reliability and operational confidence audit**, ensuring Evenum is not only feature-complete, but also robust, diagnosable and dependable under real-world usage.

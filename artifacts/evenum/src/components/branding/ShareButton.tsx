@@ -68,7 +68,20 @@ export function ShareButton({
 
   async function copyToClipboard() {
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = url;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        input.remove();
+        if (!copied) throw new Error("Clipboard copy was not available");
+      }
       setCopied(true);
       toast({ title: "Link copied!", description: "Paste it anywhere to share." });
       setTimeout(() => setCopied(false), 2500);
@@ -84,13 +97,16 @@ export function ShareButton({
 
   async function handleShare() {
     // Use the native share sheet if available (mobile)
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({ title, text: description, url });
         return;
       } catch (err: any) {
         // User cancelled — don't fall through to popover
         if (err?.name === "AbortError") return;
+        // Some browser/PWA versions throw when the share sheet closes or
+        // rejects a payload. Fall back to the in-app options instead of
+        // allowing the platform-specific exception to escape.
       }
     }
     // Desktop: toggle custom share popover

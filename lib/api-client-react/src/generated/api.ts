@@ -34,6 +34,7 @@ import type {
   CandidateInput,
   CandidateUpdate,
   CheckInInput,
+  ClientDiagnosticInput,
   CommissionConfig,
   CommissionConfigUpdate,
   CreateSettlementInput,
@@ -193,6 +194,77 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getReportClientDiagnosticUrl = () => {
+
+
+
+
+  return `/api/diagnostics/client`
+}
+
+/**
+ * @summary Record a non-sensitive client diagnostic
+ */
+export const reportClientDiagnostic = async (clientDiagnosticInput: ClientDiagnosticInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getReportClientDiagnosticUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(clientDiagnosticInput)
+  }
+);}
+
+
+
+
+
+export const getReportClientDiagnosticMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportClientDiagnostic>>, TError,{data: BodyType<ClientDiagnosticInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportClientDiagnostic>>, TError,{data: BodyType<ClientDiagnosticInput>}, TContext> => {
+
+const mutationKey = ['reportClientDiagnostic'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportClientDiagnostic>>, {data: BodyType<ClientDiagnosticInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportClientDiagnostic(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportClientDiagnosticMutationResult = NonNullable<Awaited<ReturnType<typeof reportClientDiagnostic>>>
+    export type ReportClientDiagnosticMutationBody = BodyType<ClientDiagnosticInput>
+    export type ReportClientDiagnosticMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record a non-sensitive client diagnostic
+ */
+export const useReportClientDiagnostic = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportClientDiagnostic>>, TError,{data: BodyType<ClientDiagnosticInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportClientDiagnostic>>,
+        TError,
+        {data: BodyType<ClientDiagnosticInput>},
+        TContext
+      > => {
+      return useMutation(getReportClientDiagnosticMutationOptions(options));
+    }
 
 export const getRegisterUrl = () => {
 

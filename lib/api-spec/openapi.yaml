@@ -41,6 +41,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /diagnostics/client:
+    post:
+      operationId: reportClientDiagnostic
+      tags: [health]
+      summary: Record a non-sensitive client diagnostic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientDiagnosticInput"
+      responses:
+        "202":
+          description: Diagnostic accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid diagnostic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── AUTH ──────────────────────────────────────────────────────────────────
   /auth/register:
     post:
@@ -1814,12 +1839,36 @@ components:
         status:
           type: string
 
+    ClientDiagnosticInput:
+      type: object
+      required: [event, message]
+      additionalProperties: false
+      properties:
+        event:
+          type: string
+          enum: [error, unhandledrejection]
+        message:
+          type: string
+          minLength: 1
+          maxLength: 8000
+        stack:
+          type: [string, "null"]
+          maxLength: 8000
+        componentStack:
+          type: [string, "null"]
+          maxLength: 8000
+        route:
+          type: [string, "null"]
+          maxLength: 8000
+
     ErrorResponse:
       type: object
       required: [error]
       properties:
         error:
           type: string
+        requestId:
+          type: [string, "null"]
 
     MessageResponse:
       type: object

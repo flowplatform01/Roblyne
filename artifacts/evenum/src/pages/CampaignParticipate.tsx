@@ -13,7 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck,
-  Users, Heart, TrendingUp, Target, Sparkles, CreditCard, Wallet, ArrowLeft, BadgeCheck
+  Users, Heart, TrendingUp, Target, Sparkles, CreditCard, Wallet, ArrowLeft, BadgeCheck,
+  Building2, ExternalLink,
 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
