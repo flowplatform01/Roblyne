@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetEvent, useListTicketTypes, useRegisterForEvent } from "@workspace/api-client-react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { format } from "date-fns";
@@ -199,7 +199,12 @@ export default function EventRegister() {
                 <Ticket className="absolute -right-4 -top-4 w-40 h-40 rotate-12" />
               </div>
               <p className="text-background/50 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5" /> Official Ticket · {event.organizationName || 'Evenum'}
+                <ShieldCheck className="w-3.5 h-3.5" /> Official Ticket ·{' '}
+                {(event as any).orgId ? (
+                  <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-background/90 transition-colors inline-flex items-center gap-1">
+                    {event.organizationName || 'Evenum'}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                  </Link>
+                ) : (event.organizationName || 'Evenum')}
               </p>
               <h2 className="text-background text-3xl font-serif font-bold leading-tight relative z-10">{event.title}</h2>
             </div>

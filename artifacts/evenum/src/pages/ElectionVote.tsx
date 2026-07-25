@@ -15,7 +15,7 @@ import {
   ShieldCheck, FileSignature, ArrowRight, ArrowLeft, Clock, Building2,
   ChevronRight, Users, Info, Lock, ExternalLink,
   Wallet, LayoutGrid, List, Hash, ExternalLink as LinkIcon,
-  Sparkles, Trophy,
+  Sparkles, Trophy, BarChart2,
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -101,14 +101,15 @@ export default function ElectionVote() {
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
 
   // ── Display preferences ───────────────────────────────────────────────────
-  const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('list');
-  const [showNumbers, setShowNumbers] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
+  const [showNumbers, setShowNumbers] = useState(true);
 
   // ── Position section refs (for chip-nav scroll-to) ────────────────────────
   const positionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    fetch('/api/admin/platform-settings/public')
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    fetch(`${base}/api/admin/platform-settings/public`)
       .then(res => res.ok ? res.json() : null)
       .then(settings => {
         if (settings?.paymentMode === 'amount_first' || settings?.paymentMode === 'quantity_first') {
@@ -590,6 +591,20 @@ export default function ElectionVote() {
                 </div>
               )}
             </div>
+
+            {/* Results discovery link — shown during active voting when there are votes */}
+            {election.status === 'active' && hasLiveData && (
+              <div className="mt-2 mb-2">
+                <Link
+                  href={`/elections/${electionId}/results`}
+                  className="inline-flex items-center gap-1.5 text-background/50 hover:text-background/80 text-xs font-medium transition-colors border border-background/20 hover:border-background/40 rounded-sm px-3 py-1.5"
+                >
+                  <BarChart2 className="h-3.5 w-3.5" />
+                  View current standings
+                  <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

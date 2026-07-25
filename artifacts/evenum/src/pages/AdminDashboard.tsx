@@ -269,7 +269,7 @@ export default function AdminDashboard() {
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/50 px-4 py-2 rounded-sm">
             <Activity className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
-            System Operational
+            All systems operational
           </div>
         </div>
 

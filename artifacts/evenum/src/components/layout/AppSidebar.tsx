@@ -133,7 +133,7 @@ export function AppSidebar({ orgId }: { orgId?: string }) {
             <SidebarMenuButton asChild isActive={location === '/settings'}>
               <Link href="/settings">
                 <Settings className="h-4 w-4" />
-                <span>Settings</span>
+                <span>{t('sidebar.settings')}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

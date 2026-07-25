@@ -191,7 +191,7 @@ export default function OrganizationWorkspace() {
               <CardHeader className="pb-4 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-serif">Recent Activity</CardTitle>
-                  <CardDescription>Latest items across your engines</CardDescription>
+                  <CardDescription>Latest activity across your workspace</CardDescription>
                 </div>
               </CardHeader>
               <CardContent>

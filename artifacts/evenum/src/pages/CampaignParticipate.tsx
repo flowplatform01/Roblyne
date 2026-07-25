@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetCampaign, useSubmitCampaignResponse, useGetCampaignAnalytics } from "@workspace/api-client-react";
@@ -232,9 +232,20 @@ export default function CampaignParticipate() {
         }} />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-3xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           {campaign.organizationName && (
-            <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-5">
-              {campaign.organizationName}
-            </p>
+            (campaign as any).orgId ? (
+              <Link
+                href={`/organizations/${(campaign as any).orgId}/public`}
+                className="inline-flex items-center gap-1.5 text-background/40 hover:text-background/70 transition-colors text-xs font-bold uppercase tracking-widest mb-5"
+              >
+                <Building2 className="w-3 h-3" />
+                {campaign.organizationName}
+                <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+              </Link>
+            ) : (
+              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-5">
+                {campaign.organizationName}
+              </p>
+            )
           )}
           <div className="flex justify-center mb-5">
             <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30 font-bold uppercase tracking-widest text-xs capitalize">

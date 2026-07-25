@@ -1,0 +1,261 @@
+We are now entering the product hardening and production refinement phase.
+
+This phase is not about introducing major new features. It is about polishing, stabilising, refining, and making the entire Evenum experience production-ready.
+
+Every change should preserve existing functionality while improving quality. Avoid regressions.
+
+## 1. Remove Internal Development Terminology
+
+Review the entire application for internal development terminology.
+
+Words such as "Engine" were intended for internal development and architecture discussions only.
+
+They must not appear in customer-facing interfaces, organisation dashboards, public pages, menus, settings, navigation, headings, breadcrumbs, empty states, or descriptions.
+
+Replace them with professional product language that is meaningful to end users.
+
+Audit the complete application for similar internal terminology.
+
+---
+
+## 2. Investigate Toggle Runtime Errors
+
+There are runtime errors occurring when enabling certain optional features.
+
+Examples include:
+
+- payment toggles
+- contribution goals
+- campaign options
+- voting payment settings
+- similar feature switches
+
+The application sometimes displays a runtime overlay instead of functioning correctly.
+
+Do not simply fix the reported cases.
+
+Investigate every similar toggle and optional configuration throughout the application.
+
+Ensure all switches:
+
+- initialise correctly
+- update state correctly
+- persist correctly
+- do not trigger runtime errors
+- work across refreshes
+- behave consistently.
+
+---
+
+## 3. Investigate Hidden or Invisible Actions
+
+Audit the interface for actions that technically exist but are not visually discoverable.
+
+Example:
+
+A destructive action (such as deleting a candidate) is triggered by tapping an invisible region of a card instead of a visible action button.
+
+This indicates a UI visibility issue.
+
+Review the entire application for:
+
+- invisible buttons
+- hidden action zones
+- white-on-white controls
+- low contrast
+- inaccessible menus
+- clipped controls
+- overlapping elements
+- actions that can be triggered without being clearly visible.
+
+Every available action should have an intentional, discoverable interface.
+
+---
+
+## 4. Improve View  Result Discovery
+
+Review the public voting experience.
+
+Currently users without a direct/shared result URL may struggle to discover published results.
+
+Design an elegant, unobtrusive way for users to access/view results directly from the public voting experience.
+
+Do not create visual clutter.
+
+The solution should integrate naturally into the overall experience.
+
+---
+
+## 5. Complete Bilingual Support
+
+The application already exposes language selection but translations are incomplete.
+
+This must be fully implemented.
+
+Requirements:
+
+- English and French must both be first-class experiences.
+- Every visible interface element must be translated.
+- Navigation
+- Forms
+- Buttons
+- Validation messages
+- Empty states
+- Dialogs
+- Toasts
+- Emails
+- Notifications
+- System messages
+- Administrative interfaces
+- Public pages
+- Error pages
+
+Everything.
+
+No screen should unexpectedly fall back to English after French has been selected.
+
+Language switching should be seamless.
+
+Additionally:
+
+Detect the user's preferred language intelligently from browser or device settings during first launch.
+
+Respect user preference once chosen.
+
+Persist the selected language across sessions.
+
+---
+
+## 6. Intelligent Performance, Caching and Offline Behaviour
+
+Reduce unnecessary loading throughout the application.
+
+Review all data fetching.
+
+Avoid requesting data that has already been loaded unless it has genuinely become stale.
+
+Implement intelligent caching strategies.
+
+Optimise:
+
+- navigation speed
+- repeated page visits
+- dashboard responsiveness
+- media loading
+- API efficiency
+
+Use background refresh where appropriate.
+
+Only re-fetch data when necessary.
+
+Avoid unnecessary server traffic.
+
+Maintain correctness while improving perceived performance.
+
+---
+
+## 7. Production-Grade Progressive Web App (PWA)
+Harden the application as a complete Progressive Web App.
+Review every aspect of the current implementation and ensure it meets production quality across platforms.
+This includes, where appropriate:
+installability
+manifest correctness
+service worker stability
+update lifecycle
+cache versioning
+offline asset handling
+splash screens
+icons
+shortcuts
+install prompts
+standalone mode
+safe update behaviour
+background sync where applicable
+notification readiness
+proper fallback behaviour
+secure HTTPS assumptions
+Ensure the application behaves naturally whether accessed from:
+Desktop
+Android
+iPhone
+iPad
+Investigate existing platform-specific inconsistencies.
+For example:
+iOS install behaviour
+missing application icons
+inconsistent installation experience
+standalone launch behaviour
+Resolve these differences wherever platform capabilities allow.
+The experience should feel native, reliable and production-ready.
+
+---
+
+## 8. Mobile-First Stability
+
+Review the application from a mobile-first perspective.
+
+Verify:
+
+- responsive layouts
+- touch targets
+- keyboard behaviour
+- scrolling
+- bottom sheets
+- safe area handling
+- orientation changes
+- loading states
+- gesture interactions
+
+The experience should feel native rather than simply responsive.
+
+---
+
+## 9. Production Stability Audit
+
+Perform a complete audit of the application.
+
+Review:
+
+- console errors
+- runtime warnings
+- accessibility issues
+- broken navigation
+- missing states
+- inconsistent spacing
+- visual regressions
+- form validation
+- permission handling
+- loading behaviour
+- error recovery
+- network failures
+- edge cases
+
+Fix issues discovered during the audit.
+
+---
+
+## 10. End-to-End Verification
+
+Use Playwright (or equivalent browser automation) to validate the complete application.
+
+Exercise every major workflow.
+
+Verify:
+
+- organisation management
+- event creation
+- voting
+- ticketing
+- collections
+- authentication
+- language switching
+- public experiences
+- administration
+- mobile layouts
+- PWA installation
+
+Where defects are found, fix them before considering the task complete.
+
+The objective is not simply to make the application work.
+
+The objective is to make Evenum feel like a mature, reliable, polished production product that users can trust and enjoy using every day.

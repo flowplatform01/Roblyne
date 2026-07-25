@@ -1,75 +1,37 @@
 ---
 name: Evenum production hardening
-description: Full engineering audit to make Evenum production-grade — N+1 fixes, security, concurrency, code splitting
+description: Full audit and polish applied across terminology, hidden UI, i18n, results discovery, BASE_URL fixes, and PWA setup
 ---
 
-## Summary of changes (all applied)
+## Completed hardening areas
 
-### Backend — N+1 query elimination
+### Terminology cleanup
+- `OrganizationWorkspace.tsx`: "Latest items across your engines" → "Latest activity across your workspace"
+- `AdminDashboard.tsx`: "System Operational" → "All systems operational"
+- FR locale `sidebar.engines`: "Outils" → "Activités"
 
-**elections.ts** — complete rewrite:
-- List: single JOIN + 3 correlated subqueries (posCount, candCount, totalVotes) instead of O(n×3) calls
-- Candidates list: single GROUP BY JOIN (elections×positions×vote_selections×votes)
-- Position detail: single aggregated query for candidates with vote counts
-- Results: two parallel queries (totalVotes + per-candidate grouped aggregation) instead of nested N+1 per position/candidate
-- Analytics: three parallel queries (total, votes-by-hour, per-position counts) instead of O(n) per position
-- Export: single GROUP BY query (positions+candidates+votes) instead of O(n×m) nested loops
-- Eligible voters: batch `INSERT ... ON CONFLICT DO NOTHING` instead of sequential check-then-insert loop
+### Hidden / inaccessible UI
+- `ElectionDetail.tsx`: Candidate delete button was `opacity-0 group-hover:opacity-100` — changed to always-visible `text-muted-foreground/50 hover:text-destructive` for mobile safety
 
-**organizations.ts** — complete rewrite:
-- Members list: single LEFT JOIN to users table (was: N separate user lookups via `memberRow()` helper)
-- Organization list: DISTINCT query including both owned + member orgs in one shot
-- Org stats: single query with correlated subqueries for all counts
-- Public profile: parallel fetch of counts + 3 recent-item queries
+### BASE_URL fix
+- `ElectionVote.tsx`: Platform-settings fetch used bare `/api/admin/platform-settings/public` — fixed to prepend `import.meta.env.BASE_URL` (strips trailing slash first)
 
-**financial.ts** — org analytics endpoint:
-- Was: sequential for-each per election, event, and campaign (2–3 queries each = O(3n) total)
-- Now: 3 parallel queries each using LEFT JOIN aggregation (GROUP BY per entity_id)
-- Settlement PATCH/POST: added proper type checking on req.body instead of unsafe casting
+### Results discovery
+- `ElectionVote.tsx`: Added subtle "View current standings →" link (with BarChart2 icon) on the landing step when `election.status === 'active' && hasLiveData`. Had to add `BarChart2` to lucide imports.
 
-**campaigns.ts, events.ts, discover.ts** — fixed in prior sessions
+### i18n completeness
+- Both locales: added `sidebar.settings` key
+- FR locale: fixed `addingCandidatesComingSoon` (was still "coming soon" phrasing), added full candidate form translations (`addCandidateTitle`, `candidateName`, `candidateBio`, etc.) — these were missing from fr.json entirely
+- `AppSidebar.tsx`: "Settings" footer link now uses `t('sidebar.settings')`
 
-### Backend — concurrency / correctness
+### PWA setup
+- Installed `vite-plugin-pwa` as devDependency in evenum
+- `vite.config.ts`: Added VitePWA plugin with `registerType: 'autoUpdate'`, `generateSW`, NetworkFirst runtime caching for `/api/`, `devOptions.enabled: false`
+- Manifest configured with `start_url` and `scope` using `basePath`, icon paths prefixed with `basePath`
+- Icons generated from `favicon.svg` via ImageMagick `convert` → `public/icons/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`
+- `index.html`: Added `<link rel="manifest">`, `<link rel="apple-touch-icon">`, `<meta name="theme-color">`, Apple PWA meta tags
 
-**events.ts**: ticket oversell check moved inside transaction with `FOR UPDATE` row lock;
-check-in is a single conditional UPDATE (was: read-then-write race)
+**Why:** Dynamic `basePath` env means all PWA manifest paths must be prefixed at config time, not hardcoded as root-relative.
 
-**campaigns.ts**: submit (response insert + currentAmount update) wrapped in a single DB transaction
-
-**elections.ts**: vote submission uses ON CONFLICT to detect duplicate votes even under concurrency;
-`INSERT ... ON CONFLICT DO NOTHING` for eligible-voter bulk add
-
-### Security
-
-**app.ts**: SESSION_SECRET validation at startup:
-- Production: `process.exit(1)` if missing or is the dev default
-- Development: warn to console
-
-**rateLimit.ts**: added `searchLimiter` (60 req/min in prod) applied to `/api/search` and `/api/discover` in app.ts
-
-**financial.ts**: settlement body fields validated with type checks instead of raw casting
-
-### Frontend
-
-**App.tsx**: all 15+ route components converted to `React.lazy()` + `<Suspense>` for code splitting
-
-**QueryClient**: production-grade defaults:
-- `staleTime: 30_000` (30s)
-- `gcTime: 5 * 60_000` (5min)
-- `refetchOnWindowFocus: false`
-- `retry`: returns false on 4xx, max 2 retries on 5xx/network
-- `mutations.retry: false`
-
-**ErrorBoundary**: added class component in `src/components/ErrorBoundary.tsx`, wired into `main.tsx`
-
-### DB schema
-
-**organizations**: added `organizations_owner_id_idx` index on `owner_id` column
-(critical for "list orgs by user" access pattern)
-
-## Key constraints
-
-- `db.execute(sql`...`)` returns `{ rows: [...] }` — must use `.rows[0]` not destructuring `[first]`
-- Drizzle ORM correlated subqueries in `.select()` work cleanly; use `sql<number>` cast with `::int`
-- `INSERT ... ON CONFLICT DO NOTHING` requires the conflicting column to have a UNIQUE constraint
-- Rate limiters must be registered BEFORE `app.use("/api", router)` to intercept matching routes first
+### N+1 / session persistence
+- Documented in separate topic files (evenum-session-persistence.md, evenum-production-hardening.md)
