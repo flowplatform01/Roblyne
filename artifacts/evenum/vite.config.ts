@@ -4,7 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 import { ogPrerenderPlugin } from './plugins/og-prerender';
 
 const rawPort = process.env.PORT;
@@ -35,7 +34,6 @@ export default defineConfig({
     ogPrerenderPlugin(),
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
