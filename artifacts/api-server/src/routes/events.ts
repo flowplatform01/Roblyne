@@ -199,7 +199,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   }
 
   const now = new Date();
-  if (event.endsAt && new Date(event.endsAt) < now) {
+  if (event.endsAt && new Date(event.endsAt) <= now) {
     res.status(403).json({ error: "Registration for this event has closed" });
     return;
   }
@@ -234,10 +234,42 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   try {
     const ticket = await db.transaction(async (tx) => {
       // Lock the ticket type row to prevent concurrent oversells
+      const [lockedEvent] = (await tx.execute(
+        sql`SELECT id, status, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
+      )).rows as any[];
+      if (!lockedEvent) {
+        throw Object.assign(new Error("Event not found"), { code: "EVENT_NOT_FOUND" });
+      }
+      if (lockedEvent.status !== "published") {
+        throw Object.assign(new Error("Event unavailable"), { code: "EVENT_UNAVAILABLE" });
+      }
+      if (lockedEvent.ends_at && new Date(lockedEvent.ends_at) <= new Date()) {
+        throw Object.assign(new Error("Registration closed"), { code: "REGISTRATION_CLOSED" });
+      }
+      if (lockedEvent.capacity !== null) {
+        const capacityResult = await tx.execute(
+          sql`SELECT COUNT(*)::int AS count FROM tickets WHERE event_id = ${paramParsed.data.eventId} AND status <> 'cancelled'`
+        );
+        const registeredCount = Number((capacityResult.rows[0] as any)?.count ?? 0);
+        if (registeredCount >= lockedEvent.capacity) {
+          throw Object.assign(new Error("Event full"), { code: "EVENT_FULL" });
+        }
+      }
+
       const lockResult = await tx.execute(
-        sql`SELECT id, quantity, sold FROM ticket_types WHERE id = ${ticketTypeId} FOR UPDATE`
+        sql`SELECT id, event_id, quantity, sold, sale_starts_at, sale_ends_at FROM ticket_types WHERE id = ${ticketTypeId} AND event_id = ${paramParsed.data.eventId} FOR UPDATE`
       );
       const lockedTt = lockResult.rows[0] as any;
+      if (!lockedTt) {
+        throw Object.assign(new Error("Ticket type not found"), { code: "TICKET_TYPE_NOT_FOUND" });
+      }
+      const lockedNow = new Date();
+      if (lockedTt.sale_starts_at && new Date(lockedTt.sale_starts_at) > lockedNow) {
+        throw Object.assign(new Error("Ticket sales have not started"), { code: "TICKET_SALE_NOT_STARTED" });
+      }
+      if (lockedTt.sale_ends_at && new Date(lockedTt.sale_ends_at) <= lockedNow) {
+        throw Object.assign(new Error("Ticket sales have ended"), { code: "TICKET_SALE_ENDED" });
+      }
       if (lockedTt.quantity !== null && lockedTt.sold >= lockedTt.quantity) {
         throw Object.assign(new Error("Sold out"), { code: "SOLD_OUT" });
       }
@@ -258,6 +290,26 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   } catch (err: any) {
     if (err?.code === "SOLD_OUT") {
       res.status(409).json({ error: "This ticket type is sold out" });
+      return;
+    }
+    if (err?.code === "EVENT_FULL") {
+      res.status(409).json({ error: "This event has reached capacity" });
+      return;
+    }
+    if (err?.code === "EVENT_NOT_FOUND") {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+    if (err?.code === "TICKET_TYPE_NOT_FOUND") {
+      res.status(404).json({ error: "Ticket type not found for this event" });
+      return;
+    }
+    if (err?.code === "EVENT_UNAVAILABLE" || err?.code === "REGISTRATION_CLOSED") {
+      res.status(403).json({ error: err.code === "REGISTRATION_CLOSED" ? "Registration for this event has closed" : "This event is not currently open for registration" });
+      return;
+    }
+    if (err?.code === "TICKET_SALE_NOT_STARTED" || err?.code === "TICKET_SALE_ENDED") {
+      res.status(403).json({ error: err.code === "TICKET_SALE_NOT_STARTED" ? "Ticket sales for this tier have not started yet" : "Ticket sales for this tier have ended" });
       return;
     }
     throw err;

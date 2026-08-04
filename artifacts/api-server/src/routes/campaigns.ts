@@ -154,7 +154,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   }
 
   const now = new Date();
-  if (campaign.endsAt && new Date(campaign.endsAt) < now) {
+  if (campaign.endsAt && new Date(campaign.endsAt) <= now) {
     res.status(403).json({ error: "This campaign's submission deadline has passed" });
     return;
   }

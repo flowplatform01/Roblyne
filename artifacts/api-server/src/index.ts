@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { sweepExpiredLifecycles } from "./lib/lifecycle";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,14 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+});
+
+const lifecycleSweep = setInterval(() => {
+  void sweepExpiredLifecycles().catch((err) => {
+    logger.error({ err }, "Lifecycle sweep failed");
+  });
+}, 30_000);
+lifecycleSweep.unref();
+void sweepExpiredLifecycles().catch((err) => {
+  logger.error({ err }, "Initial lifecycle sweep failed");
 });

@@ -1,0 +1,255 @@
+
+
+---
+
+
+
+# Production Hardening Add-on — Lifecycle Integrity, Countdown Consistency & Time-Based Enforcement
+
+
+
+## Context
+
+
+
+This refinement is focused on ensuring that all time-sensitive experiences behave consistently throughout their entire lifecycle.
+
+
+
+Do not redesign existing functionality.
+
+
+
+Instead, investigate every time-based workflow and ensure the platform automatically enforces the correct behaviour before, during and after an activity.
+
+
+
+Countdowns should not be treated as visual timers only—they must accurately represent and enforce the actual state of the underlying experience.
+
+
+
+---
+
+
+
+## 1. Countdown Accuracy
+
+
+
+Review every countdown used throughout the platform.
+
+
+
+Examples include:
+
+
+
+* Elections
+
+* Events
+
+* Campaigns
+
+* Registration windows
+
+* Ticket sales
+
+* Voting periods
+
+* Submission deadlines
+
+* Future time-based modules
+
+
+
+Ensure countdowns always reflect the true lifecycle state of the underlying resource.
+
+
+
+Countdowns should remain synchronised with the platform's authoritative timing logic and should never drift from the actual operational state.
+
+
+
+---
+
+
+
+## 2. Automatic Lifecycle Enforcement
+
+
+
+When an activity reaches its configured end time, the platform should automatically transition it into its appropriate lifecycle state.
+
+
+
+Examples include:
+
+
+
+* Voting automatically closes.
+
+* Event registration closes when configured.
+
+* Ticket sales stop after the deadline.
+
+* Campaign participation ends where applicable.
+
+* Submission periods become read-only.
+
+* Time-limited actions are no longer accepted.
+
+
+
+Do not rely solely on the user interface to prevent actions.
+
+
+
+The business rules themselves must enforce lifecycle transitions consistently.
+
+
+
+---
+
+
+
+## 3. Consistent User Experience
+
+
+
+Ensure every screen reflects the correct lifecycle state.
+
+
+
+For example:
+
+
+
+* Replace action buttons with appropriate status indicators when participation has ended.
+
+* Clearly communicate whether an activity is Upcoming, Live, Ended, Closed, Completed or Archived.
+
+* Prevent users from attempting actions that are no longer valid.
+
+* Where appropriate, guide users towards viewing results, summaries or historical information instead of unavailable actions.
+
+
+
+The interface should always communicate the current state clearly and consistently.
+
+
+
+---
+
+
+
+## 4. Cross-Platform Consistency
+
+
+
+Verify that lifecycle enforcement behaves consistently across:
+
+
+
+* Public pages
+
+* Organisation workspaces
+
+* Administrative interfaces
+
+* Mobile devices
+
+* PWAs
+
+* Desktop browsers
+
+* Shared public links
+
+* APIs
+
+* Background processes
+
+
+
+No interface should allow actions that another correctly blocks.
+
+
+
+---
+
+
+
+## 5. Server-Side Validation
+
+
+
+Do not depend solely on client-side countdowns.
+
+
+
+Ensure all time-based restrictions are validated on the server as the authoritative source of truth.
+
+
+
+This prevents outdated clients, delayed requests or manipulated devices from bypassing lifecycle rules.
+
+
+
+---
+
+
+
+## 6. Regression & Edge Case Review
+
+
+
+Investigate edge cases including:
+
+
+
+* Users remaining on a page while a countdown expires.
+
+* Multiple users interacting simultaneously at closing time.
+
+* Time zone consistency.
+
+* Browser refreshes.
+
+* Network interruptions.
+
+* Delayed requests.
+
+* Background tabs.
+
+* Clock differences between client and server.
+
+
+
+Ensure the platform transitions gracefully without inconsistent behaviour.
+
+
+
+---
+
+
+
+## Final Objective
+
+
+
+When this refinement is complete:
+
+
+
+* Every countdown should accurately represent the true lifecycle of the underlying experience.
+
+* Time-based rules should be enforced consistently throughout the platform.
+
+* Users should never be able to perform actions after an activity has legitimately ended.
+
+* The interface should always communicate the correct lifecycle state with clear and intuitive feedback.
+
+* Lifecycle enforcement should be reliable, server-authoritative, consistent across all platforms, and free from regressions.
+
+
+
+Treat this as the final **Lifecycle Integrity & Time-Based Behaviour Audit**, ensuring Evenum remains consistent, trustworthy and production-ready under all time-sensitive scenarios.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -13,36 +13,7 @@ import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
-
-function useCountdown(targetDate: string | null | undefined) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
-
-  useEffect(() => {
-    if (!targetDate) return;
-    const target = new Date(targetDate).getTime();
-
-    const tick = () => {
-      const diff = target - Date.now();
-      if (diff <= 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
-        return;
-      }
-      setTimeLeft({
-        days: Math.floor(diff / 86400000),
-        hours: Math.floor((diff % 86400000) / 3600000),
-        minutes: Math.floor((diff % 3600000) / 60000),
-        seconds: Math.floor((diff % 60000) / 1000),
-        expired: false,
-      });
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-
-  return timeLeft;
-}
+import { useCountdown } from "@/hooks/useLifecycle";
 
 const FAQS = [
   {
@@ -96,7 +67,7 @@ export default function EventRegister() {
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
-  const countdown = useCountdown(event?.startsAt);
+  const countdown = useCountdown(event?.endsAt);
 
   const shareUrl = `${window.location.origin}/events/${eventId}/register`;
 
@@ -112,6 +83,10 @@ export default function EventRegister() {
     if (!selectedTicketId || !formData.name || !formData.email) return;
 
     const selectedTicket = ticketTypes?.find(t => t.id === selectedTicketId);
+    const now = countdown.now;
+    if (countdown.expired) return;
+    if (selectedTicket?.saleStartsAt && Date.parse(selectedTicket.saleStartsAt) > now) return;
+    if (selectedTicket?.saleEndsAt && Date.parse(selectedTicket.saleEndsAt) <= now) return;
 
     registerMutation.mutate(
       {
@@ -170,6 +145,18 @@ export default function EventRegister() {
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Registration Unavailable</h1>
           <p className="text-xl text-muted-foreground font-light">This event is not currently accepting registrations.</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (countdown.expired) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
+          <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Registration Closed</h1>
+          <p className="text-xl text-muted-foreground font-light">Registration for this event has ended.</p>
         </div>
       </Layout>
     );
@@ -268,6 +255,14 @@ export default function EventRegister() {
   // ── Main registration page ─────────────────────────────────────────────────
 
   const selectedTicket = ticketTypes?.find(t => t.id === selectedTicketId);
+  const selectedTicketUnavailable = Boolean(
+    selectedTicket &&
+      (
+        (selectedTicket.quantity !== null && (selectedTicket.sold || 0) >= selectedTicket.quantity) ||
+        (selectedTicket.saleStartsAt && Date.parse(selectedTicket.saleStartsAt) > countdown.now) ||
+        (selectedTicket.saleEndsAt && Date.parse(selectedTicket.saleEndsAt) <= countdown.now)
+      ),
+  );
 
   return (
     <Layout>
@@ -318,10 +313,10 @@ export default function EventRegister() {
             </div>
           </div>
 
-          {/* Countdown */}
-          {event.startsAt && !countdown.expired && (
+          {/* Registration deadline countdown */}
+          {event.endsAt && !countdown.expired && (
             <div className="text-center">
-              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-4">Event starts in</p>
+              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-4">Registration closes in</p>
               <div className="flex items-center justify-center gap-3">
                 {[
                   { value: countdown.days, label: 'Days' },
@@ -448,12 +443,16 @@ export default function EventRegister() {
                         const isSoldOut = ticket.quantity !== null && (ticket.sold || 0) >= ticket.quantity;
                         const isSelected = selectedTicketId === ticket.id;
 
+                        const saleNotStarted = ticket.saleStartsAt && Date.parse(ticket.saleStartsAt) > countdown.now;
+                        const saleEnded = ticket.saleEndsAt && Date.parse(ticket.saleEndsAt) <= countdown.now;
+                        const unavailable = isSoldOut || Boolean(saleNotStarted || saleEnded);
+
                         return (
                           <div
                             key={ticket.id}
-                            onClick={() => !isSoldOut && setSelectedTicketId(ticket.id)}
+                            onClick={() => !unavailable && setSelectedTicketId(ticket.id)}
                             className={`flex items-center justify-between px-5 py-4 rounded-sm border-2 transition-all
-                              ${isSoldOut ? 'opacity-50 cursor-not-allowed border-border/30 bg-muted/40' :
+                              ${unavailable ? 'opacity-50 cursor-not-allowed border-border/30 bg-muted/40' :
                                 isSelected ? 'border-emerald-600 bg-emerald-50/50 cursor-pointer' :
                                 'border-border/60 bg-background hover:border-emerald-600/40 cursor-pointer'}`}
                           >
@@ -469,6 +468,10 @@ export default function EventRegister() {
                               </span>
                               {isSoldOut ? (
                                 <Badge variant="secondary" className="text-xs">Sold Out</Badge>
+                              ) : saleNotStarted ? (
+                                <Badge variant="secondary" className="text-xs">Sales Not Open</Badge>
+                              ) : saleEnded ? (
+                                <Badge variant="secondary" className="text-xs">Sales Closed</Badge>
                               ) : (
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                                   isSelected ? 'bg-emerald-600 border-emerald-600' : 'border-muted-foreground/30'
@@ -532,7 +535,7 @@ export default function EventRegister() {
                     type="submit"
                     form="reg-form"
                     className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm"
-                    disabled={!selectedTicketId || !formData.name || !formData.email || registerMutation.isPending}
+                    disabled={!selectedTicketId || selectedTicketUnavailable || !formData.name || !formData.email || countdown.expired || registerMutation.isPending}
                   >
                     {registerMutation.isPending ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />

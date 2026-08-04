@@ -333,7 +333,13 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
     return;
   }
 
-  if (election.endsAt && new Date(election.endsAt) < new Date()) {
+  const now = new Date();
+  if (election.startsAt && new Date(election.startsAt) > now) {
+    res.status(403).json({ error: "This election has not opened for voting yet" });
+    return;
+  }
+
+  if (election.endsAt && new Date(election.endsAt) <= now) {
     res.status(403).json({ error: "This election has ended and is no longer accepting votes" });
     return;
   }

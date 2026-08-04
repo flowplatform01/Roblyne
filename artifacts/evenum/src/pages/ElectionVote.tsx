@@ -21,32 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
-
-// ── Countdown ─────────────────────────────────────────────────────────────────
-
-function useCountdown(targetDate: string | null | undefined) {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
-  useEffect(() => {
-    if (!targetDate) return;
-    const target = new Date(targetDate).getTime();
-    const tick = () => {
-      const now = Date.now();
-      const diff = target - now;
-      if (diff <= 0) { setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }); return; }
-      setTimeLeft({
-        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((diff % (1000 * 60)) / 1000),
-        expired: false,
-      });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-  return timeLeft;
-}
+import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 
 function CountdownBlock({ value, label }: { value: number; label: string }) {
   return (
@@ -134,6 +109,7 @@ export default function ElectionVote() {
   }, [positions, directPositionId, directCandidateId]);
 
   const countdown = useCountdown(election?.endsAt);
+  const lifecycleState = getLifecycleState(election?.startsAt, election?.endsAt, countdown.now);
   const shareUrl = `${window.location.origin}/elections/${electionId}/vote`;
 
   // ── Selection logic ───────────────────────────────────────────────────────
@@ -161,6 +137,16 @@ export default function ElectionVote() {
   };
 
   const submitBallot = () => {
+    if (lifecycleState !== "live") {
+      toast({
+        title: lifecycleState === "upcoming" ? "Voting has not opened yet" : "Voting has ended",
+        description: lifecycleState === "upcoming"
+          ? "Please return when this election opens."
+          : "This election is no longer accepting ballots.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (selectedCandidateCount === 0) {
       toast({ title: 'Select at least one candidate', description: 'Choose a candidate before submitting your ballot.', variant: 'destructive' });
       return;
@@ -257,7 +243,21 @@ export default function ElectionVote() {
     );
   }
 
-  if (election.status === 'ended') {
+  if (lifecycleState === 'upcoming') {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <Clock className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Voting Opens Soon</h1>
+          <p className="text-xl text-muted-foreground font-light">
+            Voting opens {election.startsAt ? format(new Date(election.startsAt), "MMMM d, yyyy 'at' h:mm a") : "soon"}.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (election.status === 'ended' || lifecycleState === 'ended') {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
@@ -387,8 +387,19 @@ export default function ElectionVote() {
 
   if (step === 'payment') {
     const handlePayment = () => {
+      if (lifecycleState !== "live") {
+        setStep("review");
+        toast({ title: "Voting has ended", description: "The ballot deadline passed before payment completed.", variant: "destructive" });
+        return;
+      }
       setPaymentProcessing(true);
       setTimeout(() => {
+        if (election.endsAt && Date.now() >= Date.parse(election.endsAt)) {
+          setPaymentProcessing(false);
+          setStep("review");
+          toast({ title: "Voting has ended", description: "The ballot deadline passed before payment completed.", variant: "destructive" });
+          return;
+        }
         setHasPaid(true);
         setPaymentProcessing(false);
         submitBallot();

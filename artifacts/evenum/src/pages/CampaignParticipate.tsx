@@ -19,6 +19,7 @@ import {
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { useToast } from '@/hooks/use-toast';
+import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 
 export default function CampaignParticipate() {
   const [, params] = useRoute("/campaigns/:id/participate");
@@ -32,6 +33,8 @@ export default function CampaignParticipate() {
   const { data: analytics } = useGetCampaignAnalytics(campaignId);
   const submitMutation = useSubmitCampaignResponse();
   const { toast } = useToast();
+  const countdown = useCountdown(campaign?.endsAt);
+  const lifecycleState = getLifecycleState(campaign?.startsAt, campaign?.endsAt, countdown.now);
 
   const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
 
@@ -48,6 +51,16 @@ export default function CampaignParticipate() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (lifecycleState !== "live") {
+      toast({
+        title: lifecycleState === "upcoming" ? "Campaign has not opened yet" : "Campaign has ended",
+        description: lifecycleState === "upcoming"
+          ? "Please return when this campaign opens."
+          : "This campaign is no longer accepting submissions.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!baseData.name || !baseData.email) return;
 
     let isValid = true;
@@ -95,7 +108,21 @@ export default function CampaignParticipate() {
     ? { "--primary": hexToHsl((campaign as any).accentColor) } as React.CSSProperties
     : {};
 
-  if (campaign.status !== 'active') {
+  if (lifecycleState === "upcoming") {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Campaign Opens Soon</h1>
+          <p className="text-xl text-muted-foreground font-light">
+            Contributions open {campaign.startsAt ? new Date(campaign.startsAt).toLocaleString() : "soon"}.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (campaign.status !== 'active' || lifecycleState === "ended") {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
@@ -437,7 +464,7 @@ export default function CampaignParticipate() {
               type="submit"
               form="campaign-form"
               className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-amber-600 hover:bg-amber-700 text-white rounded-sm"
-              disabled={submitMutation.isPending}
+              disabled={submitMutation.isPending || lifecycleState !== "live"}
             >
               {submitMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit My Response'}
