@@ -232,38 +232,88 @@ export default function ElectionVote() {
   // ── Guards ────────────────────────────────────────────────────────────────
 
   if (election.status === 'draft') {
+    const orgId = (election as any).orgId;
+    const orgLogoUrl = (election as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Polls Not Yet Open</h1>
-          <p className="text-xl text-muted-foreground font-light">This election is in draft mode and has not opened for voting.</p>
+          <p className="text-xl text-muted-foreground font-light mb-8">This election is in draft mode and has not opened for voting.</p>
+          {election.organizationName && (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
+              {orgLogoUrl
+                ? <img src={orgLogoUrl} alt={election.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                : <Building2 className="h-3.5 w-3.5 shrink-0" />}
+              {orgId
+                ? <Link href={`/organizations/${orgId}/public`} className="hover:text-foreground transition-colors">{election.organizationName}</Link>
+                : <span>{election.organizationName}</span>}
+            </div>
+          )}
         </div>
       </Layout>
     );
   }
 
   if (lifecycleState === 'upcoming') {
+    const orgId = (election as any).orgId;
+    const orgLogoUrl = (election as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <Clock className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Voting Opens Soon</h1>
-          <p className="text-xl text-muted-foreground font-light">
+          <p className="text-xl text-muted-foreground font-light mb-8">
             Voting opens {election.startsAt ? format(new Date(election.startsAt), "MMMM d, yyyy 'at' h:mm a") : "soon"}.
           </p>
+          {election.organizationName && (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
+              {orgLogoUrl
+                ? <img src={orgLogoUrl} alt={election.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                : <Building2 className="h-3.5 w-3.5 shrink-0" />}
+              {orgId
+                ? <Link href={`/organizations/${orgId}/public`} className="hover:text-foreground transition-colors">{election.organizationName}</Link>
+                : <span>{election.organizationName}</span>}
+            </div>
+          )}
         </div>
       </Layout>
     );
   }
 
   if (election.status === 'ended' || lifecycleState === 'ended') {
+    const orgId = (election as any).orgId;
+    const orgLogoUrl = (election as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <FileSignature className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Polls Have Closed</h1>
           <p className="text-xl text-muted-foreground font-light mb-8">Voting for this election has concluded.</p>
+          {election.organizationName && (
+            <div className="mb-8">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 mb-2.5">Administered by</p>
+              {orgId ? (
+                <Link
+                  href={`/organizations/${orgId}/public`}
+                  className="inline-flex items-center gap-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors border border-border/60 rounded-sm px-4 py-2 hover:border-border"
+                >
+                  {orgLogoUrl
+                    ? <img src={orgLogoUrl} alt={election.organizationName} className="w-5 h-5 rounded object-cover shrink-0" />
+                    : <Building2 className="h-4 w-4 shrink-0" />}
+                  {election.organizationName}
+                  <ExternalLink className="h-3 w-3 opacity-40" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2.5 text-sm font-medium text-muted-foreground border border-border/60 rounded-sm px-4 py-2">
+                  {orgLogoUrl
+                    ? <img src={orgLogoUrl} alt={election.organizationName} className="w-5 h-5 rounded object-cover shrink-0" />
+                    : <Building2 className="h-4 w-4 shrink-0" />}
+                  {election.organizationName}
+                </span>
+              )}
+            </div>
+          )}
           <Button asChild variant="outline" className="h-12 px-8 rounded-sm">
             <Link href={`/elections/${electionId}/results`}>View Official Results <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
@@ -307,10 +357,17 @@ export default function ElectionVote() {
 
             <p className="text-xl text-muted-foreground font-light leading-relaxed mb-2">
               Submitted to{' '}
-              <span className="font-semibold text-foreground">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground align-middle">
+                {(election as any).organizationLogoUrl && (
+                  <img
+                    src={(election as any).organizationLogoUrl}
+                    alt={election.organizationName || ''}
+                    className="w-5 h-5 rounded object-cover border border-primary/20 inline-block align-middle"
+                  />
+                )}
                 {orgPublicUrl
                   ? <Link href={orgPublicUrl} className="hover:text-primary transition-colors">{election.organizationName}</Link>
-                  : election.organizationName || 'this election'
+                  : (election.organizationName || 'this election')
                 }
               </span>{' '}
               on {submittedAt}.

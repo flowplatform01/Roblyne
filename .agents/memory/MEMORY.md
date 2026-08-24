@@ -8,3 +8,4 @@
 - [Evenum session persistence](evenum-session-persistence.md) — sessions use connect-pg-simple (table: session); in-memory = wipes on restart, causing 403 on org finance endpoints
 - [Evenum observability](evenum-observability.md) — client diagnostics are best-effort and correlate with provider-neutral server request IDs
 - [Evenum lifecycle integrity](evenum-lifecycle-integrity.md) — startsAt/endsAt gates on all 3 pillars, atomic capacity lock, shared useLifecycle client hook, <=boundary rule
+- [Workspace script imports](workspace-script-imports.md) — utility scripts should consume shared libraries through workspace package exports

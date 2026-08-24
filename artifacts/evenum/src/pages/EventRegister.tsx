@@ -139,24 +139,59 @@ export default function EventRegister() {
     : {};
 
   if (event.status !== 'published') {
+    const orgId = (event as any).orgId;
+    const orgLogoUrl = (event as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Registration Unavailable</h1>
-          <p className="text-xl text-muted-foreground font-light">This event is not currently accepting registrations.</p>
+          <p className="text-xl text-muted-foreground font-light mb-8">This event is not currently accepting registrations.</p>
+          {event.organizationName && (
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
+              {orgLogoUrl
+                ? <img src={orgLogoUrl} alt={event.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                : <Building2 className="h-3.5 w-3.5 shrink-0" />}
+              <span>Organized by{' '}
+                {orgId
+                  ? <Link href={`/organizations/${orgId}/public`} className="font-medium hover:text-foreground transition-colors">{event.organizationName}</Link>
+                  : <span className="font-medium">{event.organizationName}</span>}
+              </span>
+            </div>
+          )}
         </div>
       </Layout>
     );
   }
 
   if (countdown.expired) {
+    const orgId = (event as any).orgId;
+    const orgLogoUrl = (event as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Registration Closed</h1>
-          <p className="text-xl text-muted-foreground font-light">Registration for this event has ended.</p>
+          <p className="text-xl text-muted-foreground font-light mb-8">Registration for this event has ended.</p>
+          {event.organizationName && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
+                {orgLogoUrl
+                  ? <img src={orgLogoUrl} alt={event.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
+                  : <Building2 className="h-3.5 w-3.5 shrink-0" />}
+                <span>Organized by{' '}
+                  {orgId
+                    ? <Link href={`/organizations/${orgId}/public`} className="font-medium hover:text-foreground transition-colors">{event.organizationName}</Link>
+                    : <span className="font-medium">{event.organizationName}</span>}
+                </span>
+              </div>
+              {orgId && (
+                <Link href={`/organizations/${orgId}/public`} className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors inline-flex items-center gap-1">
+                  See more from this organizer <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </Layout>
     );
@@ -188,10 +223,20 @@ export default function EventRegister() {
               <p className="text-background/50 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
                 <ShieldCheck className="w-3.5 h-3.5" /> Official Ticket ·{' '}
                 {(event as any).orgId ? (
-                  <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-background/90 transition-colors inline-flex items-center gap-1">
+                  <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-background/90 transition-colors inline-flex items-center gap-1.5">
+                    {(event as any).organizationLogoUrl && (
+                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-background/20 inline-block shrink-0" />
+                    )}
                     {event.organizationName || 'Evenum'}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
                   </Link>
-                ) : (event.organizationName || 'Evenum')}
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {(event as any).organizationLogoUrl && (
+                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-background/20 inline-block shrink-0" />
+                    )}
+                    {event.organizationName || 'Evenum'}
+                  </span>
+                )}
               </p>
               <h2 className="text-background text-3xl font-serif font-bold leading-tight relative z-10">{event.title}</h2>
             </div>

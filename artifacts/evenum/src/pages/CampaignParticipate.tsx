@@ -109,26 +109,64 @@ export default function CampaignParticipate() {
     : {};
 
   if (lifecycleState === "upcoming") {
+    const orgId = (campaign as any).orgId;
+    const orgLogoUrl = (campaign as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Campaign Opens Soon</h1>
-          <p className="text-xl text-muted-foreground font-light">
+          <p className="text-xl text-muted-foreground font-light mb-8">
             Contributions open {campaign.startsAt ? new Date(campaign.startsAt).toLocaleString() : "soon"}.
           </p>
+          {campaign.organizationName && (
+            <div className="inline-flex items-center gap-2.5 bg-muted/50 border border-border/50 rounded-full pl-2 pr-4 py-1.5">
+              {orgLogoUrl ? (
+                <img src={orgLogoUrl} alt={campaign.organizationName} className="w-6 h-6 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-muted-foreground/10 flex items-center justify-center shrink-0">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground/50" />
+                </div>
+              )}
+              <span className="text-sm text-muted-foreground">
+                A campaign by{' '}
+                {orgId
+                  ? <Link href={`/organizations/${orgId}/public`} className="font-semibold text-foreground hover:text-primary transition-colors">{campaign.organizationName}</Link>
+                  : <span className="font-semibold text-foreground">{campaign.organizationName}</span>}
+              </span>
+            </div>
+          )}
         </div>
       </Layout>
     );
   }
 
   if (campaign.status !== 'active' || lifecycleState === "ended") {
+    const orgId = (campaign as any).orgId;
+    const orgLogoUrl = (campaign as any).organizationLogoUrl;
     return (
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Campaign Unavailable</h1>
-          <p className="text-xl text-muted-foreground font-light">This campaign is not currently accepting submissions.</p>
+          <p className="text-xl text-muted-foreground font-light mb-8">This campaign is not currently accepting submissions.</p>
+          {campaign.organizationName && (
+            <div className="inline-flex items-center gap-2.5 bg-muted/50 border border-border/50 rounded-full pl-2 pr-4 py-1.5">
+              {orgLogoUrl ? (
+                <img src={orgLogoUrl} alt={campaign.organizationName} className="w-6 h-6 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-muted-foreground/10 flex items-center justify-center shrink-0">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground/50" />
+                </div>
+              )}
+              <span className="text-sm text-muted-foreground">
+                A campaign by{' '}
+                {orgId
+                  ? <Link href={`/organizations/${orgId}/public`} className="font-semibold text-foreground hover:text-primary transition-colors">{campaign.organizationName}</Link>
+                  : <span className="font-semibold text-foreground">{campaign.organizationName}</span>}
+              </span>
+            </div>
+          )}
         </div>
       </Layout>
     );
@@ -154,7 +192,20 @@ export default function CampaignParticipate() {
             <h1 className="text-5xl font-serif font-bold mb-5 tracking-tight">Thank You</h1>
             <p className="text-xl text-muted-foreground font-light mb-4 leading-relaxed">
               Your contribution to{' '}
-              <span className="font-medium text-foreground">{campaign.organizationName || 'this campaign'}</span> has been recorded.
+              <span className="inline-flex items-center gap-1.5 font-medium text-foreground align-middle">
+                {(campaign as any).organizationLogoUrl && (
+                  <img
+                    src={(campaign as any).organizationLogoUrl}
+                    alt={campaign.organizationName || ''}
+                    className="w-5 h-5 rounded-full object-cover border border-amber-200 inline-block align-middle"
+                  />
+                )}
+                {(campaign as any).orgId
+                  ? <Link href={`/organizations/${(campaign as any).orgId}/public`} className="hover:text-amber-600 transition-colors">{campaign.organizationName || 'this campaign'}</Link>
+                  : (campaign.organizationName || 'this campaign')
+                }
+              </span>{' '}
+              has been recorded.
             </p>
             <p className="text-sm text-muted-foreground mb-12">
               A copy has been noted for <strong>{baseData.email}</strong>.

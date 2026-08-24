@@ -4,7 +4,7 @@
  */
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { electionsTable, organizationsTable } from "../lib/db/src/schema/index.js";
+import { electionsTable, organizationsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 const { Pool } = pg;

@@ -689,6 +689,9 @@ importers:
 
   scripts:
     dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.3

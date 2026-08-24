@@ -1,0 +1,1039 @@
+# EVENUM — Continuous World-Class Production Engineering, Adversarial QA & Autonomous Hardening Loop
+
+## Mission
+
+Evenum is no longer a prototype, MVP, demonstration, or experimental application.
+
+It is intended to operate as a serious, production-grade participation platform.
+
+Treat this codebase with the engineering discipline that would be expected for a high-importance product operated at significant scale.
+
+The objective of this phase is not to add random features.
+
+The objective is to continuously discover and eliminate:
+
+* hidden bugs
+* edge-case failures
+* lifecycle inconsistencies
+* race conditions
+* state-management problems
+* data integrity issues
+* security weaknesses
+* performance bottlenecks
+* accessibility problems
+* responsive/mobile issues
+* browser-specific failures
+* PWA issues
+* navigation inconsistencies
+* incomplete states
+* broken recovery paths
+* observability gaps
+* architectural weaknesses
+* poor UX decisions
+* inconsistent business rules
+* dead or unreachable functionality
+* incorrect assumptions
+* regressions
+* technical debt that can become a production failure
+
+The standard is not:
+
+> "The application works when I click through the happy path."
+
+The standard is:
+
+> "The application has been investigated deeply enough that a serious production team can trust it under normal usage, abnormal usage, concurrent usage, failure conditions, unusual data, lifecycle transitions and real-world environments."
+
+---
+
+# 1. ENTER A CONTINUOUS ENGINEERING LOOP
+
+Operate in a continuous loop:
+
+**Inspect → Hypothesize → Reproduce → Diagnose → Fix → Test → Stress → Re-test → Review → Continue**
+
+Do not stop after finding the first issue.
+
+Do not assume the absence of visible errors means the system is healthy.
+
+After every meaningful change:
+
+1. Re-run the affected tests.
+2. Re-test adjacent functionality.
+3. Test the relevant edge cases.
+4. Check for regressions.
+5. Re-evaluate the underlying architecture.
+6. Continue investigating the next potential weakness.
+
+Continue until the remaining findings are either:
+
+* intentionally accepted product decisions,
+* genuinely irrelevant,
+* impossible within the supported architecture,
+* or explicitly documented as requiring external infrastructure.
+
+Do not manufacture work simply to appear busy.
+
+Every change must have a reason.
+
+---
+
+# 2. TAKE OWNERSHIP OF DISCOVERY
+
+Do not wait for the product owner to tell you where the bugs are.
+
+The engineering agent is responsible for discovering problems that the product owner may never notice.
+
+Think like:
+
+* a senior staff engineer
+* a principal engineer
+* a production SRE
+* a security engineer
+* a QA lead
+* a performance engineer
+* a mobile engineer
+* a frontend specialist
+* a backend specialist
+* a database engineer
+* a product-quality reviewer
+
+Approach the system from all of these perspectives.
+
+The question is not:
+
+> "What did the user tell me to fix?"
+
+The question is:
+
+> "What could still go wrong that the user has not yet discovered?"
+
+---
+
+# 3. FIRST — UNDERSTAND THE ACTUAL SYSTEM
+
+Before making substantial changes, inspect the current implementation.
+
+Do not rely on assumptions from previous prompts.
+
+The current codebase is the source of truth.
+
+Map:
+
+* frontend architecture
+* backend architecture
+* API boundaries
+* database schema
+* database relationships
+* authentication
+* authorization
+* organisation isolation
+* public/private resources
+* voting architecture
+* event architecture
+* campaign architecture
+* payment architecture
+* financial records
+* candidate architecture
+* result architecture
+* sharing architecture
+* notification architecture
+* PWA architecture
+* caching
+* offline behaviour
+* Redis
+* BullMQ
+* Socket.IO
+* background jobs
+* scheduled tasks
+* file/media handling
+* internationalisation
+* routing
+* error handling
+* logging
+* monitoring
+* environment configuration
+* deployment configuration
+
+Understand how these pieces actually interact.
+
+Do not rewrite architecture merely because another architecture might theoretically be better.
+
+---
+
+# 4. BUILD A SYSTEM-WIDE RISK MAP
+
+Create an internal risk map of the application.
+
+Identify areas with higher probability of failure, including:
+
+### High-risk business logic
+
+* voting
+* vote limits
+* paid voting
+* payment state
+* transaction state
+* election lifecycle
+* event lifecycle
+* campaign lifecycle
+* candidate eligibility
+* position rules
+* result calculation
+* organisation isolation
+* permissions
+
+### High-risk technical areas
+
+* asynchronous operations
+* concurrent writes
+* queues
+* Redis
+* Socket.IO
+* caching
+* optimistic updates
+* client persistence
+* service workers
+* offline behaviour
+* lazy loading
+* route transitions
+* dynamic imports
+* file uploads
+* external integrations
+* webhooks
+* background jobs
+
+### High-risk UX areas
+
+* mobile navigation
+* long candidate lists
+* forms
+* modals
+* payment flows
+* voting flows
+* error states
+* loading states
+* empty states
+* expired resources
+* share flows
+* PWA installation
+* language switching
+
+Prioritise actual risk rather than cosmetic differences.
+
+---
+
+# 5. USE PLAYWRIGHT AGGRESSIVELY
+
+Use Playwright or the strongest available browser automation/testing capability to test the real application.
+
+Do not restrict testing to a few predefined happy-path scripts.
+
+Create realistic user journeys.
+
+Test:
+
+### Public discovery
+
+* open application
+* browse resources
+* search
+* filter
+* open organisation
+* open event
+* open election
+* open campaign
+* open candidate
+* open shared links
+* navigate backwards and forwards
+* refresh pages
+* open pages directly
+
+### Voting
+
+* enter election
+* inspect positions
+* inspect candidates
+* select candidates
+* switch candidates
+* move between positions
+* complete voting
+* test one-vote rules
+* test multiple-vote configurations
+* test paid voting
+* test amount-first flows
+* test quantity-first flows
+* test expired elections
+* test upcoming elections
+* test public/open voting
+* test authenticated voting
+* test eligibility restrictions
+
+### Organisation workflows
+
+* create organisation
+* configure organisation
+* create event
+* create election
+* create campaign
+* configure candidates
+* configure positions
+* configure payment
+* configure visibility
+* configure branding
+* configure lifecycle
+* inspect results
+* inspect transactions
+* inspect reports
+
+### Mobile/PWA
+
+Test realistic mobile viewport sizes.
+
+Test:
+
+* iPhone-like viewport
+* Android-like viewport
+* tablet
+* desktop
+* standalone PWA mode where possible
+* browser mode
+* installation-related flows
+* back navigation
+* refresh
+* network interruption
+* offline/online transitions
+
+Do not merely confirm that pages render.
+
+Interact with them.
+
+---
+
+# 6. TEST EDGE CASES, NOT ONLY HAPPY PATHS
+
+Actively attempt to break the application.
+
+Examples:
+
+### Data
+
+* zero candidates
+* one candidate
+* two candidates
+* many candidates
+* extremely long candidate names
+* long organisation names
+* missing images
+* extremely large images
+* missing optional fields
+* unusual characters
+* accented French characters
+* empty descriptions
+* very long descriptions
+
+### Voting
+
+* voting exactly at opening time
+* voting exactly at closing time
+* voting immediately after closing
+* refreshing during voting
+* opening the same election in multiple tabs
+* selecting one candidate and then another
+* rapidly switching candidates
+* submitting twice
+* double-clicking payment
+* refreshing after payment
+* navigating backwards after submission
+
+### Payment
+
+* successful payment
+* failed payment
+* cancelled payment
+* delayed payment
+* duplicate callback
+* repeated webhook
+* interrupted payment
+* payment succeeds while client loses connection
+* client retries a request
+* stale payment page
+* payment status arrives late
+
+### Network
+
+* slow network
+* intermittent network
+* request timeout
+* failed request
+* connection restoration
+* offline transition
+* online transition
+
+### Browser
+
+* refresh
+* back button
+* forward button
+* deep link
+* expired session
+* multiple tabs
+* stale browser state
+
+---
+
+# 7. CONCURRENCY & RACE-CONDITION AUDIT
+
+This is particularly important for Evenum.
+
+Voting platforms can experience sudden concurrent activity.
+
+Investigate what happens when many users perform the same operation simultaneously.
+
+Pay particular attention to:
+
+* vote submission
+* payment confirmation
+* candidate selection
+* result calculation
+* counters
+* participant counts
+* transaction recording
+* ticket inventory
+* campaign participation
+* lifecycle transitions
+
+Look for:
+
+* lost updates
+* duplicate writes
+* race conditions
+* inconsistent counters
+* duplicate votes
+* duplicate transactions
+* stale reads
+* transaction conflicts
+* queue duplication
+* cache inconsistency
+
+Do not assume frontend protection is sufficient.
+
+Business-critical integrity must be enforced server-side and at the persistence layer where appropriate.
+
+---
+
+# 8. ORGANISATION & TENANT ISOLATION
+
+Perform an adversarial multi-organisation test.
+
+Verify that one organisation can never accidentally:
+
+* see another organisation's private data
+* modify another organisation's resources
+* access another organisation's transactions
+* access another organisation's candidates
+* access another organisation's configuration
+* access another organisation's reports
+* affect another organisation's lifecycle
+* access another organisation's administrative resources
+
+Test this through:
+
+* normal UI
+* direct URLs
+* API calls
+* manipulated identifiers
+* stale browser sessions
+* multiple tabs
+
+This must be treated as a critical production requirement.
+
+---
+
+# 9. AUTHORIZATION AUDIT
+
+Do not only test whether pages are hidden.
+
+Verify authorization at the actual backend boundary.
+
+For every sensitive action, ask:
+
+> "What happens if a user manually calls this endpoint without having permission?"
+
+Test:
+
+* organisation admins
+* operators
+* ordinary users
+* public users
+* unauthenticated users
+* users belonging to another organisation
+
+Ensure UI restrictions and backend authorization agree.
+
+---
+
+# 10. LIFECYCLE CONSISTENCY
+
+Audit the complete lifecycle of every major resource.
+
+Do not assume lifecycle correctness because the countdown looks correct.
+
+For every time-sensitive resource, verify:
+
+**Draft → Scheduled → Active → Closing → Ended → Completed/Archived**
+
+where those states are applicable.
+
+Verify that every dependent system respects the lifecycle.
+
+For example, when voting ends:
+
+* voting must stop
+* payment for participation must behave correctly
+* UI must reflect ended state
+* APIs must reject invalid actions
+* cached pages must not incorrectly permit participation
+* background jobs must respect the state
+* Socket.IO updates must remain consistent
+* results must remain accessible according to configuration
+* shared pages must show the correct state
+
+Investigate all similar lifecycle dependencies throughout Evenum.
+
+---
+
+# 11. DATABASE & DATA-INTEGRITY AUDIT
+
+Review the database as if it will eventually contain millions of records.
+
+Investigate:
+
+* missing indexes
+* inefficient queries
+* unnecessary joins
+* N+1 queries
+* missing constraints
+* incorrect relationships
+* duplicate data
+* unsafe deletes
+* orphaned records
+* transaction boundaries
+* pagination
+* sorting
+* filtering
+* aggregation queries
+
+Ensure business-critical operations are atomic where necessary.
+
+Do not sacrifice correctness for superficial performance.
+
+---
+
+# 12. PERFORMANCE INVESTIGATION
+
+Measure before optimising.
+
+Look for:
+
+* slow API responses
+* expensive database queries
+* unnecessary frontend renders
+* excessive network requests
+* repeated fetching
+* oversized JavaScript
+* oversized images
+* unnecessary dependencies
+* blocking operations
+* inefficient list rendering
+
+Pay particular attention to:
+
+* discovery
+* candidate lists
+* result pages
+* dashboards
+* organisation workspaces
+* public election pages
+
+Large datasets must remain usable.
+
+---
+
+# 13. CACHING & INVALIDATION
+
+Audit every cache.
+
+For each cached resource determine:
+
+* what is cached
+* why it is cached
+* how long it remains valid
+* how it is invalidated
+* what happens after mutation
+* whether stale data is acceptable
+
+Incorrect caching can be worse than no caching.
+
+Pay particular attention to:
+
+* voting state
+* election status
+* results
+* participant counts
+* payment status
+* organisation data
+* candidate data
+
+Never allow caching to create incorrect business behaviour.
+
+---
+
+# 14. REDIS, BULLMQ & SOCKET.IO
+
+Review these integrations as production infrastructure.
+
+Verify graceful behaviour when:
+
+* Redis is unavailable
+* Redis reconnects
+* a queue worker restarts
+* a job fails
+* a job is retried
+* a job runs twice
+* Socket.IO disconnects
+* Socket.IO reconnects
+* clients reconnect after being offline
+
+Ensure critical functionality does not catastrophically fail simply because an auxiliary service becomes temporarily unavailable.
+
+Where appropriate, fall back to the application's reliable baseline behaviour.
+
+---
+
+# 15. FRONTEND QUALITY AUDIT
+
+Review the interface as a senior product designer and frontend engineer.
+
+Check:
+
+* hierarchy
+* spacing
+* typography
+* consistency
+* responsive behaviour
+* touch targets
+* loading states
+* empty states
+* error states
+* success states
+* transitions
+* scrolling
+* sticky elements
+* long content
+* accessibility
+* keyboard navigation
+* screen-reader semantics
+* colour contrast
+
+Do not redesign Evenum.
+
+Improve genuine weaknesses while preserving its established identity.
+
+---
+
+# 16. ACCESSIBILITY
+
+Perform an accessibility pass.
+
+Check:
+
+* keyboard navigation
+* focus management
+* modal accessibility
+* semantic HTML
+* labels
+* buttons
+* forms
+* error announcements
+* contrast
+* touch target sizing
+* screen-reader behaviour
+
+Accessibility issues should not be treated as cosmetic.
+
+---
+
+# 17. INTERNATIONALISATION
+
+Verify English and French systematically.
+
+Do not simply test the language selector.
+
+Test:
+
+* long French translations
+* buttons
+* validation messages
+* dynamic values
+* dates
+* numbers
+* currencies
+* emails
+* receipts
+* PDFs
+* notifications
+* errors
+* empty states
+
+Ensure no accidental English strings remain in French experiences.
+
+---
+
+# 18. PWA & OFFLINE RESILIENCE
+
+Test the PWA as a real product.
+
+Verify:
+
+* installation
+* icons
+* manifest
+* service worker
+* cache updates
+* application updates
+* offline navigation
+* online recovery
+* stale cache handling
+* iOS behaviour
+* Android behaviour
+* standalone mode
+
+Never allow a stale service worker to trap users on an outdated application version.
+
+---
+
+# 19. ERROR BOUNDARIES & RECOVERY
+
+Every major application area should have graceful failure handling.
+
+A failure in one component should not unnecessarily destroy the entire application.
+
+Investigate:
+
+* route-level failures
+* component-level failures
+* API failures
+* network failures
+* background failures
+* third-party failures
+
+Provide safe recovery where possible.
+
+---
+
+# 20. SECURITY HARDENING
+
+Perform a security review appropriate for a production web application.
+
+Investigate:
+
+* authentication
+* authorization
+* session handling
+* CSRF where applicable
+* XSS
+* injection risks
+* unsafe file uploads
+* rate limiting
+* brute-force protection
+* exposed secrets
+* sensitive logging
+* insecure direct object references
+* API abuse
+* privilege escalation
+
+Do not introduce unnecessary security theatre.
+
+Focus on realistic production threats.
+
+---
+
+# 21. OBSERVABILITY
+
+Every serious production failure should be diagnosable.
+
+Ensure errors provide sufficient context to identify:
+
+* request
+* user/session context where appropriate
+* organisation context where appropriate
+* route
+* operation
+* service
+* timestamp
+* correlation/request ID
+* stack trace
+* relevant technical context
+
+Never expose sensitive information to users.
+
+Never log secrets, passwords, payment credentials or unnecessary personal data.
+
+---
+
+# 22. TEST THE TESTS
+
+Do not assume existing tests are meaningful.
+
+Review the test suite.
+
+Identify:
+
+* missing critical tests
+* tests that only test implementation details
+* tests that never execute real workflows
+* flaky tests
+* false-positive tests
+* missing edge cases
+
+Prioritise tests around critical business behaviour.
+
+---
+
+# 23. USE REALISTIC DATA
+
+Where possible, generate realistic test datasets.
+
+Test:
+
+* many organisations
+* many candidates
+* many positions
+* many events
+* many campaigns
+* many transactions
+* many participants
+* large result sets
+
+A system that works with five records is not necessarily production-ready.
+
+---
+
+# 24. DO NOT CREATE FALSE FIXES
+
+Never:
+
+* suppress an error merely to hide it
+* disable a feature to make a test pass
+* add arbitrary delays
+* swallow exceptions
+* remove validation
+* weaken authorization
+* hardcode test results
+* bypass business rules
+* hide broken UI
+* replace a real fix with a cosmetic workaround
+
+Fix the underlying problem.
+
+---
+
+# 25. CHANGE MANAGEMENT
+
+Before every meaningful modification:
+
+1. Understand the existing behaviour.
+2. Identify the root cause.
+3. Determine affected dependencies.
+4. Make the smallest appropriate change.
+5. Test the change.
+6. Test adjacent functionality.
+7. Check for regressions.
+
+Prefer controlled improvements over broad rewrites.
+
+---
+
+# 26. PRODUCTION READINESS GATE
+
+Do not declare the application healthy merely because the build succeeds.
+
+The final assessment should consider:
+
+### Functional integrity
+
+Does the product actually perform its intended business operations correctly?
+
+### Reliability
+
+Does it remain stable under abnormal conditions?
+
+### Performance
+
+Does it remain responsive under realistic workloads?
+
+### Scalability
+
+Can critical workflows handle increasing concurrent activity?
+
+### Security
+
+Are sensitive operations properly protected?
+
+### Data integrity
+
+Can critical records become duplicated, lost or inconsistent?
+
+### Lifecycle correctness
+
+Do resources behave correctly throughout their complete lifecycle?
+
+### UX
+
+Does the application remain clear and polished under edge cases?
+
+### Accessibility
+
+Can different users operate the product effectively?
+
+### Internationalisation
+
+Are supported languages genuinely complete?
+
+### Portability
+
+Can the application operate independently of the development platform?
+
+### Observability
+
+Can production failures actually be diagnosed?
+
+---
+
+# 27. CONTINUOUS LOOP RULE
+
+After completing one complete audit, do not immediately stop.
+
+Start another pass from a different perspective.
+
+For example:
+
+**Pass 1 — Functional correctness**
+
+Look for broken workflows.
+
+**Pass 2 — Adversarial testing**
+
+Try to break workflows intentionally.
+
+**Pass 3 — Concurrency**
+
+Try simultaneous operations.
+
+**Pass 4 — Failure recovery**
+
+Remove services, interrupt networks, reload pages and retry operations.
+
+**Pass 5 — Mobile**
+
+Test real mobile interaction patterns.
+
+**Pass 6 — Security**
+
+Attempt unauthorized access and manipulation.
+
+**Pass 7 — Performance**
+
+Investigate expensive operations and large datasets.
+
+**Pass 8 — UX**
+
+Look for friction, ambiguity and inconsistent feedback.
+
+**Pass 9 — Data integrity**
+
+Verify persistence, transactions and lifecycle transitions.
+
+**Pass 10 — Regression**
+
+Re-test previously completed critical functionality.
+
+Then repeat intelligently where meaningful.
+
+---
+
+# 28. ENGINEERING STANDARD
+
+Approach this project as though:
+
+* the application will be publicly launched at scale
+* thousands or millions of users may eventually interact with it
+* a major election may suddenly generate enormous concurrent traffic
+* organisations will depend on its records
+* financial information must be trustworthy
+* users will access it from unreliable networks
+* users will use old and new devices
+* users will behave unpredictably
+* production incidents will have real consequences
+
+Do not optimise for "looks good in development."
+
+Optimise for:
+
+**correctness, resilience, observability, scalability, security, accessibility, performance and exceptional user experience.**
+
+---
+
+# 29. WHAT NOT TO DO
+
+Do not:
+
+* rebuild Evenum
+* replace working architecture without reason
+* introduce unnecessary technologies
+* redesign the product from scratch
+* imitate another platform
+* add features simply because they are technically possible
+* modify working business rules without evidence
+* create unnecessary abstractions
+* introduce unnecessary dependencies
+* make speculative changes
+
+The existing product vision is authoritative.
+
+Your responsibility is to **make the existing product exceptionally reliable and complete.**
+
+---
+
+# FINAL STANDARD
+
+The desired outcome is not:
+
+> "I couldn't find any more bugs."
+
+The desired outcome is:
+
+> "I systematically investigated the application from multiple engineering perspectives, actively attempted to break it, verified the critical business flows, tested edge cases and failure conditions, validated the architecture, hardened genuine weaknesses, and confirmed that existing functionality continues to work correctly."
+
+Evenum should emerge from this process feeling like a mature product that has been subjected to serious engineering scrutiny—not like an application that merely passed a happy-path demonstration.
+
+Be autonomous.
+
+Be skeptical.
+
+Be methodical.
+
+Be conservative with changes.
+
+Be aggressive with testing.
+
+Find problems before users do.
+
+Fix root causes.
+
+Verify every fix.
+
+Continue the loop intelligently.
+
+**Production quality is the goal. Passing a checklist is not.**

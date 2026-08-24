@@ -18,7 +18,7 @@ import {
   electionsTable, positionsTable, candidatesTable, votesTable, voteSelectionsTable,
   eventsTable, ticketTypesTable, ticketsTable,
   campaignsTable, campaignResponsesTable,
-} from "../lib/db/src/schema/index.js";
+} from "@workspace/db/schema";
 import { eq, inArray, notInArray, sql } from "drizzle-orm";
 
 const { Pool } = pg;

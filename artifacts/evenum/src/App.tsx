@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ComponentType } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -6,33 +6,65 @@ import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Spinner } from '@/components/ui/spinner';
 
+/**
+ * Vite's split chunks are content-hashed. After a deployment, an already-open
+ * tab can request a chunk from the previous build and receive a module-load
+ * error. Retry once, then reload once so the browser gets the new index/chunk
+ * map. The session flag prevents a persistent server failure from causing a
+ * reload loop.
+ */
+function lazyWithChunkRecovery<T extends ComponentType<any>>(
+  loader: () => Promise<{ default: T }>,
+) {
+  return lazy(async () => {
+    try {
+      const module = await loader();
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('evenum:chunk-recovery');
+      }
+      return module;
+    } catch (error) {
+      if (typeof window === 'undefined') throw error;
+
+      const hasRetried = sessionStorage.getItem('evenum:chunk-recovery') === '1';
+      if (hasRetried) {
+        sessionStorage.removeItem('evenum:chunk-recovery');
+        throw error;
+      }
+
+      sessionStorage.setItem('evenum:chunk-recovery', '1');
+      window.location.reload();
+      return new Promise<never>(() => {});
+    }
+  });
+}
+
 // Lazy-load every route so Vite splits them into separate chunks.
-// Auth and public pages load eagerly since they are near the critical path.
-const Home = lazy(() => import('@/pages/Home'));
-const Login = lazy(() => import('@/pages/Login'));
-const Register = lazy(() => import('@/pages/Register'));
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
-const CreateOrganization = lazy(() => import('@/pages/CreateOrganization'));
-const OrganizationWorkspace = lazy(() => import('@/pages/OrganizationWorkspace'));
-const OrganizationPublic = lazy(() => import('@/pages/OrganizationPublic'));
+const Home = lazyWithChunkRecovery(() => import('@/pages/Home'));
+const Login = lazyWithChunkRecovery(() => import('@/pages/Login'));
+const Register = lazyWithChunkRecovery(() => import('@/pages/Register'));
+const Dashboard = lazyWithChunkRecovery(() => import('@/pages/Dashboard'));
+const CreateOrganization = lazyWithChunkRecovery(() => import('@/pages/CreateOrganization'));
+const OrganizationWorkspace = lazyWithChunkRecovery(() => import('@/pages/OrganizationWorkspace'));
+const OrganizationPublic = lazyWithChunkRecovery(() => import('@/pages/OrganizationPublic'));
 
-const CreateElection = lazy(() => import('@/pages/CreateElection'));
-const ElectionDetail = lazy(() => import('@/pages/ElectionDetail'));
-const ElectionVote = lazy(() => import('@/pages/ElectionVote'));
-const ElectionResults = lazy(() => import('@/pages/ElectionResults'));
+const CreateElection = lazyWithChunkRecovery(() => import('@/pages/CreateElection'));
+const ElectionDetail = lazyWithChunkRecovery(() => import('@/pages/ElectionDetail'));
+const ElectionVote = lazyWithChunkRecovery(() => import('@/pages/ElectionVote'));
+const ElectionResults = lazyWithChunkRecovery(() => import('@/pages/ElectionResults'));
 
-const CreateEvent = lazy(() => import('@/pages/CreateEvent'));
-const EventDetail = lazy(() => import('@/pages/EventDetail'));
-const EventRegister = lazy(() => import('@/pages/EventRegister'));
+const CreateEvent = lazyWithChunkRecovery(() => import('@/pages/CreateEvent'));
+const EventDetail = lazyWithChunkRecovery(() => import('@/pages/EventDetail'));
+const EventRegister = lazyWithChunkRecovery(() => import('@/pages/EventRegister'));
 
-const CreateCampaign = lazy(() => import('@/pages/CreateCampaign'));
-const CampaignDetail = lazy(() => import('@/pages/CampaignDetail'));
-const CampaignParticipate = lazy(() => import('@/pages/CampaignParticipate'));
+const CreateCampaign = lazyWithChunkRecovery(() => import('@/pages/CreateCampaign'));
+const CampaignDetail = lazyWithChunkRecovery(() => import('@/pages/CampaignDetail'));
+const CampaignParticipate = lazyWithChunkRecovery(() => import('@/pages/CampaignParticipate'));
 
-const CandidateProfile = lazy(() => import('@/pages/CandidateProfile'));
-const Settings = lazy(() => import('@/pages/Settings'));
-const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
-const NotFound = lazy(() => import('@/pages/not-found'));
+const CandidateProfile = lazyWithChunkRecovery(() => import('@/pages/CandidateProfile'));
+const Settings = lazyWithChunkRecovery(() => import('@/pages/Settings'));
+const AdminDashboard = lazyWithChunkRecovery(() => import('@/pages/AdminDashboard'));
+const NotFound = lazyWithChunkRecovery(() => import('@/pages/not-found'));
 
 // Production-tuned query client:
 // - staleTime: 30s for read-heavy data (discover, lists)
