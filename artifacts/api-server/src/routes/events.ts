@@ -11,7 +11,7 @@ import {
   GetEventAnalyticsParams, ExportEventAttendeesParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireResourceOrgRole } from "../middlewares/orgAccess";
+import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
 
 const router: IRouter = Router();
@@ -60,7 +60,7 @@ router.get("/events", async (req, res): Promise<void> => {
 });
 
 // Create event
-router.post("/events", requireAuth, async (req, res): Promise<void> => {
+router.post("/events", requireAuth, requireBodyOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, location, isOnline, onlineUrl, visibility, startsAt, endsAt, capacity } = parsed.data;

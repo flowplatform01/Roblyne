@@ -8,7 +8,7 @@ import {
   GetCampaignAnalyticsParams, ExportCampaignSubmissionsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireResourceOrgRole } from "../middlewares/orgAccess";
+import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 
 const router: IRouter = Router();
 
@@ -65,7 +65,7 @@ router.get("/campaigns", async (req, res): Promise<void> => {
 });
 
 // Create campaign
-router.post("/campaigns", requireAuth, async (req, res): Promise<void> => {
+router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
   const parsed = CreateCampaignBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, type, visibility, goalAmount, requiresPayment, paymentAmount, currency, fields, startsAt, endsAt } = parsed.data;

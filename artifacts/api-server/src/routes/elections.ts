@@ -18,7 +18,7 @@ import {
   ExportElectionResultsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireResourceOrgRole } from "../middlewares/orgAccess";
+import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
@@ -70,7 +70,7 @@ router.get("/elections", async (req, res): Promise<void> => {
 });
 
 // Create election
-router.post("/elections", requireAuth, async (req, res): Promise<void> => {
+router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
   const parsed = CreateElectionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, visibility, requiresAuth: rAuth, eligibilityMode, startsAt, endsAt } = parsed.data;
@@ -327,6 +327,52 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Election not found" }); return; }
+
+  // Validate the complete ballot against the election's current structure.
+  // The client enforces these rules for normal users, but the API must also
+  // protect ballot integrity when requests are crafted or become stale.
+  const submittedPositionIds = bodyParsed.data.selections.map(selection => selection.positionId);
+  const uniquePositionIds = new Set(submittedPositionIds);
+  if (uniquePositionIds.size !== submittedPositionIds.length) {
+    res.status(400).json({ error: "Each position may only appear once on a ballot" });
+    return;
+  }
+
+  const [electionPositions, electionCandidates] = await Promise.all([
+    db.select({
+      id: positionsTable.id,
+      maxSelections: positionsTable.maxSelections,
+    }).from(positionsTable).where(eq(positionsTable.electionId, electionId)),
+    db.select({
+      id: candidatesTable.id,
+      positionId: candidatesTable.positionId,
+    }).from(candidatesTable).where(eq(candidatesTable.electionId, electionId)),
+  ]);
+  const positionsById = new Map(electionPositions.map(position => [position.id, position]));
+  const candidatesById = new Map(electionCandidates.map(candidate => [candidate.id, candidate]));
+
+  for (const selection of bodyParsed.data.selections) {
+    const position = positionsById.get(selection.positionId);
+    if (!position) {
+      res.status(400).json({ error: "One or more ballot positions do not belong to this election" });
+      return;
+    }
+    const uniqueCandidateIds = new Set(selection.candidateIds);
+    if (uniqueCandidateIds.size !== selection.candidateIds.length) {
+      res.status(400).json({ error: "A candidate cannot be selected more than once" });
+      return;
+    }
+    if (selection.candidateIds.length > position.maxSelections) {
+      res.status(400).json({
+        error: `You may select up to ${position.maxSelections} candidate${position.maxSelections === 1 ? "" : "s"} for this position`,
+      });
+      return;
+    }
+    if (selection.candidateIds.some(candidateId => candidatesById.get(candidateId)?.positionId !== selection.positionId)) {
+      res.status(400).json({ error: "One or more selected candidates do not belong to their ballot position" });
+      return;
+    }
+  }
 
   if (election.status !== "active") {
     res.status(403).json({ error: "This election is not currently open for voting" });

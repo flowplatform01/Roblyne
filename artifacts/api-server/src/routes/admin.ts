@@ -16,20 +16,24 @@ router.post("/admin/bootstrap", async (req, res): Promise<void> => {
     return;
   }
 
-  // Check whether any platform admin already exists
-  const { rows: [existing] } = await db.execute(
-    sql`SELECT id FROM users WHERE is_platform_admin = true LIMIT 1`
-  );
-  if (existing) {
-    res.status(409).json({ error: "A platform administrator already exists" });
+  // The NOT EXISTS predicate is part of the UPDATE statement, so concurrent
+  // bootstrap requests cannot both pass a separate check.
+  const { rows: [user] } = await db.execute(sql`
+    UPDATE users
+    SET is_platform_admin = true
+    WHERE id = ${req.session.userId}
+      AND NOT EXISTS (SELECT 1 FROM users WHERE is_platform_admin = true)
+    RETURNING id, name, email
+  `);
+  if (!user) {
+    const { rows: [existing] } = await db.execute(
+      sql`SELECT id FROM users WHERE is_platform_admin = true LIMIT 1`
+    );
+    res.status(existing ? 409 : 404).json({
+      error: existing ? "A platform administrator already exists" : "User not found",
+    });
     return;
   }
-
-  const [user] = await db
-    .update(usersTable)
-    .set({ isPlatformAdmin: true })
-    .where(eq(usersTable.id, req.session.userId))
-    .returning({ id: usersTable.id, name: usersTable.name, email: usersTable.email });
 
   res.json({ message: "You are now the platform administrator", user });
 });
@@ -41,8 +45,13 @@ router.get("/admin/platform-settings/public", async (_req, res): Promise<void> =
     res.json(settings);
     return;
   }
-  const [created] = await db.insert(platformSettingsTable).values({}).returning();
-  res.json(created);
+  res.json({
+    id: null,
+    paymentMode: "quantity_first",
+    defaultCurrency: "XAF",
+    supportedCurrencies: "XAF",
+    updatedAt: null,
+  });
 });
 
 // All subsequent routes require platform admin

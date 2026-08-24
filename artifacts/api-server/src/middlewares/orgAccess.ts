@@ -44,6 +44,27 @@ export function requireOrgRole(roles: OrgRole[]) {
 }
 
 /**
+ * Authorization for create endpoints where orgId is supplied in JSON.
+ */
+export function requireBodyOrgRole(roles: OrgRole[]) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const orgId = typeof req.body?.orgId === "number"
+      ? req.body.orgId
+      : parseInt(String(req.body?.orgId), 10);
+    if (!Number.isInteger(orgId) || orgId <= 0) {
+      res.status(400).json({ error: "Invalid organization ID" });
+      return;
+    }
+    const role = await getOrgRole(orgId, req.session.userId!);
+    if (!role || !roles.includes(role)) {
+      res.status(403).json({ error: "Insufficient permissions for this organization" });
+      return;
+    }
+    next();
+  };
+}
+
+/**
  * Middleware factory: same as requireOrgRole, but resolves the org via a resource
  * (election/event/campaign) whose orgId column lives in `table`, keyed by req.params[paramName].
  */
