@@ -57,6 +57,8 @@ export const settlementsTable = pgTable("settlements", {
   // status: pending_settlement | ready | released | completed
   status: text("status").notNull().default("pending_settlement"),
   transactionCount: integer("transaction_count").notNull().default(0),
+  payoutMethod: text("payout_method"),
+  payoutAccount: text("payout_account"),
   notes: text("notes"),
   releasedAt: timestamp("released_at"),
   completedAt: timestamp("completed_at"),

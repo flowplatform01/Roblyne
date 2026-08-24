@@ -1230,6 +1230,16 @@ export interface Settlement {
   currency: string;
   status: SettlementStatus;
   transactionCount: number;
+  /**
+     * Payout rail selected by the organization
+     * @nullable
+     */
+  payoutMethod?: string | null;
+  /**
+     * Account identifier for the selected payout rail
+     * @nullable
+     */
+  payoutAccount?: string | null;
   /** @nullable */
   notes?: string | null;
   /** @nullable */
@@ -1237,6 +1247,28 @@ export interface Settlement {
   /** @nullable */
   completedAt?: string | null;
   createdAt: string;
+}
+
+export type RequestWithdrawalInputPayoutMethod = typeof RequestWithdrawalInputPayoutMethod[keyof typeof RequestWithdrawalInputPayoutMethod];
+
+
+export const RequestWithdrawalInputPayoutMethod = {
+  bank_transfer: 'bank_transfer',
+  mobile_money: 'mobile_money',
+} as const;
+
+export interface RequestWithdrawalInput {
+  payoutMethod: RequestWithdrawalInputPayoutMethod;
+  /**
+     * @minLength 3
+     * @maxLength 160
+     */
+  payoutAccount: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  notes?: string | null;
 }
 
 export type CommissionConfigPillar = typeof CommissionConfigPillar[keyof typeof CommissionConfigPillar];

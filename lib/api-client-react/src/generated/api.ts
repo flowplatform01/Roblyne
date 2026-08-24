@@ -79,6 +79,7 @@ import type {
   PublicOrganization,
   RegisterInput,
   RegistrationInput,
+  RequestWithdrawalInput,
   SearchParams,
   SearchResults,
   Settlement,
@@ -4931,6 +4932,78 @@ export function useListOrgTransactions<TData = Awaited<ReturnType<typeof listOrg
 
 
 
+
+export const getRequestOrgWithdrawalUrl = (orgId: number,) => {
+
+
+
+
+  return `/api/organizations/${orgId}/finance/settlements`
+}
+
+/**
+ * @summary Request withdrawal of available organization earnings
+ */
+export const requestOrgWithdrawal = async (orgId: number,
+    requestWithdrawalInput: RequestWithdrawalInput, options?: RequestInit): Promise<Settlement> => {
+
+  return customFetch<Settlement>(getRequestOrgWithdrawalUrl(orgId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(requestWithdrawalInput)
+  }
+);}
+
+
+
+
+
+export const getRequestOrgWithdrawalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOrgWithdrawal>>, TError,{orgId: number;data: BodyType<RequestWithdrawalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestOrgWithdrawal>>, TError,{orgId: number;data: BodyType<RequestWithdrawalInput>}, TContext> => {
+
+const mutationKey = ['requestOrgWithdrawal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestOrgWithdrawal>>, {orgId: number;data: BodyType<RequestWithdrawalInput>}> = (props) => {
+          const {orgId,data} = props ?? {};
+
+          return  requestOrgWithdrawal(orgId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestOrgWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof requestOrgWithdrawal>>>
+    export type RequestOrgWithdrawalMutationBody = BodyType<RequestWithdrawalInput>
+    export type RequestOrgWithdrawalMutationError = ErrorType<void>
+
+    /**
+ * @summary Request withdrawal of available organization earnings
+ */
+export const useRequestOrgWithdrawal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOrgWithdrawal>>, TError,{orgId: number;data: BodyType<RequestWithdrawalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestOrgWithdrawal>>,
+        TError,
+        {orgId: number;data: BodyType<RequestWithdrawalInput>},
+        TContext
+      > => {
+      return useMutation(getRequestOrgWithdrawalMutationOptions(options));
+    }
 
 export const getListOrgSettlementsUrl = (orgId: number,) => {
 

@@ -20,6 +20,7 @@ import {
   useListOrgTransactions,
   useListOrgSettlements,
   useGetOrgAnalytics,
+  useRequestOrgWithdrawal,
   getGetOrgFinanceSummaryQueryKey,
   getListOrgTransactionsQueryKey,
   getListOrgSettlementsQueryKey,
@@ -1128,6 +1129,12 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 
 function FinanceSection({ orgId }: { orgId: number }) {
   const { data: summary, isLoading: isLoadingSummary } = useGetOrgFinanceSummary(orgId, { query: { enabled: !!orgId, queryKey: getGetOrgFinanceSummaryQueryKey(orgId) } });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const requestWithdrawal = useRequestOrgWithdrawal();
+  const [payoutMethod, setPayoutMethod] = useState<"bank_transfer" | "mobile_money">("mobile_money");
+  const [payoutAccount, setPayoutAccount] = useState("");
+  const [withdrawalNotes, setWithdrawalNotes] = useState("");
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
   const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
@@ -1166,6 +1173,44 @@ function FinanceSection({ orgId }: { orgId: number }) {
     window.open(`${API_BASE}/api/organizations/${orgId}/finance/export`);
   };
 
+  const handleWithdrawal = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!summary?.pendingBalance || summary.pendingBalance <= 0) {
+      toast({ title: "No balance available", description: "There are no earnings ready for withdrawal.", variant: "destructive" });
+      return;
+    }
+    requestWithdrawal.mutate(
+      {
+        orgId,
+        data: {
+          payoutMethod,
+          payoutAccount: payoutAccount.trim(),
+          notes: withdrawalNotes.trim() || null,
+        },
+      },
+      {
+        onSuccess: (settlement) => {
+          queryClient.invalidateQueries({ queryKey: getGetOrgFinanceSummaryQueryKey(orgId) });
+          queryClient.invalidateQueries({ queryKey: getListOrgSettlementsQueryKey(orgId) });
+          queryClient.invalidateQueries({ queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) });
+          setPayoutAccount("");
+          setWithdrawalNotes("");
+          toast({
+            title: "Withdrawal request submitted",
+            description: `${formatCurrency(settlement.amount, settlement.currency)} is now being processed.`,
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Withdrawal request failed",
+            description: error?.data?.error || "Could not submit the withdrawal request. Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
   if (isLoadingSummary) {
     return (
       <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
@@ -1191,6 +1236,57 @@ function FinanceSection({ orgId }: { orgId: number }) {
         </Button>
       </div>
 
+      <Card className="border-primary/20 bg-primary/[0.03]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-serif">Withdraw available earnings</CardTitle>
+          <CardDescription>
+            Request a payout of your available balance. Your request will appear in settlement history for processing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-[1fr_1.5fr_1.5fr_auto] items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="payout-method">Payout method</Label>
+              <Select value={payoutMethod} onValueChange={(value) => setPayoutMethod(value as typeof payoutMethod)}>
+                <SelectTrigger id="payout-method"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mobile_money">Mobile money</SelectItem>
+                  <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="payout-account">{payoutMethod === "mobile_money" ? "Mobile money number" : "Bank account details"}</Label>
+              <Input
+                id="payout-account"
+                value={payoutAccount}
+                onChange={(event) => setPayoutAccount(event.target.value)}
+                placeholder={payoutMethod === "mobile_money" ? "e.g. 6XXXXXXXX" : "Account name and number"}
+                required
+                minLength={3}
+                maxLength={160}
+                disabled={requestWithdrawal.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="withdrawal-notes">Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="withdrawal-notes"
+                value={withdrawalNotes}
+                onChange={(event) => setWithdrawalNotes(event.target.value)}
+                placeholder="Any payout instructions"
+                maxLength={500}
+                disabled={requestWithdrawal.isPending}
+              />
+            </div>
+            <Button type="submit" disabled={requestWithdrawal.isPending || !summary?.pendingBalance || !payoutAccount.trim()}>
+              {requestWithdrawal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
+              Request payout
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-primary/20 shadow-sm bg-primary/5">
           <CardHeader className="pb-2 pt-5">
@@ -1199,7 +1295,8 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-primary">{formatCurrency(summary?.totalOrgEarnings || 0)}</div>
+            <div className="text-2xl font-serif font-bold text-primary">{formatCurrency(summary?.pendingBalance || 0)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Available to withdraw</p>
           </CardContent>
         </Card>
 

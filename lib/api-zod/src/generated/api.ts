@@ -1806,6 +1806,8 @@ export const GetOrgFinanceSummaryResponse = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
   "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
   "notes": zod.string().nullish(),
   "releasedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
@@ -1857,6 +1859,43 @@ export const ListOrgTransactionsResponse = zod.object({
 
 
 /**
+ * @summary Request withdrawal of available organization earnings
+ */
+export const RequestOrgWithdrawalParams = zod.object({
+  "orgId": zod.coerce.number()
+})
+
+export const requestOrgWithdrawalBodyPayoutAccountMin = 3;
+export const requestOrgWithdrawalBodyPayoutAccountMax = 160;
+
+export const requestOrgWithdrawalBodyNotesMax = 500;
+
+
+
+export const RequestOrgWithdrawalBody = zod.object({
+  "payoutMethod": zod.enum(['bank_transfer', 'mobile_money']),
+  "payoutAccount": zod.string().min(requestOrgWithdrawalBodyPayoutAccountMin).max(requestOrgWithdrawalBodyPayoutAccountMax),
+  "notes": zod.string().max(requestOrgWithdrawalBodyNotesMax).nullish()
+})
+
+export const RequestOrgWithdrawalResponse = zod.object({
+  "id": zod.number(),
+  "orgId": zod.number(),
+  "organizationName": zod.string().nullish(),
+  "amount": zod.number().describe('Total org earnings included in this settlement'),
+  "currency": zod.string(),
+  "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
+  "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
+  "notes": zod.string().nullish(),
+  "releasedAt": zod.coerce.date().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List settlement records for an organization
  */
 export const ListOrgSettlementsParams = zod.object({
@@ -1871,6 +1910,8 @@ export const ListOrgSettlementsResponseItem = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
   "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
   "notes": zod.string().nullish(),
   "releasedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
@@ -1976,6 +2017,8 @@ export const ListAdminSettlementsResponseItem = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
   "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
   "notes": zod.string().nullish(),
   "releasedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
@@ -1999,6 +2042,8 @@ export const CreateSettlementResponse = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
   "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
   "notes": zod.string().nullish(),
   "releasedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),
@@ -2025,6 +2070,8 @@ export const UpdateSettlementResponse = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['pending_settlement', 'ready', 'released', 'completed']),
   "transactionCount": zod.number(),
+  "payoutMethod": zod.string().nullish().describe('Payout rail selected by the organization'),
+  "payoutAccount": zod.string().nullish().describe('Account identifier for the selected payout rail'),
   "notes": zod.string().nullish(),
   "releasedAt": zod.coerce.date().nullish(),
   "completedAt": zod.coerce.date().nullish(),

@@ -1532,6 +1532,31 @@ paths:
                 $ref: "#/components/schemas/TransactionList"
 
   /organizations/{orgId}/finance/settlements:
+    post:
+      operationId: requestOrgWithdrawal
+      tags: [finance]
+      summary: Request withdrawal of available organization earnings
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestWithdrawalInput"
+      responses:
+        "201":
+          description: Withdrawal request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settlement"
+        "400":
+          description: Invalid request or insufficient balance
     get:
       operationId: listOrgSettlements
       tags: [finance]
@@ -3225,6 +3250,12 @@ components:
           enum: [pending_settlement, ready, released, completed]
         transactionCount:
           type: integer
+        payoutMethod:
+          type: ["string", "null"]
+          description: Payout rail selected by the organization
+        payoutAccount:
+          type: ["string", "null"]
+          description: Account identifier for the selected payout rail
         notes:
           type: ["string", "null"]
         releasedAt:
@@ -3236,6 +3267,21 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    RequestWithdrawalInput:
+      type: object
+      required: [payoutMethod, payoutAccount]
+      properties:
+        payoutMethod:
+          type: string
+          enum: [bank_transfer, mobile_money]
+        payoutAccount:
+          type: string
+          minLength: 3
+          maxLength: 160
+        notes:
+          type: ["string", "null"]
+          maxLength: 500
 
     CommissionConfig:
       type: object

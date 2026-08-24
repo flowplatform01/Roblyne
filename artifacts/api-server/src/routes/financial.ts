@@ -40,6 +40,92 @@ function formatSettlement(row: any) {
 // ── ORG FINANCIAL WORKSPACE ────────────────────────────────────────────────
 
 /**
+ * Request a payout of all currently available organization earnings.
+ * Row locks make simultaneous requests safe: only one request can claim the
+ * pending ledger rows.
+ */
+router.post("/organizations/:orgId/finance/settlements",
+  requireAuth,
+  requireOrgRole(["owner", "admin"]),
+  async (req, res): Promise<void> => {
+    const orgId = parseInt(String(req.params.orgId), 10);
+    if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+    const payoutMethod = req.body?.payoutMethod;
+    const payoutAccount = typeof req.body?.payoutAccount === "string"
+      ? req.body.payoutAccount.trim()
+      : "";
+    const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : null;
+
+    if (!["bank_transfer", "mobile_money"].includes(payoutMethod)) {
+      res.status(400).json({ error: "Choose a valid payout method" }); return;
+    }
+    if (payoutAccount.length < 3 || payoutAccount.length > 160) {
+      res.status(400).json({ error: "Payout account must be between 3 and 160 characters" }); return;
+    }
+    if (notes && notes.length > 500) {
+      res.status(400).json({ error: "Notes must be 500 characters or fewer" }); return;
+    }
+
+    try {
+      const settlement = await db.transaction(async (tx) => {
+        const pendingRows = await tx.execute(sql`
+          SELECT id, org_earnings, currency
+          FROM financial_transactions
+          WHERE org_id = ${orgId}
+            AND status = 'completed'
+            AND settlement_status = 'pending'
+          FOR UPDATE
+        `);
+        const pending = pendingRows.rows as Array<{ id: number; org_earnings: string; currency: string }>;
+        if (pending.length === 0) {
+          throw new Error("There is no available balance to withdraw");
+        }
+
+        const currency = pending[0].currency;
+        if (pending.some((row) => row.currency !== currency)) {
+          throw new Error("Withdrawals must be requested separately for each currency");
+        }
+        const amount = Math.round(
+          pending.reduce((sum, row) => sum + parseFloat(String(row.org_earnings)), 0) * 100,
+        ) / 100;
+        if (amount <= 0) throw new Error("There is no available balance to withdraw");
+
+        const [created] = await tx
+          .insert(settlementsTable)
+          .values({
+            orgId,
+            amount: String(amount),
+            currency,
+            status: "pending_settlement",
+            transactionCount: pending.length,
+            payoutMethod,
+            payoutAccount,
+            notes: notes || null,
+          })
+          .returning();
+
+        await tx
+          .update(financialTransactionsTable)
+          .set({ settlementId: created.id, settlementStatus: "ready" })
+          .where(and(
+            eq(financialTransactionsTable.orgId, orgId),
+            eq(financialTransactionsTable.settlementStatus, "pending"),
+            eq(financialTransactionsTable.status, "completed"),
+          ));
+
+        return created;
+      });
+
+      res.status(201).json(formatSettlement(settlement));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not create withdrawal request";
+      res.status(400).json({ error: message });
+    }
+  }
+);
+
+/**
  * GET /api/organizations/:orgId/finance
  * Summary of org's financial position.
  */

@@ -1025,7 +1025,14 @@ function FinanceAdminSection() {
               ) : settlements.map((s: any) => (
                 <TableRow key={s.id} className="hover:bg-muted/20 transition-colors">
                   <TableCell className="text-center font-mono text-xs text-muted-foreground">#{s.id}</TableCell>
-                  <TableCell className="font-medium">{s.organizationName}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>{s.organizationName}</div>
+                    {s.payoutAccount && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {(s.payoutMethod || 'payout').replace('_', ' ')} · {s.payoutAccount}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{format(new Date(s.createdAt), 'MMM d, yyyy')}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(s.amount, s.currency)}</TableCell>
                   <TableCell className="text-sm">{s.transactionCount}</TableCell>
