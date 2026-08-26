@@ -18,10 +18,15 @@ import {
   ExportElectionResultsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
+import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
+
+function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
+  if (!startsAt || !endsAt) return true;
+  return startsAt.getTime() < endsAt.getTime();
+}
 
 function toCsvValue(value: unknown): string {
   const s = String(value ?? "");
@@ -32,18 +37,26 @@ function toCsvValue(value: unknown): string {
 router.get("/elections", async (req, res): Promise<void> => {
   const queryParsed = ListElectionsQueryParams.safeParse(req.query);
   const filters: any[] = [];
+  const requestedOrgId = queryParsed.success ? queryParsed.data.orgId : undefined;
+  const orgRole = requestedOrgId && req.session?.userId
+    ? await getOrgRole(requestedOrgId, req.session.userId)
+    : null;
+  const canSeePrivate = Boolean(orgRole);
 
   if (queryParsed.success) {
     const { orgId, status, visibility } = queryParsed.data;
     if (orgId) filters.push(eq(electionsTable.orgId, orgId));
     if (status) filters.push(eq(electionsTable.status, status));
-    if (visibility) {
+    if (visibility && (visibility === "public" || canSeePrivate)) {
       filters.push(eq(electionsTable.visibility, visibility));
-    } else if (!req.session?.userId) {
+    } else if (!canSeePrivate) {
       filters.push(eq(electionsTable.visibility, "public"));
     }
   } else {
     filters.push(eq(electionsTable.visibility, "public"));
+  }
+  if (!canSeePrivate) {
+    filters.push(sql`${electionsTable.status} <> 'draft'`);
   }
 
   const rows = await db
@@ -61,6 +74,7 @@ router.get("/elections", async (req, res): Promise<void> => {
 
   res.json(rows.map(({ election, orgName, orgLogoUrl, positionsCount, candidatesCount, totalVotes }) => ({
     ...election,
+    inviteCode: null,
     organizationName: orgName ?? null,
     organizationLogoUrl: orgLogoUrl ?? null,
     positionsCount: positionsCount ?? 0,
@@ -73,12 +87,23 @@ router.get("/elections", async (req, res): Promise<void> => {
 router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
   const parsed = CreateElectionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { orgId, title, description, visibility, requiresAuth: rAuth, eligibilityMode, startsAt, endsAt } = parsed.data;
+  const { orgId, title, description, visibility, requiresAuth: rAuth, eligibilityMode, startsAt, endsAt, requiresPayment, paymentAmount, currency } = parsed.data;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The election closing time must be after its opening time" });
+    return;
+  }
+  if (requiresPayment && (!paymentAmount || paymentAmount <= 0)) {
+    res.status(400).json({ error: "A positive payment amount is required when paid voting is enabled" });
+    return;
+  }
   const inviteCode = visibility === "invite_only" ? uuidv4().replace(/-/g, "").substring(0, 10).toUpperCase() : null;
   const [election] = await db.insert(electionsTable).values({
     orgId, title, description, visibility: visibility ?? "public",
     requiresAuth: rAuth ?? false, eligibilityMode: eligibilityMode ?? "open",
     inviteCode, startsAt, endsAt,
+    requiresPayment: requiresPayment ?? false,
+    paymentAmount: paymentAmount === undefined || paymentAmount === null ? null : String(paymentAmount),
+    currency: currency ?? "USD",
   }).returning();
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
@@ -104,12 +129,14 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  if (row.election.visibility !== "public" && !req.session?.userId) {
+  const viewerRole = req.session?.userId ? await getOrgRole(row.election.orgId, req.session.userId) : null;
+  if (row.election.visibility !== "public" && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
   res.json({
     ...row.election,
+    inviteCode: viewerRole === "owner" || viewerRole === "admin" ? row.election.inviteCode : null,
     organizationName: row.orgName ?? null,
     organizationLogoUrl: row.orgLogoUrl ?? null,
     positionsCount: row.positionsCount ?? 0,
@@ -125,6 +152,26 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateElectionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  const [current] = await db.select({
+    startsAt: electionsTable.startsAt,
+    endsAt: electionsTable.endsAt,
+    requiresPayment: electionsTable.requiresPayment,
+    paymentAmount: electionsTable.paymentAmount,
+  })
+    .from(electionsTable).where(eq(electionsTable.id, paramParsed.data.electionId)).limit(1);
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+  const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
+  const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The election closing time must be after its opening time" });
+    return;
+  }
+  if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
+    res.status(400).json({ error: "A positive payment amount is required when paid voting is enabled" });
+    return;
+  }
   const updateData = {
     ...bodyParsed.data,
     paymentAmount: bodyParsed.data.paymentAmount === undefined ? undefined : (bodyParsed.data.paymentAmount === null ? null : String(bodyParsed.data.paymentAmount)),
@@ -149,6 +196,15 @@ router.get("/elections/:electionId/positions", async (req, res): Promise<void> =
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = ListPositionsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+    .from(electionsTable)
+    .where(eq(electionsTable.id, parsed.data.electionId))
+    .limit(1);
+  const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
+  if (!election || (election.visibility !== "public" && !viewerRole)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const positions = await db.select().from(positionsTable).where(eq(positionsTable.electionId, parsed.data.electionId));
   res.json(positions);
 });
@@ -175,7 +231,18 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
   const positionId = parseInt(rawPosId, 10);
   if (isNaN(electionId) || isNaN(positionId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [pos] = await db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1);
+  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+    .from(electionsTable)
+    .where(eq(electionsTable.id, electionId))
+    .limit(1);
+  const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
+  if (!election || (election.visibility !== "public" && !viewerRole)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const [pos] = await db.select().from(positionsTable)
+    .where(and(eq(positionsTable.id, positionId), eq(positionsTable.electionId, electionId)))
+    .limit(1);
   if (!pos) { res.status(404).json({ error: "Not found" }); return; }
 
   // Aggregate vote counts in a single query — no N+1
@@ -203,16 +270,26 @@ router.patch("/elections/:electionId/positions/:positionId", requireAuth, requir
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdatePositionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [pos] = await db.update(positionsTable).set(bodyParsed.data).where(eq(positionsTable.id, paramParsed.data.positionId)).returning();
+  const [pos] = await db.update(positionsTable)
+    .set(bodyParsed.data)
+    .where(and(
+      eq(positionsTable.id, paramParsed.data.positionId),
+      eq(positionsTable.electionId, paramParsed.data.electionId),
+    ))
+    .returning();
   if (!pos) { res.status(404).json({ error: "Not found" }); return; }
   res.json(pos);
 });
 
 router.delete("/elections/:electionId/positions/:positionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
+  const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
-  const parsed = DeletePositionParams.safeParse({ electionId: 0, positionId: parseInt(rawPosId, 10) });
+  const parsed = DeletePositionParams.safeParse({ electionId: parseInt(rawElId, 10), positionId: parseInt(rawPosId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(positionsTable).where(eq(positionsTable.id, parsed.data.positionId));
+  await db.delete(positionsTable).where(and(
+    eq(positionsTable.id, parsed.data.positionId),
+    eq(positionsTable.electionId, parsed.data.electionId),
+  ));
   res.json({ message: "Deleted" });
 });
 
@@ -223,6 +300,15 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = ListCandidatesParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+    .from(electionsTable)
+    .where(eq(electionsTable.id, paramParsed.data.electionId))
+    .limit(1);
+  const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
+  if (!election || (election.visibility !== "public" && !viewerRole)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const queryParsed = ListCandidatesQueryParams.safeParse(req.query);
 
   const positionFilter = queryParsed.success && queryParsed.data.positionId
@@ -254,12 +340,16 @@ router.post("/elections/:electionId/candidates", requireAuth, requireResourceOrg
   const bodyParsed = CreateCandidateBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const { positionId, name, bio, photoUrl, platform } = bodyParsed.data;
-  const [[candidate], [pos]] = await Promise.all([
-    db.insert(candidatesTable).values({
-      electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
-    }).returning(),
-    db.select().from(positionsTable).where(eq(positionsTable.id, positionId)).limit(1),
-  ]);
+  const [pos] = await db.select().from(positionsTable)
+    .where(and(
+      eq(positionsTable.id, positionId),
+      eq(positionsTable.electionId, paramParsed.data.electionId),
+    ))
+    .limit(1);
+  if (!pos) { res.status(400).json({ error: "Position does not belong to this election" }); return; }
+  const [candidate] = await db.insert(candidatesTable).values({
+    electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
+  }).returning();
   res.status(201).json({ ...candidate, positionTitle: pos?.title ?? null, voteCount: 0 });
 });
 
@@ -268,6 +358,15 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const parsed = GetCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+    .from(electionsTable)
+    .where(eq(electionsTable.id, parsed.data.electionId))
+    .limit(1);
+  const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
+  if (!election || (election.visibility !== "public" && !viewerRole)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
 
   const rows = await db.execute(sql`
     SELECT

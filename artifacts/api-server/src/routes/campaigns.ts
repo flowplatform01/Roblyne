@@ -8,9 +8,15 @@ import {
   GetCampaignAnalyticsParams, ExportCampaignSubmissionsParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
+import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
+import { recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
+
+function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
+  if (!startsAt || !endsAt) return true;
+  return startsAt.getTime() < endsAt.getTime();
+}
 
 function toCsvValue(value: unknown): string {
   const s = String(value ?? "");
@@ -33,18 +39,26 @@ function campaignRow(campaign: any, orgName: string | null, submissionsCount: nu
 router.get("/campaigns", async (req, res): Promise<void> => {
   const queryParsed = ListCampaignsQueryParams.safeParse(req.query);
   const filters: any[] = [];
+  const requestedOrgId = queryParsed.success ? queryParsed.data.orgId : undefined;
+  const orgRole = requestedOrgId && req.session?.userId
+    ? await getOrgRole(requestedOrgId, req.session.userId)
+    : null;
+  const canSeePrivate = Boolean(orgRole);
   if (queryParsed.success) {
     const { orgId, type, status, visibility } = queryParsed.data;
     if (orgId) filters.push(eq(campaignsTable.orgId, orgId));
     if (type) filters.push(eq(campaignsTable.type, type));
     if (status) filters.push(eq(campaignsTable.status, status));
-    if (visibility) {
+    if (visibility && (visibility === "public" || canSeePrivate)) {
       filters.push(eq(campaignsTable.visibility, visibility));
-    } else if (!req.session?.userId) {
+    } else if (!canSeePrivate) {
       filters.push(eq(campaignsTable.visibility, "public"));
     }
   } else {
     filters.push(eq(campaignsTable.visibility, "public"));
+  }
+  if (!canSeePrivate) {
+    filters.push(sql`${campaignsTable.status} <> 'draft'`);
   }
 
   // Single query: LEFT JOIN organizations + subquery count — no N+1
@@ -69,6 +83,14 @@ router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
   const parsed = CreateCampaignBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, type, visibility, goalAmount, requiresPayment, paymentAmount, currency, fields, startsAt, endsAt } = parsed.data;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The campaign closing time must be after its opening time" });
+    return;
+  }
+  if (requiresPayment && (!paymentAmount || paymentAmount <= 0)) {
+    res.status(400).json({ error: "A positive payment amount is required when paid submissions are enabled" });
+    return;
+  }
   const [campaign] = await db.insert(campaignsTable).values({
     orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme: theme ?? "evenum", type, visibility: visibility ?? "public",
     goalAmount: goalAmount ? String(goalAmount) : null,
@@ -100,7 +122,8 @@ router.get("/campaigns/:campaignId", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  if (row.campaign.visibility !== "public" && !req.session?.userId) {
+  const viewerRole = req.session?.userId ? await getOrgRole(row.campaign.orgId, req.session.userId) : null;
+  if (row.campaign.visibility !== "public" && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -114,6 +137,26 @@ router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campa
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateCampaignBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  const [current] = await db.select({
+    startsAt: campaignsTable.startsAt,
+    endsAt: campaignsTable.endsAt,
+    requiresPayment: campaignsTable.requiresPayment,
+    paymentAmount: campaignsTable.paymentAmount,
+  })
+    .from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+  const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
+  const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The campaign closing time must be after its opening time" });
+    return;
+  }
+  if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
+    res.status(400).json({ error: "A positive payment amount is required when paid submissions are enabled" });
+    return;
+  }
   const updateData: any = { ...bodyParsed.data };
   if (updateData.goalAmount !== undefined) updateData.goalAmount = updateData.goalAmount ? String(updateData.goalAmount) : null;
   if (updateData.paymentAmount !== undefined) updateData.paymentAmount = updateData.paymentAmount ? String(updateData.paymentAmount) : null;
@@ -164,15 +207,32 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   }
 
   // ── Atomic: insert response + update current_amount in one transaction ──
+  const paymentAmount = campaign.requiresPayment ? Number(campaign.paymentAmount ?? 0) : 0;
   const response = await db.transaction(async (tx) => {
     const [inserted] = await tx.insert(campaignResponsesTable).values({
-      campaignId: paramParsed.data.campaignId, submitterName, submitterEmail, data,
+      campaignId: paramParsed.data.campaignId,
+      submitterName,
+      submitterEmail,
+      data,
+      amountPaid: paymentAmount > 0 ? String(paymentAmount) : null,
+      status: paymentAmount > 0 ? "confirmed" : "pending",
     }).returning();
 
-    if (campaign.requiresPayment && campaign.paymentAmount) {
+    if (paymentAmount > 0) {
       await tx.execute(
-        sql`UPDATE campaigns SET current_amount = current_amount + ${campaign.paymentAmount} WHERE id = ${campaign.id}`
+        sql`UPDATE campaigns SET current_amount = current_amount + ${paymentAmount} WHERE id = ${campaign.id}`
       );
+      await recordTransaction({
+        orgId: campaign.orgId,
+        pillar: "campaign",
+        entityId: campaign.id,
+        entityTitle: campaign.title,
+        transactionType: "campaign_response",
+        grossAmount: paymentAmount,
+        currency: campaign.currency || "USD",
+        payerName: submitterName,
+        payerEmail: submitterEmail,
+      }, tx);
     }
 
     return inserted;

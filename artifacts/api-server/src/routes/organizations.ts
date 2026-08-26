@@ -94,21 +94,38 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   ] = await Promise.all([
     db.execute(sql`
       SELECT
-        (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND visibility = 'public')       AS elections_count,
-        (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND visibility = 'public')       AS events_count,
-        (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND visibility = 'public')       AS campaigns_count,
+        (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND visibility = 'public' AND status <> 'draft')       AS elections_count,
+        (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND visibility = 'public' AND status <> 'draft')       AS events_count,
+        (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND visibility = 'public' AND status <> 'draft')       AS campaigns_count,
+        (
+          (SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v INNER JOIN elections e ON e.id = v.election_id WHERE e.org_id = ${orgId} AND e.visibility = 'public' AND e.status <> 'draft')
+          + (SELECT COUNT(*)::int FROM tickets t INNER JOIN events e ON e.id = t.event_id WHERE e.org_id = ${orgId} AND e.visibility = 'public' AND e.status <> 'draft' AND t.status <> 'cancelled')
+          + (SELECT COUNT(*)::int FROM campaign_responses cr INNER JOIN campaigns c ON c.id = cr.campaign_id WHERE c.org_id = ${orgId} AND c.visibility = 'public' AND c.status <> 'draft')
+        ) AS total_participants,
         (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND status = 'active'    AND visibility = 'public') AS active_elections,
         (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND status = 'published' AND visibility = 'public') AS upcoming_events,
         (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND status = 'active'    AND visibility = 'public') AS active_campaigns
     `),
-    db.select().from(electionsTable)
-      .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public'`)
+    db.select({
+      election: electionsTable,
+      positionsCount: sql<number>`(SELECT COUNT(*)::int FROM positions p WHERE p.election_id = ${electionsTable.id})`,
+      candidatesCount: sql<number>`(SELECT COUNT(*)::int FROM candidates c WHERE c.election_id = ${electionsTable.id})`,
+      totalVotes: sql<number>`(SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v WHERE v.election_id = ${electionsTable.id})`,
+    }).from(electionsTable)
+      .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public' AND ${electionsTable.status} <> 'draft'`)
       .orderBy(sql`${electionsTable.createdAt} DESC`).limit(3),
-    db.select().from(eventsTable)
-      .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public'`)
+    db.select({
+      event: eventsTable,
+      attendeesCount: sql<number>`(SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = ${eventsTable.id} AND t.status <> 'cancelled')`,
+      ticketTypesCount: sql<number>`(SELECT COUNT(*)::int FROM ticket_types tt WHERE tt.event_id = ${eventsTable.id})`,
+    }).from(eventsTable)
+      .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public' AND ${eventsTable.status} <> 'draft'`)
       .orderBy(sql`${eventsTable.createdAt} DESC`).limit(3),
-    db.select().from(campaignsTable)
-      .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public'`)
+    db.select({
+      campaign: campaignsTable,
+      submissionsCount: sql<number>`(SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = ${campaignsTable.id})`,
+    }).from(campaignsTable)
+      .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public' AND ${campaignsTable.status} <> 'draft'`)
       .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3),
   ]);
 
@@ -119,13 +136,34 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
     electionsCount: counts?.elections_count ?? 0,
     eventsCount: counts?.events_count ?? 0,
     campaignsCount: counts?.campaigns_count ?? 0,
-    totalParticipants: 0,
+    totalParticipants: counts?.total_participants ?? 0,
     activeElectionsCount: counts?.active_elections ?? 0,
     upcomingEventsCount: counts?.upcoming_events ?? 0,
     activeCampaignsCount: counts?.active_campaigns ?? 0,
-    recentElections: recentElections.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, positionsCount: 0, candidatesCount: 0, totalVotes: 0 })),
-    recentEvents: recentEvents.map(e => ({ ...e, organizationName: org.name, organizationLogoUrl: org.logoUrl, attendeesCount: 0, ticketTypesCount: 0 })),
-    recentCampaigns: recentCampaigns.map(c => ({ ...c, organizationName: org.name, organizationLogoUrl: org.logoUrl, submissionsCount: 0, currentAmount: c.currentAmount ?? "0" })),
+    recentElections: recentElections.map(({ election, positionsCount, candidatesCount, totalVotes }) => ({
+      ...election,
+      inviteCode: null,
+      organizationName: org.name,
+      organizationLogoUrl: org.logoUrl,
+      positionsCount: positionsCount ?? 0,
+      candidatesCount: candidatesCount ?? 0,
+      totalVotes: totalVotes ?? 0,
+    })),
+    recentEvents: recentEvents.map(({ event, attendeesCount, ticketTypesCount }) => ({
+      ...event,
+      inviteCode: null,
+      organizationName: org.name,
+      organizationLogoUrl: org.logoUrl,
+      attendeesCount: attendeesCount ?? 0,
+      ticketTypesCount: ticketTypesCount ?? 0,
+    })),
+    recentCampaigns: recentCampaigns.map(({ campaign, submissionsCount }) => ({
+      ...campaign,
+      organizationName: org.name,
+      organizationLogoUrl: org.logoUrl,
+      submissionsCount: submissionsCount ?? 0,
+      currentAmount: campaign.currentAmount ?? "0",
+    })),
   });
 });
 
@@ -159,6 +197,11 @@ router.get("/organizations/:orgId/stats", requireAuth, requireOrgRole(["owner", 
       (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId})                                AS elections_count,
       (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId})                                AS events_count,
       (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId})                                AS campaigns_count,
+      (
+        (SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v INNER JOIN elections e ON e.id = v.election_id WHERE e.org_id = ${orgId})
+        + (SELECT COUNT(*)::int FROM tickets t INNER JOIN events e ON e.id = t.event_id WHERE e.org_id = ${orgId} AND t.status <> 'cancelled')
+        + (SELECT COUNT(*)::int FROM campaign_responses cr INNER JOIN campaigns c ON c.id = cr.campaign_id WHERE c.org_id = ${orgId})
+      ) AS total_participants,
       (SELECT COUNT(*)::int FROM elections WHERE org_id = ${orgId} AND status = 'active')          AS active_elections,
       (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND status = 'published')       AS upcoming_events,
       (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND status = 'active')          AS active_campaigns
@@ -169,7 +212,7 @@ router.get("/organizations/:orgId/stats", requireAuth, requireOrgRole(["owner", 
     electionsCount: counts?.elections_count ?? 0,
     eventsCount: counts?.events_count ?? 0,
     campaignsCount: counts?.campaigns_count ?? 0,
-    totalParticipants: 0,
+    totalParticipants: counts?.total_participants ?? 0,
     activeElectionsCount: counts?.active_elections ?? 0,
     upcomingEventsCount: counts?.upcoming_events ?? 0,
     activeCampaignsCount: counts?.active_campaigns ?? 0,

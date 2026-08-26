@@ -403,26 +403,51 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
     res.status(400).json({ error: "Invalid or missing status" }); return;
   }
 
-  const updateData: any = { status };
-  if (status === "released") updateData.releasedAt = new Date();
-  if (status === "completed") updateData.completedAt = new Date();
+  const nextStatus = status as typeof validStatuses[number];
+  try {
+    const settlement = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: settlementsTable.id, status: settlementsTable.status })
+      .from(settlementsTable)
+      .where(eq(settlementsTable.id, id))
+      .limit(1);
+    if (!current) return null;
 
-  const [settlement] = await db
-    .update(settlementsTable)
-    .set(updateData)
-    .where(eq(settlementsTable.id, id))
-    .returning();
-  if (!settlement) { res.status(404).json({ error: "Not found" }); return; }
+    const allowedNext: Record<string, string[]> = {
+      pending_settlement: ["ready"],
+      ready: ["released"],
+      released: ["completed"],
+      completed: [],
+    };
+    if (current.status !== nextStatus && !allowedNext[current.status]?.includes(nextStatus)) {
+      throw Object.assign(new Error("Invalid settlement status transition"), { code: "INVALID_SETTLEMENT_TRANSITION" });
+    }
 
-  // Update linked transactions
-  if (status === "completed") {
-    await db
-      .update(financialTransactionsTable)
-      .set({ settlementStatus: "completed" })
-      .where(eq(financialTransactionsTable.settlementId, id));
+    const updateData: any = { status: nextStatus };
+    if (nextStatus === "released" && current.status !== "released") updateData.releasedAt = new Date();
+    if (nextStatus === "completed" && current.status !== "completed") updateData.completedAt = new Date();
+    const [updated] = await tx
+      .update(settlementsTable)
+      .set(updateData)
+      .where(and(eq(settlementsTable.id, id), eq(settlementsTable.status, current.status)))
+      .returning();
+    if (nextStatus === "completed") {
+      await tx
+        .update(financialTransactionsTable)
+        .set({ settlementStatus: "completed" })
+        .where(eq(financialTransactionsTable.settlementId, id));
+    }
+    return updated;
+    });
+    if (!settlement) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(formatSettlement(settlement));
+  } catch (err: any) {
+    if (err?.code === "INVALID_SETTLEMENT_TRANSITION") {
+      res.status(409).json({ error: "Settlement status cannot move backward or skip a stage" });
+      return;
+    }
+    throw err;
   }
-
-  res.json(formatSettlement(settlement));
 });
 
 /**
@@ -433,45 +458,53 @@ router.post("/admin/finance/settlements", async (req, res): Promise<void> => {
   const orgId = typeof req.body?.orgId === "number" ? req.body.orgId : parseInt(String(req.body?.orgId), 10);
   if (!orgId || isNaN(orgId)) { res.status(400).json({ error: "orgId is required and must be a valid integer" }); return; }
 
-  // Find pending transactions for this org
-  const pending = await db
-    .select()
-    .from(financialTransactionsTable)
-    .where(and(
-      eq(financialTransactionsTable.orgId, orgId),
-      eq(financialTransactionsTable.settlementStatus, "pending"),
-      eq(financialTransactionsTable.status, "completed"),
-    ));
-
-  if (pending.length === 0) {
-    res.status(400).json({ error: "No pending transactions to settle" }); return;
-  }
-
-  const totalAmount = pending.reduce((sum, t) => sum + parseFloat(t.orgEarnings), 0);
-  const currency = pending[0].currency;
-
-  const [settlement] = await db
-    .insert(settlementsTable)
-    .values({
+  try {
+    const settlement = await db.transaction(async (tx) => {
+    const pendingResult = await tx.execute(sql`
+      SELECT id, org_earnings, currency
+      FROM financial_transactions
+      WHERE org_id = ${orgId}
+        AND settlement_status = 'pending'
+        AND status = 'completed'
+      FOR UPDATE
+    `);
+    const pending = pendingResult.rows as Array<{ id: number; org_earnings: string; currency: string }>;
+    if (pending.length === 0) {
+      throw Object.assign(new Error("No pending transactions to settle"), { code: "NO_PENDING_TRANSACTIONS" });
+    }
+    const currency = pending[0].currency;
+    if (pending.some((row) => row.currency !== currency)) {
+      throw Object.assign(new Error("Withdrawals must be requested separately for each currency"), { code: "MIXED_CURRENCIES" });
+    }
+    const totalAmount = pending.reduce((sum, t) => sum + parseFloat(String(t.org_earnings)), 0);
+    const [created] = await tx.insert(settlementsTable).values({
       orgId,
       amount: String(Math.round(totalAmount * 100) / 100),
       currency,
       status: "pending_settlement",
       transactionCount: pending.length,
-    })
-    .returning();
-
-  // Link transactions to settlement
-  await db
-    .update(financialTransactionsTable)
-    .set({ settlementId: settlement.id, settlementStatus: "ready" })
-    .where(and(
-      eq(financialTransactionsTable.orgId, orgId),
-      eq(financialTransactionsTable.settlementStatus, "pending"),
-      eq(financialTransactionsTable.status, "completed"),
-    ));
-
-  res.status(201).json(formatSettlement(settlement));
+    }).returning();
+    await tx.execute(sql`
+      UPDATE financial_transactions
+      SET settlement_id = ${created.id}, settlement_status = 'ready'
+      WHERE org_id = ${orgId}
+        AND settlement_status = 'pending'
+        AND status = 'completed'
+    `);
+    return created;
+    });
+    res.status(201).json(formatSettlement(settlement));
+  } catch (err: any) {
+    if (err?.code === "NO_PENDING_TRANSACTIONS") {
+      res.status(400).json({ error: "No pending transactions to settle" });
+      return;
+    }
+    if (err?.code === "MIXED_CURRENCIES") {
+      res.status(400).json({ error: "Withdrawals must be requested separately for each currency" });
+      return;
+    }
+    throw err;
+  }
 });
 
 /**

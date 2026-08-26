@@ -27,7 +27,8 @@ router.get("/discover", async (req, res): Promise<void> => {
              WHERE v.election_id = e.id) AS "participantsCount"
           FROM elections e
           LEFT JOIN organizations o ON o.id = e.org_id
-          WHERE e.visibility = 'public'
+           WHERE e.visibility = 'public'
+             AND e.status <> 'draft'
           ORDER BY e.created_at DESC
           LIMIT ${limit}
         `)
@@ -39,10 +40,11 @@ router.get("/discover", async (req, res): Promise<void> => {
             e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
             e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
             o.name AS "organizationName",
-            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id) AS "participantsCount"
+            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id AND t.status <> 'cancelled') AS "participantsCount"
           FROM events e
           LEFT JOIN organizations o ON o.id = e.org_id
-          WHERE e.visibility = 'public'
+           WHERE e.visibility = 'public'
+             AND e.status <> 'draft'
           ORDER BY e.created_at DESC
           LIMIT ${limit}
         `)
@@ -57,7 +59,8 @@ router.get("/discover", async (req, res): Promise<void> => {
             (SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = c.id) AS "participantsCount"
           FROM campaigns c
           LEFT JOIN organizations o ON o.id = c.org_id
-          WHERE c.visibility = 'public'
+           WHERE c.visibility = 'public'
+             AND c.status <> 'draft'
           ORDER BY c.created_at DESC
           LIMIT ${limit}
         `)
@@ -113,7 +116,8 @@ router.get("/search", async (req, res): Promise<void> => {
              WHERE v.election_id = e.id) AS "participantsCount"
           FROM elections e
           LEFT JOIN organizations o ON o.id = e.org_id
-          WHERE e.visibility = 'public'
+           WHERE e.visibility = 'public'
+             AND e.status <> 'draft'
             AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
         `)
       : { rows: [] },
@@ -124,10 +128,11 @@ router.get("/search", async (req, res): Promise<void> => {
             e.id, e.title, e.description, e.cover_image_url AS "coverImageUrl",
             e.status, e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.created_at AS "createdAt",
             o.name AS "organizationName",
-            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id) AS "participantsCount"
+            (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id AND t.status <> 'cancelled') AS "participantsCount"
           FROM events e
           LEFT JOIN organizations o ON o.id = e.org_id
-          WHERE e.visibility = 'public'
+           WHERE e.visibility = 'public'
+             AND e.status <> 'draft'
             AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
         `)
       : { rows: [] },
@@ -141,7 +146,8 @@ router.get("/search", async (req, res): Promise<void> => {
             (SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = c.id) AS "participantsCount"
           FROM campaigns c
           LEFT JOIN organizations o ON o.id = c.org_id
-          WHERE c.visibility = 'public'
+           WHERE c.visibility = 'public'
+             AND c.status <> 'draft'
             AND (c.title ILIKE ${pattern} OR c.description ILIKE ${pattern})
         `)
       : { rows: [] },

@@ -1,10 +1,23 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+function establishSession(req: Request, userId: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((error: unknown) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      req.session.userId = userId;
+      resolve();
+    });
+  });
+}
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
@@ -13,7 +26,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, password, name } = parsed.data;
+  const { password, name } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
@@ -22,9 +36,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const [user] = await db.insert(usersTable).values({ email, passwordHash, name }).returning();
+  let user;
+  try {
+    [user] = await db.insert(usersTable).values({ email, passwordHash, name }).returning();
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      res.status(409).json({ error: "Email already registered" });
+      return;
+    }
+    throw error;
+  }
 
-  req.session.userId = user.id;
+  await establishSession(req, user.id);
   res.status(201).json({
     id: user.id,
     email: user.email,
@@ -42,7 +65,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user) {
@@ -56,7 +80,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  req.session.userId = user.id;
+  await establishSession(req, user.id);
   res.json({
     id: user.id,
     email: user.email,
@@ -68,7 +92,9 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {
-  req.session.destroy(() => {});
+  await new Promise<void>((resolve, reject) => {
+    req.session.destroy((error) => error ? reject(error) : resolve());
+  });
   res.json({ message: "Logged out" });
 });
 

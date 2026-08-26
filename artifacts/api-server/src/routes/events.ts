@@ -11,10 +11,16 @@ import {
   GetEventAnalyticsParams, ExportEventAttendeesParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import { requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
+import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
+import { recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
+
+function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
+  if (!startsAt || !endsAt) return true;
+  return startsAt.getTime() < endsAt.getTime();
+}
 
 function toCsvValue(value: unknown): string {
   const s = String(value ?? "");
@@ -25,17 +31,25 @@ function toCsvValue(value: unknown): string {
 router.get("/events", async (req, res): Promise<void> => {
   const queryParsed = ListEventsQueryParams.safeParse(req.query);
   const filters: any[] = [];
+  const requestedOrgId = queryParsed.success ? queryParsed.data.orgId : undefined;
+  const orgRole = requestedOrgId && req.session?.userId
+    ? await getOrgRole(requestedOrgId, req.session.userId)
+    : null;
+  const canSeePrivate = Boolean(orgRole);
   if (queryParsed.success) {
     const { orgId, status, visibility } = queryParsed.data;
     if (orgId) filters.push(eq(eventsTable.orgId, orgId));
     if (status) filters.push(eq(eventsTable.status, status));
-    if (visibility) {
+    if (visibility && (visibility === "public" || canSeePrivate)) {
       filters.push(eq(eventsTable.visibility, visibility));
-    } else if (!req.session?.userId) {
+    } else if (!canSeePrivate) {
       filters.push(eq(eventsTable.visibility, "public"));
     }
   } else {
     filters.push(eq(eventsTable.visibility, "public"));
+  }
+  if (!canSeePrivate) {
+    filters.push(sql`${eventsTable.status} <> 'draft'`);
   }
 
   const rows = await db
@@ -52,6 +66,7 @@ router.get("/events", async (req, res): Promise<void> => {
 
   res.json(rows.map(({ event, orgName, orgLogoUrl, attendeesCount, ticketTypesCount }) => ({
     ...event,
+    inviteCode: null,
     organizationName: orgName ?? null,
     organizationLogoUrl: orgLogoUrl ?? null,
     attendeesCount: attendeesCount ?? 0,
@@ -64,6 +79,10 @@ router.post("/events", requireAuth, requireBodyOrgRole(["owner", "admin"]), asyn
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, location, isOnline, onlineUrl, visibility, startsAt, endsAt, capacity } = parsed.data;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The event closing time must be after its opening time" });
+    return;
+  }
   const inviteCode = visibility === "invite_only" ? uuidv4().replace(/-/g, "").substring(0, 10).toUpperCase() : null;
   const [event] = await db.insert(eventsTable).values({
     orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme: theme ?? "evenum", location,
@@ -93,12 +112,14 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
-  if (row.event.visibility !== "public" && !req.session?.userId) {
+  const viewerRole = req.session?.userId ? await getOrgRole(row.event.orgId, req.session.userId) : null;
+  if (row.event.visibility !== "public" && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
   res.json({
     ...row.event,
+    inviteCode: viewerRole === "owner" || viewerRole === "admin" ? row.event.inviteCode : null,
     organizationName: row.orgName ?? null,
     organizationLogoUrl: row.orgLogoUrl ?? null,
     attendeesCount: row.attendeesCount ?? 0,
@@ -113,6 +134,15 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateEventBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  const [current] = await db.select({ startsAt: eventsTable.startsAt, endsAt: eventsTable.endsAt })
+    .from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+  if (!hasValidTimeWindow(startsAt, endsAt)) {
+    res.status(400).json({ error: "The event closing time must be after its opening time" });
+    return;
+  }
   const [event] = await db.update(eventsTable).set(bodyParsed.data).where(eq(eventsTable.id, paramParsed.data.eventId)).returning();
   if (!event) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
@@ -133,6 +163,15 @@ router.get("/events/:eventId/ticket-types", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = ListTicketTypesParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [event] = await db.select({ visibility: eventsTable.visibility, orgId: eventsTable.orgId })
+    .from(eventsTable)
+    .where(eq(eventsTable.id, parsed.data.eventId))
+    .limit(1);
+  const viewerRole = event && req.session?.userId ? await getOrgRole(event.orgId, req.session.userId) : null;
+  if (!event || (event.visibility !== "public" && !viewerRole)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   const types = await db.select().from(ticketTypesTable).where(eq(ticketTypesTable.eventId, parsed.data.eventId));
   res.json(types.map(t => ({ ...t, price: parseFloat(t.price) })));
 });
@@ -203,6 +242,10 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     res.status(403).json({ error: "Registration for this event has closed" });
     return;
   }
+  if (event.startsAt && new Date(event.startsAt) > now) {
+    res.status(403).json({ error: "Registration for this event has not opened yet" });
+    return;
+  }
 
   // ── Invite code check ─────────────────────────────────────────────────
   if (event.visibility === "invite_only") {
@@ -235,7 +278,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     const ticket = await db.transaction(async (tx) => {
       // Lock the ticket type row to prevent concurrent oversells
       const [lockedEvent] = (await tx.execute(
-        sql`SELECT id, status, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
+        sql`SELECT id, status, starts_at, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
       )).rows as any[];
       if (!lockedEvent) {
         throw Object.assign(new Error("Event not found"), { code: "EVENT_NOT_FOUND" });
@@ -245,6 +288,9 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       }
       if (lockedEvent.ends_at && new Date(lockedEvent.ends_at) <= new Date()) {
         throw Object.assign(new Error("Registration closed"), { code: "REGISTRATION_CLOSED" });
+      }
+      if (lockedEvent.starts_at && new Date(lockedEvent.starts_at) > new Date()) {
+        throw Object.assign(new Error("Registration not started"), { code: "REGISTRATION_NOT_STARTED" });
       }
       if (lockedEvent.capacity !== null) {
         const capacityResult = await tx.execute(
@@ -257,7 +303,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       }
 
       const lockResult = await tx.execute(
-        sql`SELECT id, event_id, quantity, sold, sale_starts_at, sale_ends_at FROM ticket_types WHERE id = ${ticketTypeId} AND event_id = ${paramParsed.data.eventId} FOR UPDATE`
+        sql`SELECT id, event_id, name, price, currency, quantity, sold, sale_starts_at, sale_ends_at FROM ticket_types WHERE id = ${ticketTypeId} AND event_id = ${paramParsed.data.eventId} FOR UPDATE`
       );
       const lockedTt = lockResult.rows[0] as any;
       if (!lockedTt) {
@@ -279,6 +325,19 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
         ticketCode, status: "valid",
       }).returning();
       await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
+      if (Number(lockedTt.price) > 0) {
+        await recordTransaction({
+          orgId: event.orgId,
+          pillar: "event",
+          entityId: event.id,
+          entityTitle: event.title,
+          transactionType: "ticket",
+          grossAmount: Number(lockedTt.price),
+          currency: lockedTt.currency || "USD",
+          payerName: attendeeName,
+          payerEmail: attendeeEmail,
+        }, tx);
+      }
       return inserted;
     });
 
@@ -308,7 +367,11 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       res.status(403).json({ error: err.code === "REGISTRATION_CLOSED" ? "Registration for this event has closed" : "This event is not currently open for registration" });
       return;
     }
-    if (err?.code === "TICKET_SALE_NOT_STARTED" || err?.code === "TICKET_SALE_ENDED") {
+     if (err?.code === "REGISTRATION_NOT_STARTED") {
+       res.status(403).json({ error: "Registration for this event has not opened yet" });
+       return;
+     }
+     if (err?.code === "TICKET_SALE_NOT_STARTED" || err?.code === "TICKET_SALE_ENDED") {
       res.status(403).json({ error: err.code === "TICKET_SALE_NOT_STARTED" ? "Ticket sales for this tier have not started yet" : "Ticket sales for this tier have ended" });
       return;
     }
