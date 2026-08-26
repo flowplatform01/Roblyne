@@ -46,3 +46,6 @@ Tab slug: 'analytics' — included in the URL persistence allowlist.
 - Added "Export All Transactions" button → opens /api/admin/finance/export
 - Removed invalid `limit` param from useListAdminSettlements (not in ListAdminSettlementsParams type)
 - Added DialogDescription import (was missing, causing TS error)
+
+## Public profile query lesson
+For organization public-profile responses, keep public visibility and invite-code redaction in the SQL projection itself. In this environment, computed metrics paired with a nested Drizzle table-object selection can map unreliably; explicit aliased SQL columns are safer for camelCase API responses.

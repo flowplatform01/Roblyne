@@ -106,27 +106,53 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
         (SELECT COUNT(*)::int FROM events    WHERE org_id = ${orgId} AND status = 'published' AND visibility = 'public') AS upcoming_events,
         (SELECT COUNT(*)::int FROM campaigns WHERE org_id = ${orgId} AND status = 'active'    AND visibility = 'public') AS active_campaigns
     `),
-    db.select({
-      election: electionsTable,
-      positionsCount: sql<number>`(SELECT COUNT(*)::int FROM positions p WHERE p.election_id = ${electionsTable.id})`,
-      candidatesCount: sql<number>`(SELECT COUNT(*)::int FROM candidates c WHERE c.election_id = ${electionsTable.id})`,
-      totalVotes: sql<number>`(SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v WHERE v.election_id = ${electionsTable.id})`,
-    }).from(electionsTable)
-      .where(sql`${electionsTable.orgId} = ${orgId} AND ${electionsTable.visibility} = 'public' AND ${electionsTable.status} <> 'draft'`)
-      .orderBy(sql`${electionsTable.createdAt} DESC`).limit(3),
-    db.select({
-      event: eventsTable,
-      attendeesCount: sql<number>`(SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = ${eventsTable.id} AND t.status <> 'cancelled')`,
-      ticketTypesCount: sql<number>`(SELECT COUNT(*)::int FROM ticket_types tt WHERE tt.event_id = ${eventsTable.id})`,
-    }).from(eventsTable)
-      .where(sql`${eventsTable.orgId} = ${orgId} AND ${eventsTable.visibility} = 'public' AND ${eventsTable.status} <> 'draft'`)
-      .orderBy(sql`${eventsTable.createdAt} DESC`).limit(3),
-    db.select({
-      campaign: campaignsTable,
-      submissionsCount: sql<number>`(SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = ${campaignsTable.id})`,
-    }).from(campaignsTable)
-      .where(sql`${campaignsTable.orgId} = ${orgId} AND ${campaignsTable.visibility} = 'public' AND ${campaignsTable.status} <> 'draft'`)
-      .orderBy(sql`${campaignsTable.createdAt} DESC`).limit(3),
+    db.execute(sql`
+      SELECT
+        e.id, e.org_id AS "orgId", e.title, e.description,
+        e.cover_image_url AS "coverImageUrl", e.hero_image_url AS "heroImageUrl",
+        e.accent_color AS "accentColor", e.theme, e.status, e.visibility,
+        e.requires_auth AS "requiresAuth", e.eligibility_mode AS "eligibilityMode",
+        NULL::text AS "inviteCode", e.starts_at AS "startsAt", e.ends_at AS "endsAt",
+        e.requires_payment AS "requiresPayment", e.payment_amount AS "paymentAmount",
+        e.currency, e.created_at AS "createdAt",
+        (SELECT COUNT(*)::int FROM positions p WHERE p.election_id = e.id) AS "positionsCount",
+        (SELECT COUNT(*)::int FROM candidates c WHERE c.election_id = e.id) AS "candidatesCount",
+        (SELECT COALESCE(SUM(v.quantity), 0)::int FROM votes v WHERE v.election_id = e.id) AS "totalVotes"
+      FROM elections e
+      WHERE e.org_id = ${orgId} AND e.visibility = 'public' AND e.status <> 'draft'
+      ORDER BY e.created_at DESC
+      LIMIT 3
+    `),
+    db.execute(sql`
+      SELECT
+        e.id, e.org_id AS "orgId", e.title, e.description,
+        e.cover_image_url AS "coverImageUrl", e.hero_image_url AS "heroImageUrl",
+        e.accent_color AS "accentColor", e.theme, e.location, e.is_online AS "isOnline",
+        e.online_url AS "onlineUrl", e.status, e.visibility, NULL::text AS "inviteCode",
+        e.starts_at AS "startsAt", e.ends_at AS "endsAt", e.capacity,
+        e.created_at AS "createdAt",
+        (SELECT COUNT(*)::int FROM tickets t WHERE t.event_id = e.id AND t.status <> 'cancelled') AS "attendeesCount",
+        (SELECT COUNT(*)::int FROM ticket_types tt WHERE tt.event_id = e.id) AS "ticketTypesCount"
+      FROM events e
+      WHERE e.org_id = ${orgId} AND e.visibility = 'public' AND e.status <> 'draft'
+      ORDER BY e.created_at DESC
+      LIMIT 3
+    `),
+    db.execute(sql`
+      SELECT
+        c.id, c.org_id AS "orgId", c.title, c.description,
+        c.cover_image_url AS "coverImageUrl", c.hero_image_url AS "heroImageUrl",
+        c.accent_color AS "accentColor", c.theme, c.type, c.status, c.visibility,
+        c.goal_amount AS "goalAmount", c.current_amount AS "currentAmount",
+        c.requires_payment AS "requiresPayment", c.payment_amount AS "paymentAmount",
+        c.currency, c.fields, c.starts_at AS "startsAt", c.ends_at AS "endsAt",
+        c.created_at AS "createdAt",
+        (SELECT COUNT(*)::int FROM campaign_responses cr WHERE cr.campaign_id = c.id) AS "submissionsCount"
+      FROM campaigns c
+      WHERE c.org_id = ${orgId} AND c.visibility = 'public' AND c.status <> 'draft'
+      ORDER BY c.created_at DESC
+      LIMIT 3
+    `),
   ]);
 
   const counts = countsResult.rows[0] as any;
@@ -140,29 +166,27 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
     activeElectionsCount: counts?.active_elections ?? 0,
     upcomingEventsCount: counts?.upcoming_events ?? 0,
     activeCampaignsCount: counts?.active_campaigns ?? 0,
-    recentElections: recentElections.map(({ election, positionsCount, candidatesCount, totalVotes }) => ({
-      ...election,
-      inviteCode: null,
+    recentElections: recentElections.rows.map((e: any) => ({
+      ...e,
       organizationName: org.name,
       organizationLogoUrl: org.logoUrl,
-      positionsCount: positionsCount ?? 0,
-      candidatesCount: candidatesCount ?? 0,
-      totalVotes: totalVotes ?? 0,
+      positionsCount: e.positionsCount ?? 0,
+      candidatesCount: e.candidatesCount ?? 0,
+      totalVotes: e.totalVotes ?? 0,
     })),
-    recentEvents: recentEvents.map(({ event, attendeesCount, ticketTypesCount }) => ({
-      ...event,
-      inviteCode: null,
+    recentEvents: recentEvents.rows.map((e: any) => ({
+      ...e,
       organizationName: org.name,
       organizationLogoUrl: org.logoUrl,
-      attendeesCount: attendeesCount ?? 0,
-      ticketTypesCount: ticketTypesCount ?? 0,
+      attendeesCount: e.attendeesCount ?? 0,
+      ticketTypesCount: e.ticketTypesCount ?? 0,
     })),
-    recentCampaigns: recentCampaigns.map(({ campaign, submissionsCount }) => ({
-      ...campaign,
+    recentCampaigns: recentCampaigns.rows.map((c: any) => ({
+      ...c,
       organizationName: org.name,
       organizationLogoUrl: org.logoUrl,
-      submissionsCount: submissionsCount ?? 0,
-      currentAmount: campaign.currentAmount ?? "0",
+      submissionsCount: c.submissionsCount ?? 0,
+      currentAmount: c.currentAmount ?? "0",
     })),
   });
 });
