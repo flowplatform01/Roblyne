@@ -1,0 +1,275 @@
+# FlowPay Integration Feedback — Evenum
+
+**Date:** August 28, 2026  
+**FlowPay Engineering Team**
+
+---
+
+## Overview
+
+This document outlines what Evenum needs to know and do to successfully integrate and operate with FlowPay based on the submitted integration request.
+
+---
+
+## FlowPay Integration Model
+
+FlowPay operates as an asynchronous payment orchestration platform. When Evenum initiates a payment, FlowPay creates a transaction, routes it to a payment provider (e.g., Fapshi, Campay), and notifies Evenum of payment completion via webhooks.
+
+**Key Characteristics:**
+- Asynchronous payment processing
+- Provider-orchestrated payments through multiple gateways
+- Webhook-based status updates
+- Idempotency for replay protection
+- Organization-level fee configuration
+- Revenue payout API for organization settlements
+
+---
+
+## What Evenum Will Receive
+
+After onboarding, Evenum will receive the following from FlowPay Admin:
+
+**Application Credentials:**
+- Public Key (for request authentication)
+- Secret Key (for request authentication)
+- Webhook Secret (for webhook signature verification)
+
+**Configuration:**
+- Organization ID
+- Application ID
+- Configured fee rules per organization
+- Enabled payment providers
+- Payout destination configuration (if applicable)
+
+---
+
+## Required Evenum Implementation
+
+### 1. Transaction Creation
+
+Evenum must call FlowPay's payment initialization API for each paid transaction:
+
+**API Endpoint:** `POST /payments/initialize`
+
+**Required Headers:**
+- `x-flowpay-public-key`: Your public key
+- `x-flowpay-secret-key`: Your secret key
+- `Idempotency-Key`: Unique key per transaction attempt
+
+**Required Request Body:**
+```json
+{
+  "externalReference": "your-internal-reference",
+  "amount": 1000,
+  "currency": "XAF",
+  "provider": "FAPSHI",
+  "customerName": "Customer Name",
+  "customerEmail": "customer@example.com",
+  "customerPhone": "+237XXXXXXXXX",
+  "deferCapture": true,
+  "metadata": {}
+}
+```
+
+**Response:** Returns transaction object with status `PENDING` and checkout session URL (if `deferCapture: true`)
+
+### 2. Webhook Endpoint
+
+Evenum must implement a webhook endpoint to receive payment status updates:
+
+**Webhook Events:**
+- `transaction.succeeded`: Payment completed
+- `transaction.failed`: Payment failed
+- `transaction.processing`: Payment in progress
+
+**Webhook Headers:**
+- `x-flowpay-event-id`: Event ID
+- `x-flowpay-event-type`: Event type
+- `x-flowpay-signature`: HMAC signature (verify using webhook secret)
+
+**Webhook Payload Structure:**
+```json
+{
+  "id": "evt_xxx",
+  "type": "transaction.succeeded",
+  "createdAt": "2024-08-28T12:00:00Z",
+  "data": {
+    "transaction": {
+      "id": "transaction-id",
+      "externalReference": "your-internal-reference",
+      "status": "SUCCEEDED",
+      "amount": 1000,
+      "grossAmount": 1050,
+      "currency": "XAF",
+      "selectedProvider": "FAPSHI",
+      "customerEmail": "customer@example.com",
+      "customerPhone": "+237XXXXXXXXX",
+      "metadata": {},
+      "createdAt": "2024-08-28T12:00:00Z",
+      "updatedAt": "2024-08-28T12:01:00Z"
+    }
+  }
+}
+```
+
+**Required Implementation:**
+- Verify webhook signature using HMAC-SHA256 with webhook secret
+- Handle duplicate webhook deliveries (idempotency)
+- Update Evenum's internal ledger based on transaction status
+- Return HTTP 200 on successful processing
+
+### 3. Idempotency
+
+Evenum must generate and manage idempotency keys:
+
+**Requirements:**
+- Generate unique idempotency key per transaction attempt
+- Store idempotency key with Evenum's business record
+- Use the same idempotency key for retry attempts
+- FlowPay returns existing transaction if duplicate idempotency key is received
+
+### 4. Data Model Updates
+
+Evenum must add the following fields to business records:
+
+**Recommended Fields:**
+- `flowpayTransactionId`: Store FlowPay transaction ID
+- `paymentStatus`: Track FlowPay payment status (PENDING, PROCESSING, SUCCEEDED, FAILED)
+- `idempotencyKey`: Store for replay protection
+
+### 5. Checkout Flow (If Using Hosted Checkout)
+
+If using FlowPay's hosted checkout (`deferCapture: true`):
+
+**Flow:**
+1. Call `/payments/initialize` with `deferCapture: true`
+2. Receive checkout session URL in response
+3. Redirect user to checkout URL
+4. User completes payment on FlowPay checkout page
+5. FlowPay sends webhook with final status
+
+**Alternative:** If not using hosted checkout, set `deferCapture: false` to initiate immediate provider charge.
+
+---
+
+## Orchestration Modes
+
+Evenum must select an orchestration mode:
+
+**PLATFORM_REVENUE (Recommended):**
+- FlowPay retains funds
+- Evenum requests payouts via revenue payout API
+- Suitable for Evenum's current model where organizations receive settlements
+
+**MULTI_TENANT:**
+- FlowPay coordinates payouts to external recipients
+- Requires Evenum to configure recipient/destination profiles
+- More complex setup
+
+**Selection Required:** Please confirm which mode Evenum prefers.
+
+---
+
+## Revenue Payouts (For PLATFORM_REVENUE Mode)
+
+If using PLATFORM_REVENUE mode, Evenum can request payouts:
+
+**API Endpoint:** `POST /payouts`
+
+**Required Request Body:**
+```json
+{
+  "amount": 50000,
+  "currency": "XAF",
+  "reference": "payout-reference",
+  "destinationProfileId": "optional-destination-id",
+  "externalRecipientId": "optional-recipient-id",
+  "provider": "FAPSHI",
+  "metadata": {}
+}
+```
+
+**Prerequisites:**
+- Organization must have sufficient settled revenue
+- Payout destination must be configured in FlowPay Admin
+- Organization must have at least one settled transaction
+
+**Payout Status:** Available via `GET /payouts/:id`
+
+---
+
+## Recipient/Destination Requirements
+
+For payout operations, Evenum must provide:
+
+**For PLATFORM_REVENUE Mode:**
+- Configure default payout destination per organization in FlowPay Admin
+- Payout method: MOBILE_MONEY or BANK
+- Payout account details (phone number or bank account)
+
+**For MULTI_TENANT Mode:**
+- Create destination profiles for each external recipient
+- Verify recipient identity (if recipient verification is enabled)
+- Configure supported rails (MOBILE_MONEY, BANK)
+
+---
+
+## Currency Support
+
+FlowPay supports XAF (Evenum's default currency) with decimal precision (18,2).
+
+**Supported:** XAF and other major currencies if Evenum expands.
+
+---
+
+## Security Requirements
+
+**Credential Management:**
+- Store FlowPay credentials securely (environment variables, secret management)
+- Never expose credentials in client-side code or logs
+- Rotate credentials if compromised
+
+**Webhook Security:**
+- Implement HTTPS for webhook endpoint
+- Verify webhook signatures using HMAC-SHA256
+- Validate webhook payload structure
+
+**Idempotency:**
+- Use cryptographically secure random generation for idempotency keys
+- Store idempotency keys to detect replay attacks
+
+---
+
+## Operational Requirements
+
+**Asynchronous Processing:**
+- Evenum must handle asynchronous payment completion
+- User experience must account for payment processing time
+- Implement appropriate loading states and user feedback
+
+**Webhook Reliability:**
+- Webhook delivery may be delayed; implement retry logic if delivery fails
+- Handle duplicate webhook deliveries (idempotency)
+- Monitor webhook delivery failures
+
+**Monitoring:**
+- Monitor FlowPay transaction status
+- Alert on failed payments or webhook delivery failures
+- Track reconciliation between Evenum ledger and FlowPay transactions
+
+**Reconciliation:**
+- Implement periodic reconciliation between Evenum's internal ledger and FlowPay transactions
+- Investigate discrepancies between Evenum's internal status and FlowPay's actual payment status
+
+
+**Variable Contribution Amounts:**
+- FlowPay accepts fixed amounts per transaction
+- Variable contribution amounts would require separate transaction creation per contribution
+
+
+
+---
+
+**FlowPay Engineering Team**  
+August 28, 2026
+
