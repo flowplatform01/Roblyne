@@ -519,7 +519,7 @@ router.get("/admin/finance/org-balances", async (_req, res): Promise<void> => {
       COALESCE(SUM(ft.gross_amount), 0)::float                                            AS total_revenue,
       COALESCE(SUM(ft.commission_amount), 0)::float                                       AS total_commission,
       COALESCE(SUM(ft.org_earnings), 0)::float                                            AS total_earnings,
-      COALESCE(SUM(CASE WHEN ft.settlement_status = 'pending' THEN ft.org_earnings ELSE 0 END), 0)::float   AS pending_balance,
+       COALESCE(SUM(CASE WHEN ft.settlement_status IN ('pending', 'ready') THEN ft.org_earnings ELSE 0 END), 0)::float   AS pending_balance,
       COALESCE(SUM(CASE WHEN ft.settlement_status = 'completed' THEN ft.org_earnings ELSE 0 END), 0)::float AS released_balance,
       COUNT(ft.id)::int                                                                   AS transaction_count
     FROM organizations o

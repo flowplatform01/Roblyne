@@ -9,10 +9,12 @@ import { ShareButton } from "@/components/branding/ShareButton";
 import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Vote, CalendarDays, Megaphone, ExternalLink, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function OrganizationPublic() {
   const [, params] = useRoute("/organizations/:id/public");
   const orgId = params?.id ? parseInt(params.id, 10) : 0;
+  const { t } = useTranslation();
 
   const { data: org, isLoading } = useGetPublicOrganization(orgId);
   const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
@@ -29,7 +31,7 @@ export default function OrganizationPublic() {
       <Layout>
         <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Organization</p>
+           <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">{t("common.loading")}</p>
         </div>
       </Layout>
     );
@@ -64,7 +66,7 @@ export default function OrganizationPublic() {
               >
                 <a href={org.website} target="_blank" rel="noopener noreferrer">
                   <Globe className="mr-2 h-4 w-4" />
-                  Website
+                   {t("common.website")}
                 </a>
               </Button>
             )}
@@ -85,15 +87,15 @@ export default function OrganizationPublic() {
           <div className="grid grid-cols-3 gap-px bg-border rounded-sm overflow-hidden border border-border">
             <div className="bg-card px-6 py-5 text-center">
               <p className="text-3xl font-serif font-bold tabular-nums">{(org as any).electionsCount ?? 0}</p>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Elections</p>
+               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">{t("home.typeElection")}</p>
             </div>
             <div className="bg-card px-6 py-5 text-center">
               <p className="text-3xl font-serif font-bold tabular-nums">{(org as any).eventsCount ?? 0}</p>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Events</p>
+               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">{t("home.typeEvent")}</p>
             </div>
             <div className="bg-card px-6 py-5 text-center">
               <p className="text-3xl font-serif font-bold tabular-nums">{(org as any).campaignsCount ?? 0}</p>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Campaigns</p>
+               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">{t("home.typeCampaign")}s</p>
             </div>
           </div>
         )}
@@ -103,7 +105,7 @@ export default function OrganizationPublic() {
           <section>
             <div className="flex items-center gap-3 mb-5">
               <Vote className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-serif font-bold">Elections</h2>
+               <h2 className="text-xl font-serif font-bold">{t("home.typeElection")}s</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentElections.map((e: any) => (
@@ -117,15 +119,15 @@ export default function OrganizationPublic() {
                     <div className="mt-auto">
                       {e.status === 'active' && (
                         <Button asChild size="sm" className="w-full rounded-sm">
-                          <Link href={`/elections/${e.id}/vote`}>
-                            <Vote className="mr-2 h-3 w-3" /> Vote Now
+                           <Link href={`/elections/${e.id}/vote`}>
+                             <Vote className="mr-2 h-3 w-3" /> {t("common.voteNow")}
                           </Link>
                         </Button>
                       )}
                       {e.status === 'ended' && (
                         <Button asChild size="sm" variant="outline" className="w-full rounded-sm">
                           <Link href={`/elections/${e.id}/results`}>
-                            <ExternalLink className="mr-2 h-3 w-3" /> View Results
+                             <ExternalLink className="mr-2 h-3 w-3" /> {t("common.viewResults")}
                           </Link>
                         </Button>
                       )}
@@ -142,7 +144,7 @@ export default function OrganizationPublic() {
           <section>
             <div className="flex items-center gap-3 mb-5">
               <CalendarDays className="h-5 w-5 text-emerald-500" />
-              <h2 className="text-xl font-serif font-bold">Events</h2>
+               <h2 className="text-xl font-serif font-bold">{t("home.typeEvent")}s</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentEvents.map((e: any) => (
@@ -157,7 +159,7 @@ export default function OrganizationPublic() {
                       {e.status === 'published' && (
                         <Button asChild size="sm" className="w-full rounded-sm">
                           <Link href={`/events/${e.id}/register`}>
-                            <ExternalLink className="mr-2 h-3 w-3" /> Register
+                         <ExternalLink className="mr-2 h-3 w-3" /> {t("common.register")}
                           </Link>
                         </Button>
                       )}
@@ -174,7 +176,7 @@ export default function OrganizationPublic() {
           <section>
             <div className="flex items-center gap-3 mb-5">
               <Megaphone className="h-5 w-5 text-amber-500" />
-              <h2 className="text-xl font-serif font-bold">Campaigns</h2>
+               <h2 className="text-xl font-serif font-bold">{t("home.typeCampaign")}s</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentCampaigns.map((c: any) => (
@@ -189,7 +191,7 @@ export default function OrganizationPublic() {
                       {c.status === 'active' && (
                         <Button asChild size="sm" className="w-full rounded-sm">
                           <Link href={`/campaigns/${c.id}/participate`}>
-                            <Megaphone className="mr-2 h-3 w-3" /> Participate
+                           <Megaphone className="mr-2 h-3 w-3" /> {t("common.participate")}
                           </Link>
                         </Button>
                       )}
@@ -204,8 +206,8 @@ export default function OrganizationPublic() {
         {/* Empty state */}
         {recentElections.length === 0 && recentEvents.length === 0 && recentCampaigns.length === 0 && (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg font-medium mb-2">No public activity yet</p>
-            <p className="text-sm">This organization hasn't published any elections, events, or campaigns.</p>
+             <p className="text-lg font-medium mb-2">{t("home.noActivity")}</p>
+             <p className="text-sm">{t("organizations.noPublicActivity")}</p>
           </div>
         )}
       </div>

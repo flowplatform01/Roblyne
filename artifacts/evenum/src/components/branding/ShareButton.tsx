@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface ShareButtonProps {
   url: string;
@@ -45,7 +46,7 @@ export function ShareButton({
   url,
   title,
   description,
-  ctaLabel = "Share",
+  ctaLabel,
   variant = "button",
   className,
 }: ShareButtonProps) {
@@ -53,6 +54,8 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const resolvedCtaLabel = ctaLabel ?? t("sharing.share");
 
   // Close popover on outside click
   useEffect(() => {
@@ -83,13 +86,13 @@ export function ShareButton({
         if (!copied) throw new Error("Clipboard copy was not available");
       }
       setCopied(true);
-      toast({ title: "Link copied!", description: "Paste it anywhere to share." });
+      toast({ title: t("sharing.linkCopiedTitle"), description: t("sharing.linkCopiedDescription") });
       setTimeout(() => setCopied(false), 2500);
     } catch {
       toast({
         variant: "destructive",
-        title: "Could not copy",
-        description: "Please copy the link manually from your browser's address bar.",
+        title: t("sharing.couldNotCopy"),
+        description: t("sharing.copyManually"),
       });
     }
     setOpen(false);
@@ -116,7 +119,7 @@ export function ShareButton({
   const options: ShareOption[] = [
     {
       id: "whatsapp",
-      label: "Share on WhatsApp",
+      label: t("sharing.shareOnWhatsApp"),
       icon: <MessageCircle className="w-4 h-4 text-green-600" />,
       action: () => {
         window.open(buildWhatsAppUrl(url, title), "_blank", "noopener,noreferrer");
@@ -125,7 +128,7 @@ export function ShareButton({
     },
     {
       id: "telegram",
-      label: "Share on Telegram",
+      label: t("sharing.shareOnTelegram"),
       icon: <Send className="w-4 h-4 text-sky-500" />,
       action: () => {
         window.open(buildTelegramUrl(url, title), "_blank", "noopener,noreferrer");
@@ -134,7 +137,7 @@ export function ShareButton({
     },
     {
       id: "copy",
-      label: copied ? "Copied!" : "Copy link",
+      label: copied ? t("sharing.copied") : t("sharing.copyLink"),
       icon: copied
         ? <Check className="w-4 h-4 text-emerald-600" />
         : <Link2 className="w-4 h-4 text-muted-foreground" />,
@@ -148,7 +151,7 @@ export function ShareButton({
         variant="ghost"
         size="icon"
         onClick={handleShare}
-        title={ctaLabel}
+        title={resolvedCtaLabel}
         className={className}
       >
         {copied ? (
@@ -168,7 +171,7 @@ export function ShareButton({
         ) : (
           <Share2 className="w-4 h-4" />
         )}
-        {ctaLabel}
+        {resolvedCtaLabel}
       </Button>
     );
 
@@ -188,7 +191,7 @@ export function ShareButton({
         >
           <div className="flex items-center justify-between px-2 py-1 mb-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Share
+              {t("sharing.share")}
             </span>
             <button
               onClick={() => setOpen(false)}

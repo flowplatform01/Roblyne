@@ -25,4 +25,11 @@ i18n
     },
   });
 
+if (typeof document !== "undefined") {
+  document.documentElement.lang = i18n.language.startsWith("fr") ? "fr" : "en";
+  i18n.on("languageChanged", (language) => {
+    document.documentElement.lang = language.startsWith("fr") ? "fr" : "en";
+  });
+}
+
 export default i18n;

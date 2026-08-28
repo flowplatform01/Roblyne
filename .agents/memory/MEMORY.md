@@ -10,3 +10,4 @@
 - [Evenum ballot integrity](evenum-ballot-integrity.md) — server-side vote validation must enforce election ownership, position caps, and candidate-position membership
 - [Evenum lifecycle integrity](evenum-lifecycle-integrity.md) — startsAt/endsAt gates on all 3 pillars, atomic capacity lock, shared useLifecycle client hook, <=boundary rule
 - [Workspace script imports](workspace-script-imports.md) — utility scripts should consume shared libraries through workspace package exports
+- [Evenum frontend build](evenum-frontend-build.md) — standalone Vite builds require PORT and the configured BASE_PATH

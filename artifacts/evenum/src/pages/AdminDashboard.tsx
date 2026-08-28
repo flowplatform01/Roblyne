@@ -38,6 +38,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency as formatCurrencyValue } from '@/lib/currency';
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function useAdminStats() {
@@ -64,6 +66,7 @@ function useAdminOrgs() {
 export default function AdminDashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const [orgSearch, setOrgSearch] = useState('');
@@ -152,9 +155,9 @@ export default function AdminDashboard() {
             <ShieldCheck className="h-8 w-8 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-serif font-bold">Platform Administration</h1>
+            <h1 className="text-2xl font-serif font-bold">{t("admin.platformAdmin")}</h1>
             <p className="text-muted-foreground mt-2">
-              This area is restricted to platform administrators.
+              {t("admin.restricted")}
             </p>
           </div>
           <Card className="text-left border-border/60">
@@ -199,45 +202,45 @@ export default function AdminDashboard() {
 
   const kpiCards = [
     {
-      label: 'Total Users',
+      label: t("admin.totalUsers"),
       value: stats?.total_users,
-      sub: `+${stats?.new_users_7d ?? 0} this week`,
+      sub: t("admin.thisWeek", { count: stats?.new_users_7d ?? 0 }),
       icon: Users,
       accent: 'text-blue-600',
       bg: 'bg-blue-50',
       trend: (stats?.new_users_7d ?? 0) > 0,
     },
     {
-      label: 'Organizations',
+      label: t("admin.organizations"),
       value: stats?.total_organizations,
-      sub: `+${stats?.new_orgs_7d ?? 0} this week`,
+      sub: t("admin.thisWeek", { count: stats?.new_orgs_7d ?? 0 }),
       icon: Building2,
       accent: 'text-violet-600',
       bg: 'bg-violet-50',
       trend: (stats?.new_orgs_7d ?? 0) > 0,
     },
     {
-      label: 'Elections',
+      label: t("admin.elections"),
       value: stats?.total_elections,
-      sub: 'all time',
+      sub: t("admin.allTime"),
       icon: Vote,
       accent: 'text-primary',
       bg: 'bg-primary/5',
       trend: false,
     },
     {
-      label: 'Events',
+      label: t("admin.events"),
       value: stats?.total_events,
-      sub: 'all time',
+      sub: t("admin.allTime"),
       icon: CalendarDays,
       accent: 'text-emerald-600',
       bg: 'bg-emerald-50',
       trend: false,
     },
     {
-      label: 'Campaigns',
+      label: t("admin.campaigns"),
       value: stats?.total_campaigns,
-      sub: 'all time',
+      sub: t("admin.allTime"),
       icon: Megaphone,
       accent: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -257,9 +260,9 @@ export default function AdminDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <h1 className="text-2xl font-serif font-bold">Platform Admin</h1>
+                <h1 className="text-2xl font-serif font-bold">{t("admin.platformAdmin")}</h1>
                 <Badge variant="outline" className="text-xs font-bold uppercase tracking-widest border-primary/40 text-primary">
-                  Command Center
+                  {t("admin.commandCenter")}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -269,7 +272,7 @@ export default function AdminDashboard() {
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/50 px-4 py-2 rounded-sm">
             <Activity className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
-            All systems operational
+            {t("admin.dataConnected")}
           </div>
         </div>
 
@@ -319,7 +322,11 @@ export default function AdminDashboard() {
             </TabsTrigger>
             <TabsTrigger value="governance" className="gap-2">
               <Settings className="h-3.5 w-3.5" />
-              Participation
+              {t("admin.participation")}
+            </TabsTrigger>
+            <TabsTrigger value="operations" className="gap-2">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {t("admin.supportTitle")}
             </TabsTrigger>
           </TabsList>
 
@@ -331,14 +338,14 @@ export default function AdminDashboard() {
                   <div>
                     <div className="flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                      <CardTitle className="text-base font-serif">All Organizations</CardTitle>
+                      <CardTitle className="text-base font-serif">{t("admin.allOrganizations")}</CardTitle>
                     </div>
-                    <CardDescription className="mt-0.5">Every organization registered on the platform.</CardDescription>
+                    <CardDescription className="mt-0.5">{t("admin.allOrganizationsDescription")}</CardDescription>
                   </div>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
-                      placeholder="Search by name or slug…"
+                      placeholder={t("admin.searchOrganizations")}
                       value={orgSearch}
                       onChange={(e) => setOrgSearch(e.target.value)}
                       className="pl-9 pr-8 h-9 text-sm"
@@ -439,14 +446,14 @@ export default function AdminDashboard() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <CardTitle className="text-base font-serif">All Users</CardTitle>
+                      <CardTitle className="text-base font-serif">{t("admin.allUsers")}</CardTitle>
                     </div>
-                    <CardDescription className="mt-0.5">Everyone registered on the platform.</CardDescription>
+                    <CardDescription className="mt-0.5">{t("admin.allUsersDescription")}</CardDescription>
                   </div>
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
-                      placeholder="Search by name or email…"
+                      placeholder={t("admin.searchUsers")}
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                       className="pl-9 pr-8 h-9 text-sm"
@@ -573,6 +580,9 @@ export default function AdminDashboard() {
           <TabsContent value="governance" className="mt-4">
             <ParticipationGovernance />
           </TabsContent>
+          <TabsContent value="operations" className="mt-4">
+            <PlatformSupportSection />
+          </TabsContent>
         </Tabs>
 
         {/* Platform health notice */}
@@ -650,9 +660,87 @@ function ParticipationGovernance() {
   );
 }
 
+function PlatformSupportSection() {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['admin', 'platform-settings'],
+    queryFn: () => customFetch<any>(`${API_BASE}/api/admin/platform-settings`),
+  });
+  const [supportEmail, setSupportEmail] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [supportWhatsapp, setSupportWhatsapp] = useState("");
+  const [supportUrl, setSupportUrl] = useState("");
+
+  React.useEffect(() => {
+    if (!settings) return;
+    setSupportEmail(settings.supportEmail || "");
+    setSupportPhone(settings.supportPhone || "");
+    setSupportWhatsapp(settings.supportWhatsapp || "");
+    setSupportUrl(settings.supportUrl || "");
+  }, [settings]);
+
+  const save = useMutation({
+    mutationFn: () => customFetch(`${API_BASE}/api/admin/platform-settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supportEmail, supportPhone, supportWhatsapp, supportUrl }),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'platform-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-settings', 'public'] });
+      toast({ title: t("admin.supportSaved"), description: t("admin.supportSaveDescription") });
+    },
+    onError: (e: any) => toast({ variant: 'destructive', title: t("admin.saveFailed"), description: e?.data?.error || t("common.tryAgain") }),
+  });
+
+  return (
+    <Card className="border-border/50 shadow-sm max-w-3xl">
+      <CardHeader>
+        <CardTitle className="font-serif">{t("admin.supportTitle")}</CardTitle>
+        <CardDescription>{t("admin.supportDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="support-email">{t("admin.supportEmail")}</Label>
+                <Input id="support-email" type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} placeholder={t("admin.supportEmailPlaceholder")} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="support-phone">{t("admin.supportPhone")}</Label>
+                <Input id="support-phone" value={supportPhone} onChange={(e) => setSupportPhone(e.target.value)} placeholder={t("admin.supportPhonePlaceholder")} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="support-whatsapp">{t("admin.supportWhatsapp")}</Label>
+                <Input id="support-whatsapp" value={supportWhatsapp} onChange={(e) => setSupportWhatsapp(e.target.value)} placeholder={t("admin.supportWhatsappPlaceholder")} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="support-url">{t("admin.supportUrl")}</Label>
+                <Input id="support-url" type="url" value={supportUrl} onChange={(e) => setSupportUrl(e.target.value)} placeholder={t("admin.supportUrlPlaceholder")} />
+              </div>
+            </div>
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("admin.saveSupport")}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function FinanceAdminSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t, i18n } = useTranslation();
 
   const { data: stats, isLoading: isLoadingStats } = useGetAdminFinanceStats({ query: { queryKey: getGetAdminFinanceStatsQueryKey() } });
   
@@ -671,9 +759,8 @@ function FinanceAdminSection() {
   const { data: orgBalances, isLoading: isLoadingBalances } = useListOrgBalances({ query: { queryKey: getListOrgBalancesQueryKey() } });
   const { data: commissionConfigs, isLoading: isLoadingConfigs } = useListCommissionConfigs({ query: { queryKey: getListCommissionConfigsQueryKey() } });
 
-  const formatCurrency = (amount: number, currency: string = "USD") => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
-  };
+  const formatCurrency = (amount: number, currency: string = "XAF") =>
+    formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
 
   const getSettlementBadge = (status: string) => {
     switch(status) {
@@ -801,8 +888,8 @@ function FinanceAdminSection() {
                         tick={{ fontSize: 12, fill: '#888' }} 
                         dy={10}
                       />
-                      <YAxis 
-                        tickFormatter={(val) => `$${val}`} 
+                      <YAxis
+                        tickFormatter={(val) => formatCurrency(val)}
                         axisLine={false} 
                         tickLine={false} 
                         tick={{ fontSize: 12, fill: '#888' }} 
@@ -810,7 +897,7 @@ function FinanceAdminSection() {
                       />
                       <Tooltip 
                         cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                        formatter={(val: number) => [formatCurrency(val), 'Revenue']}
+                        formatter={(val: number) => [formatCurrency(val), t("admin.revenue")]}
                         labelFormatter={(val) => format(new Date(val), 'MMM d, yyyy')}
                         contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
                       />

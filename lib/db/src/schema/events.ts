@@ -34,7 +34,7 @@ export const ticketTypesTable = pgTable("ticket_types", {
   name: text("name").notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull().default("0"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   quantity: integer("quantity"), // null = unlimited
   sold: integer("sold").notNull().default(0),
   saleStartsAt: timestamp("sale_starts_at"),

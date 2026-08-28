@@ -21,7 +21,7 @@ export const electionsTable = pgTable("elections", {
   endsAt: timestamp("ends_at"),
   requiresPayment: boolean("requires_payment").notNull().default(false),
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   orgIdIdx: index("elections_org_id_idx").on(table.orgId),
@@ -91,6 +91,10 @@ export const platformSettingsTable = pgTable("platform_settings", {
   paymentMode: text("payment_mode").notNull().default("quantity_first"), // quantity_first | amount_first
   defaultCurrency: text("default_currency").notNull().default("XAF"),
   supportedCurrencies: text("supported_currencies").notNull().default("XAF"),
+  supportEmail: text("support_email"),
+  supportPhone: text("support_phone"),
+  supportWhatsapp: text("support_whatsapp"),
+  supportUrl: text("support_url"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

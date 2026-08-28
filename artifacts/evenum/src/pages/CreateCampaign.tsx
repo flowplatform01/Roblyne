@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, Megaphone, Plus, Trash2, GripVertical } from "lucide-react";
 import { Link } from "wouter";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 const fieldSchema = z.object({
   id: z.string(),
@@ -49,6 +51,7 @@ export default function CreateCampaign() {
   const initialOrgId = searchParams.get('orgId') || "";
 
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const createCampaign = useCreateCampaign();
   const queryClient = useQueryClient();
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
@@ -308,7 +311,7 @@ export default function CreateCampaign() {
                       <FormItem>
                         <FormLabel>Required Amount (XAF)</FormLabel>
                         <FormControl><Input type="number" step="1" min={1} placeholder="200" className="h-11" {...field} /></FormControl>
-                        <FormDescription>Estimated amount your organization receives: XAF {estimatedReceipt.toLocaleString('en-US', { maximumFractionDigits: 2 })}</FormDescription>
+                        <FormDescription>Estimated amount your organization receives: {formatCurrency(estimatedReceipt, "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

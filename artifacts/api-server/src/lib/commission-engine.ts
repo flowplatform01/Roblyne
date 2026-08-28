@@ -3,7 +3,7 @@
  * Every revenue-generating pillar must pass through here.
  */
 
-import { db, commissionConfigsTable, financialTransactionsTable, settlementsTable } from "@workspace/db";
+import { db, commissionConfigsTable, financialTransactionsTable, settlementsTable, platformSettingsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -28,6 +28,14 @@ export interface RecordTransactionInput {
   currency?: string;
   payerName?: string;
   payerEmail?: string;
+}
+
+export async function getPlatformCurrency(database: any = db): Promise<string> {
+  const [settings] = await database
+    .select({ defaultCurrency: platformSettingsTable.defaultCurrency })
+    .from(platformSettingsTable)
+    .limit(1);
+  return settings?.defaultCurrency || "XAF";
 }
 
 /**
@@ -65,7 +73,7 @@ export async function getCommissionRate(pillar: Pillar, database: any = db): Pro
 export function calculateCommission(
   grossAmount: number,
   commissionRate: number,
-  currency = "USD"
+  currency = "XAF"
 ): CommissionResult {
   const commissionAmount = Math.round(grossAmount * commissionRate * 100) / 100;
   const orgEarnings = Math.round((grossAmount - commissionAmount) * 100) / 100;
@@ -88,7 +96,7 @@ export async function recordTransaction(input: RecordTransactionInput, database:
 }> {
   const {
     orgId, pillar, entityId, entityTitle, transactionType,
-    grossAmount, currency = "USD", payerName, payerEmail,
+    grossAmount, currency = "XAF", payerName, payerEmail,
   } = input;
 
   if (grossAmount <= 0) {
@@ -133,7 +141,7 @@ export async function getOrgFinanceSummary(orgId: number) {
       COALESCE(SUM(gross_amount), 0)::float            AS total_revenue,
       COALESCE(SUM(commission_amount), 0)::float       AS total_commission_paid,
       COALESCE(SUM(org_earnings), 0)::float            AS total_org_earnings,
-      COALESCE(SUM(CASE WHEN settlement_status = 'pending' THEN org_earnings ELSE 0 END), 0)::float  AS pending_balance,
+      COALESCE(SUM(CASE WHEN settlement_status IN ('pending', 'ready') THEN org_earnings ELSE 0 END), 0)::float  AS pending_balance,
       COALESCE(SUM(CASE WHEN settlement_status = 'completed' THEN org_earnings ELSE 0 END), 0)::float AS released_balance,
       COUNT(*)::int                                    AS transaction_count
     FROM financial_transactions

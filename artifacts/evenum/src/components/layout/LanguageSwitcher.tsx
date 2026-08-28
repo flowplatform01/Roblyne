@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language.startsWith('fr') ? 'en' : 'fr');
@@ -18,7 +18,8 @@ export function LanguageSwitcher() {
       size="sm"
       onClick={toggleLanguage}
       className="text-xs font-semibold tracking-widest px-2 h-8 text-muted-foreground hover:text-foreground"
-      title={`Switch to ${nextLang}`}
+      title={`${t("language.switchTo")} ${nextLang}`}
+      aria-label={`${t("language.switchTo")} ${nextLang}`}
     >
       {currentLang}
     </Button>

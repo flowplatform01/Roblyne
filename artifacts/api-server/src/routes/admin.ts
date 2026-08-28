@@ -50,6 +50,10 @@ router.get("/admin/platform-settings/public", async (_req, res): Promise<void> =
     paymentMode: "quantity_first",
     defaultCurrency: "XAF",
     supportedCurrencies: "XAF",
+    supportEmail: null,
+    supportPhone: null,
+    supportWhatsapp: null,
+    supportUrl: null,
     updatedAt: null,
   });
 });
@@ -68,11 +72,37 @@ router.get("/admin/platform-settings", async (_req, res): Promise<void> => {
 });
 
 router.patch("/admin/platform-settings", async (req, res): Promise<void> => {
-  const paymentMode = req.body?.paymentMode === "amount_first" ? "amount_first" : "quantity_first";
+  const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+  const cleanOptional = (value: unknown) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed.slice(0, 320) : null;
+  };
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+  if (Object.prototype.hasOwnProperty.call(body, "paymentMode")) {
+    if (body.paymentMode !== "amount_first" && body.paymentMode !== "quantity_first") {
+      res.status(400).json({ error: "Payment mode must be amount_first or quantity_first" });
+      return;
+    }
+    updates.paymentMode = body.paymentMode;
+  }
+
+  for (const field of ["supportEmail", "supportPhone", "supportWhatsapp", "supportUrl"]) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      updates[field] = cleanOptional(body[field]);
+    }
+  }
+
   const [existing] = await db.select().from(platformSettingsTable).limit(1);
   const [settings] = existing
-    ? await db.update(platformSettingsTable).set({ paymentMode, defaultCurrency: "XAF", supportedCurrencies: "XAF", updatedAt: new Date() }).where(eq(platformSettingsTable.id, existing.id)).returning()
-    : await db.insert(platformSettingsTable).values({ paymentMode, defaultCurrency: "XAF", supportedCurrencies: "XAF" }).returning();
+    ? await db.update(platformSettingsTable).set(updates).where(eq(platformSettingsTable.id, existing.id)).returning()
+    : await db.insert(platformSettingsTable).values({
+        paymentMode: "quantity_first",
+        defaultCurrency: "XAF",
+        supportedCurrencies: "XAF",
+        ...updates,
+      }).returning();
   res.json(settings);
 });
 

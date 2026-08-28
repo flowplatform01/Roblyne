@@ -20,6 +20,8 @@ import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { useToast } from '@/hooks/use-toast';
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 export default function CampaignParticipate() {
   const [, params] = useRoute("/campaigns/:id/participate");
@@ -33,6 +35,7 @@ export default function CampaignParticipate() {
   const { data: analytics } = useGetCampaignAnalytics(campaignId);
   const submitMutation = useSubmitCampaignResponse();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
   const countdown = useCountdown(campaign?.endsAt);
   const lifecycleState = getLifecycleState(campaign?.startsAt, campaign?.endsAt, countdown.now);
 
@@ -53,10 +56,10 @@ export default function CampaignParticipate() {
     e.preventDefault();
     if (lifecycleState !== "live") {
       toast({
-        title: lifecycleState === "upcoming" ? "Campaign has not opened yet" : "Campaign has ended",
+        title: lifecycleState === "upcoming" ? t("campaignParticipate.notOpen") : t("campaignParticipate.ended"),
         description: lifecycleState === "upcoming"
-          ? "Please return when this campaign opens."
-          : "This campaign is no longer accepting submissions.",
+          ? t("campaignParticipate.notOpenDescription")
+          : t("campaignParticipate.endedDescription"),
         variant: "destructive",
       });
       return;
@@ -71,7 +74,7 @@ export default function CampaignParticipate() {
     });
 
     if (!isValid) {
-      toast({ title: 'Please fill out all required fields', variant: 'destructive' });
+      toast({ title: t("campaignParticipate.fillRequired"), variant: 'destructive' });
       return;
     }
 
@@ -86,7 +89,7 @@ export default function CampaignParticipate() {
       },
       {
         onSuccess: () => setIsSuccess(true),
-        onError: () => toast({ title: 'Submission failed', description: 'There was a problem. Please try again.', variant: 'destructive' }),
+        onError: () => toast({ title: t("campaignParticipate.failedToSubmit"), description: t("campaignParticipate.failedToSubmitDescription"), variant: 'destructive' }),
       }
     );
   };
@@ -103,6 +106,9 @@ export default function CampaignParticipate() {
   }
 
   if (!campaign) return null;
+
+  const formatMoney = (amount: number | string | null | undefined) =>
+    formatCurrency(amount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
 
   const primaryStyle: React.CSSProperties = (campaign as any).accentColor
     ? { "--primary": hexToHsl((campaign as any).accentColor) } as React.CSSProperties
@@ -355,7 +361,7 @@ export default function CampaignParticipate() {
               <Users className="h-4 w-4 text-amber-400" />
               <span className="text-sm font-bold text-background">
                 <span className="text-amber-400 font-serif text-xl">{participantCount.toLocaleString()}</span>
-                {' '}people have already participated
+                {' '}{t("campaignParticipate.peopleParticipated")}
               </span>
             </div>
           )}
@@ -368,7 +374,7 @@ export default function CampaignParticipate() {
           <div className="container mx-auto px-4 py-10 max-w-3xl">
             <div className="flex items-center gap-3 mb-5">
               <Target className="h-5 w-5 text-amber-600 shrink-0" />
-              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Campaign Progress</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{t("campaignParticipate.progress")}</h2>
               {goalProgressPct !== null && (
                 <span className="ml-auto text-2xl font-serif font-bold text-amber-700">{goalProgressPct}%</span>
               )}
@@ -387,15 +393,15 @@ export default function CampaignParticipate() {
               {totalRevenue != null && (
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-amber-600" />
-                  <span className="text-muted-foreground">Raised:</span>
-                  <span className="font-serif font-bold text-amber-700">${totalRevenue.toLocaleString()}</span>
+                  <span className="text-muted-foreground">{t("campaignParticipate.raised")}:</span>
+                  <span className="font-serif font-bold text-amber-700">{formatMoney(totalRevenue)}</span>
                 </div>
               )}
               {campaign.goalAmount && (
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Goal:</span>
-                  <span className="font-bold">${campaign.goalAmount.toLocaleString()}</span>
+                  <span className="text-muted-foreground">{t("campaignParticipate.goal")}:</span>
+                  <span className="font-bold">{formatMoney(campaign.goalAmount)}</span>
                 </div>
               )}
             </div>
@@ -410,14 +416,12 @@ export default function CampaignParticipate() {
         <div className="rounded-sm overflow-hidden border border-amber-200/60 mb-10">
           <div className="bg-amber-600 px-6 py-3 flex items-center gap-2">
             <Heart className="h-4 w-4 text-white/80 fill-white/30" />
-            <p className="text-xs font-bold uppercase tracking-widest text-white">Why Your Participation Matters</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-white">{t("campaignParticipate.whyMatters")}</p>
           </div>
           <div className="bg-amber-50/60 px-6 py-5">
             <p className="text-amber-900/80 text-sm font-light leading-relaxed">
-              Every response directly shapes the outcome of this campaign. Your contribution is recorded,
-              counted, and reviewed by the organizing team.
-              {campaign.goalAmount && ` Together, participants are working toward a goal of $${campaign.goalAmount.toLocaleString()}.`}
-              {' '}Your voice matters — participate with confidence.
+              {t("campaignParticipate.whyMattersDescription")}
+              {campaign.goalAmount && ` ${t("campaignParticipate.workingToward", { amount: formatMoney(campaign.goalAmount) })}`}
             </p>
           </div>
         </div>
@@ -425,8 +429,8 @@ export default function CampaignParticipate() {
         <Card className="shadow-xl border-border/70 rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
           <div className="h-1.5 w-full bg-amber-500" />
           <CardHeader className="px-8 pt-8 pb-5 border-b border-border/40">
-            <CardTitle className="font-serif text-2xl">Your Contribution</CardTitle>
-            <CardDescription className="font-light">Complete all required fields to participate.</CardDescription>
+            <CardTitle className="font-serif text-2xl">{t("campaignParticipate.yourContribution")}</CardTitle>
+            <CardDescription className="font-light">{t("campaignParticipate.completeRequired")}</CardDescription>
           </CardHeader>
 
           <CardContent className="p-8 bg-card">

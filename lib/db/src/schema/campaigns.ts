@@ -19,7 +19,7 @@ export const campaignsTable = pgTable("campaigns", {
   currentAmount: decimal("current_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   requiresPayment: boolean("requires_payment").notNull().default(false),
   paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   fields: jsonb("fields").notNull().default([]),
   startsAt: timestamp("starts_at"),
   endsAt: timestamp("ends_at"),

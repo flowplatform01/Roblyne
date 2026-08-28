@@ -24,11 +24,14 @@ import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 export default function CampaignDetail() {
   const [match, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id ? parseInt(params.id, 10) : 0;
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("submissions");
@@ -329,7 +332,9 @@ export default function CampaignDetail() {
                   <CardContent>
                     <div className="flex justify-between items-end mb-2">
                       <div className="text-3xl font-bold text-primary">${campaign.currentAmount || 0}</div>
-                      <div className="text-muted-foreground font-medium">Goal: ${campaign.goalAmount}</div>
+                      <div className="text-muted-foreground font-medium">
+                        Goal: {formatCurrency(campaign.goalAmount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
+                      </div>
                     </div>
                     <div className="h-4 w-full bg-muted rounded-full overflow-hidden">
                       <div 

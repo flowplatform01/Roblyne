@@ -23,12 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
-
-const registerSchema = z.object({
-  name: z.string().min(1, "Full name is required"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
-});
+import { useTranslation } from "react-i18next";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -36,6 +31,12 @@ export default function Register() {
   const registerMutation = useRegister();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const registerSchema = z.object({
+    name: z.string().min(1, t("auth.nameRequired")),
+    email: z.string().email(t("auth.emailValidation")),
+    password: z.string().min(8, t("auth.passwordMinLength")),
+  });
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -59,16 +60,16 @@ export default function Register() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           toast({
-            title: "Account created",
-            description: "Welcome to Evenum!",
+             title: t("auth.accountCreated"),
+             description: t("auth.welcomeToEvenum"),
           });
           setLocation("/dashboard");
         },
         onError: (error) => {
           toast({
             variant: "destructive",
-            title: "Registration failed",
-            description: error.data?.error || "There was a problem creating your account.",
+             title: t("auth.registrationFailed"),
+             description: error.data?.error || t("auth.registrationError"),
           });
         },
       }
@@ -96,8 +97,8 @@ export default function Register() {
             <div className="flex justify-center mb-6">
               <EvenumAuthMark />
             </div>
-            <h1 className="text-4xl font-serif font-bold tracking-tight mb-3">Create an Account</h1>
-            <p className="text-muted-foreground text-lg font-light">Start managing professional events and elections.</p>
+             <h1 className="text-4xl font-serif font-bold tracking-tight mb-3">{t("auth.createAccount")}</h1>
+             <p className="text-muted-foreground text-lg font-light">{t("auth.startManaging")}</p>
           </div>
 
           <Card className="border-border shadow-xl bg-card/80 backdrop-blur-sm rounded-sm">
@@ -109,7 +110,7 @@ export default function Register() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Full Name</FormLabel>
+                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.fullName")}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Jane Doe" 
@@ -126,7 +127,7 @@ export default function Register() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Email Address</FormLabel>
+                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.emailAddress")}</FormLabel>
                         <FormControl>
                           <Input 
                             type="email" 
@@ -144,7 +145,7 @@ export default function Register() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Password</FormLabel>
+                         <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.password")}</FormLabel>
                         <FormControl>
                           <Input 
                             type="password" 
@@ -158,7 +159,7 @@ export default function Register() {
                     )}
                   />
                   <Button type="submit" className="w-full h-14 text-lg font-medium mt-4 shadow-md hover:shadow-lg transition-all" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Create Account"}
+                     {registerMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t("auth.createAccountButton")}
                     {!registerMutation.isPending && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
@@ -166,9 +167,9 @@ export default function Register() {
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">
-                Already have an account?{" "}
+                 {t("auth.alreadyHaveAccount")}{" "}
                 <Link href="/login" className="text-primary font-medium hover:underline transition-all">
-                  Sign in
+                   {t("auth.signInLink")}
                 </Link>
               </p>
             </CardFooter>

@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
-import { recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
 
@@ -103,7 +103,7 @@ router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     inviteCode, startsAt, endsAt,
     requiresPayment: requiresPayment ?? false,
     paymentAmount: paymentAmount === undefined || paymentAmount === null ? null : String(paymentAmount),
-    currency: currency ?? "USD",
+    currency: currency ?? await getPlatformCurrency(),
   }).returning();
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
@@ -130,7 +130,7 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.election.orgId, req.session.userId) : null;
-  if (row.election.visibility !== "public" && !viewerRole) {
+  if ((row.election.visibility !== "public" || row.election.status === "draft") && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -426,6 +426,11 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Election not found" }); return; }
+  const viewerRole = req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
+  if (election.visibility === "private" && !viewerRole) {
+    res.status(403).json({ error: "This election is private and is not open to public voting" });
+    return;
+  }
 
   // Validate the complete ballot against the election's current structure.
   // The client enforces these rules for normal users, but the API must also

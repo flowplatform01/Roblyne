@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
-import { recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
 
@@ -96,7 +96,7 @@ router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     goalAmount: goalAmount ? String(goalAmount) : null,
     requiresPayment: requiresPayment ?? false,
     paymentAmount: paymentAmount ? String(paymentAmount) : null,
-    currency: currency ?? "USD",
+    currency: currency ?? await getPlatformCurrency(),
     fields: fields ?? [],
     startsAt, endsAt,
   }).returning();
@@ -123,7 +123,7 @@ router.get("/campaigns/:campaignId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.campaign.orgId, req.session.userId) : null;
-  if (row.campaign.visibility !== "public" && !viewerRole) {
+  if ((row.campaign.visibility !== "public" || row.campaign.status === "draft") && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -186,6 +186,11 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   const { submitterName, submitterEmail, data } = bodyParsed.data;
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
+  const viewerRole = req.session?.userId ? await getOrgRole(campaign.orgId, req.session.userId) : null;
+  if (campaign.visibility === "private" && !viewerRole) {
+    res.status(403).json({ error: "This campaign is private and is not open to public submissions" });
+    return;
+  }
 
   // ── Lifecycle enforcement ───────────────────────────────────────────────
   if (campaign.status !== "active") {
@@ -229,7 +234,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
         entityTitle: campaign.title,
         transactionType: "campaign_response",
         grossAmount: paymentAmount,
-        currency: campaign.currency || "USD",
+        currency: campaign.currency || await getPlatformCurrency(),
         payerName: submitterName,
         payerEmail: submitterEmail,
       }, tx);

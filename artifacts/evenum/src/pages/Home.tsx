@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { useDiscover, useSearch, DiscoveryItemType } from "@workspace/api-client-react";
 import { Loader2, ArrowRight, Vote, CalendarDays, Megaphone, Search, X } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
@@ -38,25 +40,25 @@ export default function Home() {
           <div className="relative z-30 container mx-auto px-4 text-center max-w-4xl py-24 animate-in slide-in-from-bottom-8 duration-700 fade-in delay-150 fill-mode-both">
             <div className="inline-flex mb-8">
               <span className="px-4 py-1.5 border border-primary/40 bg-primary/10 text-primary-foreground/90 text-sm uppercase tracking-widest font-sans font-medium rounded-sm shadow-sm backdrop-blur-md">
-                The Platform for Organized Participation
+                 {t("home.heroBadge")}
               </span>
             </div>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tight mb-8 leading-[1.1] text-card">
-              Elevate your <br/><span className="text-primary italic font-light drop-shadow-md">elections, events & campaigns.</span>
+               {t("home.heroTitle")}
             </h1>
             <p className="text-xl md:text-2xl text-muted/80 mb-12 max-w-2xl mx-auto font-sans font-light leading-relaxed">
-              A unified system built by serious teams for serious organizations. Controlled, precise, confident.
+               {t("home.heroDescription")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Button size="lg" asChild className="h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300">
-                <Link href="/register">Get Started</Link>
+                 <Link href="/register">{t("common.getStarted")}</Link>
               </Button>
               <Button size="lg" variant="outline" asChild className="h-14 px-8 text-lg bg-transparent text-card border-card/30 hover:bg-card/10 hover:border-card/50 hover:text-card transition-all duration-300">
-                <Link href="/login">Sign In</Link>
+                 <Link href="/login">{t("common.signIn")}</Link>
               </Button>
             </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent z-20 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-32 bg-gradient-to-t from-background to-transparent z-20 pointer-events-none" />
         </section>
 
         {/* Discovery Feed */}
@@ -64,9 +66,9 @@ export default function Home() {
           <div className="container mx-auto px-4 relative z-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="max-w-3xl">
-                <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight">Discover Opportunities</h2>
+                 <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight">{t("home.discoverTitle")}</h2>
                 <p className="text-muted-foreground text-xl font-light leading-relaxed">
-                  Browse public elections, register for upcoming events, or participate in open campaigns from trusted organizations.
+                   {t("home.discoverDescription")}
                 </p>
               </div>
               
@@ -76,7 +78,7 @@ export default function Home() {
                   type="text"
                   value={searchQuery}
                   onChange={e => handleSearchChange(e.target.value)}
-                  placeholder="Search by organization or keyword..." 
+                   placeholder={t("home.searchPlaceholder")}
                   className="w-full pl-12 pr-12 py-4 rounded-sm border-2 border-border/50 bg-card shadow-sm focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all font-medium text-lg placeholder:font-light"
                 />
                 {searchQuery && (
@@ -99,13 +101,13 @@ export default function Home() {
               ) : !searchData || searchData.items.length === 0 ? (
                 <div className="text-center py-32 bg-card border border-border/50 rounded-sm shadow-sm">
                   <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-6" />
-                  <h3 className="text-2xl font-serif font-bold mb-3">No results for "{debouncedQuery}"</h3>
-                  <p className="text-muted-foreground text-lg font-light">Try different keywords or browse all items below.</p>
+                   <h3 className="text-2xl font-serif font-bold mb-3">{t("home.noResultsFor", { query: debouncedQuery })}</h3>
+                   <p className="text-muted-foreground text-lg font-light">{t("home.tryDifferentKeywords")}</p>
                 </div>
               ) : (
                 <div className="animate-in fade-in duration-500">
                   <h3 className="text-2xl font-serif font-bold mb-8 text-muted-foreground">
-                    {searchData.total} result{searchData.total !== 1 ? 's' : ''} for "{debouncedQuery}"
+                     {t("home.resultsFor", { count: searchData.total, query: debouncedQuery })}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {searchData.items.map((item: any, i: number) => (
@@ -122,7 +124,7 @@ export default function Home() {
               </div>
             ) : !discoverData ? (
               <div className="text-center py-32 bg-card border border-border/50 rounded-sm shadow-sm">
-                <h3 className="text-2xl font-serif font-bold text-muted-foreground">Unable to load discovery feed</h3>
+                 <h3 className="text-2xl font-serif font-bold text-muted-foreground">{t("home.unableToLoad")}</h3>
               </div>
             ) : (
               <div className="space-y-32">
@@ -131,7 +133,7 @@ export default function Home() {
                   <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <div className="flex items-center gap-4 mb-10">
                       <span className="w-12 h-[2px] bg-primary block"></span>
-                      <h3 className="text-3xl font-serif font-bold">Featured</h3>
+                       <h3 className="text-3xl font-serif font-bold">{t("home.featured")}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                       {discoverData.featured.map((item, i) => (
@@ -148,7 +150,7 @@ export default function Home() {
                   <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <div className="flex items-center gap-4 mb-10">
                       <span className="w-12 h-[2px] bg-primary block"></span>
-                      <h3 className="text-3xl font-serif font-bold">Trending Now</h3>
+                       <h3 className="text-3xl font-serif font-bold">{t("home.trendingNow")}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                       {discoverData.trending.map((item, i) => (
@@ -165,7 +167,7 @@ export default function Home() {
                   <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <div className="flex items-center gap-4 mb-10">
                       <span className="w-12 h-[2px] bg-primary block"></span>
-                      <h3 className="text-3xl font-serif font-bold">Recent Activity</h3>
+                       <h3 className="text-3xl font-serif font-bold">{t("home.recentActivity")}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                       {discoverData.items.map((item, i) => (
@@ -187,9 +189,9 @@ export default function Home() {
             <div className="paper-grain absolute inset-0 z-0 opacity-20 invert" />
             <div className="container mx-auto px-4 relative z-10">
               <div className="text-center max-w-3xl mx-auto mb-20">
-                <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight text-card">Built for Every Organization</h2>
+                 <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight text-card">{t("home.enginesTitle")}</h2>
                 <p className="text-muted/80 text-xl font-light leading-relaxed">
-                  Evenum unifies the tools organizations need to engage their members, manage attendance, and drive participation.
+                   {t("home.enginesDescription")}
                 </p>
               </div>
             
@@ -198,12 +200,12 @@ export default function Home() {
                 <div className="w-16 h-16 bg-primary/20 text-primary rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <Vote className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-serif font-bold mb-4 text-card">Voting & Elections</h3>
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.votingTitle")}</h3>
                 <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
-                  Run secure, professional elections with ranked positions, candidate profiles, and live verifiable results.
+                   {t("home.votingDescription")}
                 </p>
                 <Link href="/register" className="text-primary font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">
-                  Create Election <ArrowRight className="h-4 w-4" />
+                   {t("home.createElection")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
               
@@ -211,12 +213,12 @@ export default function Home() {
                 <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <CalendarDays className="h-8 w-8" />
                 </div>
-                <h3 className="text-2xl font-serif font-bold mb-4 text-card">Events & Ticketing</h3>
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.eventsTitle")}</h3>
                 <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
-                  Manage RSVPs, sell tiered tickets, and check in attendees with QR codes at the door.
+                   {t("home.eventsDescription")}
                 </p>
                 <Link href="/register" className="text-emerald-400 font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">
-                  Host Event <ArrowRight className="h-4 w-4" />
+                   {t("home.hostEvent")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
               
@@ -224,12 +226,12 @@ export default function Home() {
                 <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <Megaphone className="h-8 w-8" />
                 </div>
-                <h3 className="text-2xl font-serif font-bold mb-4 text-card">Structured Campaigns</h3>
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.campaignsTitle")}</h3>
                 <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
-                  Launch donation drives, membership applications, and custom form collections with integrated payments.
+                   {t("home.campaignsDescription")}
                 </p>
                 <Link href="/register" className="text-amber-400 font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">
-                  Launch Campaign <ArrowRight className="h-4 w-4" />
+                   {t("home.launchCampaign")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -242,6 +244,7 @@ export default function Home() {
 }
 
 function DiscoveryCard({ item, featured = false }: { item: any, featured?: boolean }) {
+  const { t } = useTranslation();
   const getTypeIcon = (type: string) => {
     switch(type) {
       case 'election': return <Vote className="h-4 w-4" />;
@@ -281,7 +284,7 @@ function DiscoveryCard({ item, featured = false }: { item: any, featured?: boole
           />
           <div className={`absolute top-4 left-4 z-20 ${getTypeColor(item.type)} px-3 py-1.5 text-xs uppercase tracking-widest font-semibold flex items-center gap-2 shadow-md`}>
             {getTypeIcon(item.type)}
-            <span>{item.type}</span>
+             <span>{t(`home.type${item.type.charAt(0).toUpperCase()}${item.type.slice(1)}`)}</span>
           </div>
         </div>
       ) : (
@@ -292,7 +295,7 @@ function DiscoveryCard({ item, featured = false }: { item: any, featured?: boole
           
           <div className={`absolute top-4 left-4 z-20 ${getTypeColor(item.type)} px-3 py-1.5 text-xs uppercase tracking-widest font-semibold flex items-center gap-2 shadow-md`}>
             {getTypeIcon(item.type)}
-            <span>{item.type}</span>
+             <span>{t(`home.type${item.type.charAt(0).toUpperCase()}${item.type.slice(1)}`)}</span>
           </div>
           <div className="z-10 p-4 bg-background/80 backdrop-blur-sm rounded-full shadow-sm text-foreground/50">
             {getTypeIcon(item.type)}
@@ -328,7 +331,7 @@ function DiscoveryCard({ item, featured = false }: { item: any, featured?: boole
           {item.participantsCount !== undefined && (
             <div className="flex items-center gap-2">
               <span className="font-bold text-foreground">{item.participantsCount}</span> 
-              <span className="font-light text-foreground/60">participants</span>
+               <span className="font-light text-foreground/60">{t("common.participants")}</span>
             </div>
           )}
         </div>

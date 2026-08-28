@@ -13,7 +13,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
-import { recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
 
 const router: IRouter = Router();
 
@@ -113,7 +113,7 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.event.orgId, req.session.userId) : null;
-  if (row.event.visibility !== "public" && !viewerRole) {
+  if ((row.event.visibility !== "public" || row.event.status === "draft") && !viewerRole) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -185,7 +185,7 @@ router.post("/events/:eventId/ticket-types", requireAuth, requireResourceOrgRole
   const { name, description, price, currency, quantity, saleStartsAt, saleEndsAt } = bodyParsed.data;
   const [tt] = await db.insert(ticketTypesTable).values({
     eventId: paramParsed.data.eventId, name, description,
-    price: String(price ?? 0), currency: currency ?? "USD",
+    price: String(price ?? 0), currency: currency ?? await getPlatformCurrency(),
     quantity, saleStartsAt, saleEndsAt,
   }).returning();
   res.status(201).json({ ...tt, price: parseFloat(tt.price) });
@@ -226,6 +226,11 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   const { ticketTypeId, attendeeName, attendeeEmail, inviteCode } = bodyParsed.data;
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+  const viewerRole = req.session?.userId ? await getOrgRole(event.orgId, req.session.userId) : null;
+  if (event.visibility === "private" && !viewerRole) {
+    res.status(403).json({ error: "This event is private and is not open to public registration" });
+    return;
+  }
 
   // ── Lifecycle enforcement ─────────────────────────────────────────────
   if (event.status !== "published") {

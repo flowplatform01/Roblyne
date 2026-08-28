@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, Vote, CreditCard } from "lucide-react";
 import { Link } from "wouter";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 const CURRENCIES = [{ value: "XAF", label: "XAF — Central African CFA franc" }];
 
@@ -48,6 +50,7 @@ export default function CreateElection() {
   const initialOrgId = searchParams.get('orgId') || "";
 
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const createElection = useCreateElection();
   const queryClient = useQueryClient();
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
@@ -83,7 +86,7 @@ export default function CreateElection() {
           endsAt: values.endsAt ? new Date(values.endsAt).toISOString() : undefined,
           requiresPayment: values.requiresPayment,
           paymentAmount: values.requiresPayment && values.paymentAmount ? parseFloat(values.paymentAmount) : undefined,
-          currency: "XAF",
+          currency: values.currency,
         } 
       },
       {
@@ -108,6 +111,7 @@ export default function CreateElection() {
 
   const selectedOrgId = form.watch("orgId");
   const requiresPayment = form.watch("requiresPayment");
+  const currency = form.watch("currency") || "XAF";
   const paymentAmount = Number(form.watch("paymentAmount") || 0);
   const estimatedReceipt = Math.max(0, paymentAmount * 0.95);
 
@@ -365,7 +369,7 @@ export default function CreateElection() {
                            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 self-end">
                              <p className="text-xs text-muted-foreground">Estimated amount your organization receives</p>
                              <p className="text-lg font-semibold text-primary">
-                               XAF {estimatedReceipt.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                                {formatCurrency(estimatedReceipt, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
                              </p>
                            </div>
                         </div>

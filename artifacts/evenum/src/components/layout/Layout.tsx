@@ -2,6 +2,7 @@ import React from 'react';
 import { Navbar } from './Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { SupportFooter } from './SupportFooter';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth();
@@ -20,6 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col min-w-0">
         {children}
       </main>
+        <SupportFooter />
     </div>
   );
 }

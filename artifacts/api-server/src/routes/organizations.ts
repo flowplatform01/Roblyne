@@ -82,7 +82,19 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const orgId = parsed.data.orgId;
 
-  const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+  const [org] = await db.select({
+    id: organizationsTable.id,
+    name: organizationsTable.name,
+    slug: organizationsTable.slug,
+    description: organizationsTable.description,
+    logoUrl: organizationsTable.logoUrl,
+    coverImageUrl: organizationsTable.coverImageUrl,
+    heroImageUrl: organizationsTable.heroImageUrl,
+    website: organizationsTable.website,
+    accentColor: organizationsTable.accentColor,
+    theme: organizationsTable.theme,
+    createdAt: organizationsTable.createdAt,
+  }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
 
   // Run all count queries and recent activity queries in parallel

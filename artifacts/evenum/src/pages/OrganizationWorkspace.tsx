@@ -43,6 +43,8 @@ import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
 
 export default function OrganizationWorkspace() {
   const [match, params] = useRoute("/organizations/:id");
@@ -853,7 +855,7 @@ function EngineList({
                   {type === 'campaign' && (
                     <>
                       <span><strong className="text-foreground">{item.submissionsCount || 0}</strong> submissions</span>
-                      {item.goalAmount && <span>Goal: ${item.goalAmount}</span>}
+                        {item.goalAmount && <span>Goal: {formatCurrencyValue(item.goalAmount, item.currency || "XAF")}</span>}
                     </>
                   )}
                 </div>
@@ -878,8 +880,9 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
     query: { enabled: !!orgId, queryKey: getGetOrgAnalyticsQueryKey(orgId) },
   });
 
+  const { i18n } = useTranslation();
   const formatCurrency = (v: number, currency = 'XAF') =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(v || 0);
+    formatCurrencyValue(v, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
 
   const formatPct = (v: number | null | undefined) =>
     v != null ? `${v.toFixed(1)}%` : '—';
@@ -1051,7 +1054,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                       {formatPct(ev.checkInRate)}
                       <span className="text-xs text-muted-foreground ml-1">({ev.checkedIn || 0} in)</span>
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ev.revenue || 0)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ev.revenue || 0, ev.currency || electionCurrency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1130,6 +1133,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 function FinanceSection({ orgId }: { orgId: number }) {
   const { data: summary, isLoading: isLoadingSummary } = useGetOrgFinanceSummary(orgId, { query: { enabled: !!orgId, queryKey: getGetOrgFinanceSummaryQueryKey(orgId) } });
   const { toast } = useToast();
+  const { i18n } = useTranslation();
   const queryClient = useQueryClient();
   const requestWithdrawal = useRequestOrgWithdrawal();
   const [payoutMethod, setPayoutMethod] = useState<"bank_transfer" | "mobile_money">("mobile_money");
@@ -1146,7 +1150,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const { data: settlements, isLoading: isLoadingSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
 
   const formatCurrency = (amount: number, currency: string = "XAF") => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    return formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
   };
 
   const getSettlementBadge = (status: string) => {

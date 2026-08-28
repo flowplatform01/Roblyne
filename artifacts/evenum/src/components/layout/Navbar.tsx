@@ -45,7 +45,7 @@ export function Navbar() {
       onError: () => {
         toast({
           title: t('nav.logOut'),
-          description: "There was a problem logging out.",
+           description: t('common.tryAgain'),
           variant: "destructive"
         });
       }
@@ -117,7 +117,7 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/settings" className="cursor-pointer flex items-center w-full">
                     <User className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                     <span>{t('settings.title')}</span>
                   </Link>
                 </DropdownMenuItem>
                 {user?.isPlatformAdmin && (
@@ -126,7 +126,7 @@ export function Navbar() {
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="cursor-pointer flex items-center w-full text-primary">
                         <ShieldCheck className="mr-2 h-4 w-4" />
-                        <span>Platform Admin</span>
+                         <span>{t('admin.platformAdmin')}</span>
                       </Link>
                     </DropdownMenuItem>
                   </>

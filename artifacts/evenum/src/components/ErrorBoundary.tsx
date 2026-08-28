@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { reportClientDiagnostic } from '@/lib/diagnostics';
+import i18n from '@/i18n';
 
 interface Props {
   children: ReactNode;
@@ -39,15 +40,15 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4 text-center">
-          <h1 className="text-xl font-semibold text-foreground">Something went wrong</h1>
+          <h1 className="text-xl font-semibold text-foreground">{i18n.t("common.somethingWentWrong")}</h1>
           <p className="text-sm text-muted-foreground max-w-sm">
-            An unexpected error occurred. Refresh the page to try again.
+            {i18n.t("errors.unexpectedRefresh")}
           </p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Refresh page
+            {i18n.t("errors.refreshPage")}
           </button>
         </div>
       );

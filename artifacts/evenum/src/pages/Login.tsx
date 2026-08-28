@@ -23,11 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
+import { useTranslation } from "react-i18next";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -35,6 +31,11 @@ export default function Login() {
   const login = useLogin();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const loginSchema = z.object({
+    email: z.string().email(t("auth.emailValidation")),
+    password: z.string().min(1, t("auth.passwordRequired")),
+  });
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -57,16 +58,16 @@ export default function Login() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           toast({
-            title: "Welcome back",
-            description: "You have successfully signed in.",
+             title: t("auth.welcomeBack"),
+             description: t("auth.signInSuccess"),
           });
           setLocation("/dashboard");
         },
         onError: (error) => {
           toast({
             variant: "destructive",
-            title: "Sign in failed",
-            description: error.data?.error || "Please check your credentials and try again.",
+             title: t("auth.signInFailed"),
+             description: error.data?.error || t("auth.checkCredentials"),
           });
         },
       }
@@ -94,8 +95,8 @@ export default function Login() {
             <div className="flex justify-center mb-6">
               <EvenumAuthMark />
             </div>
-            <h1 className="text-4xl font-serif font-bold tracking-tight mb-3">Sign in to Evenum</h1>
-            <p className="text-muted-foreground text-lg font-light">Enter your details to access your workspace.</p>
+             <h1 className="text-4xl font-serif font-bold tracking-tight mb-3">{t("auth.signInToEvenum")}</h1>
+             <p className="text-muted-foreground text-lg font-light">{t("auth.enterDetails")}</p>
           </div>
 
           <Card className="border-border shadow-xl bg-card/80 backdrop-blur-sm rounded-sm">
@@ -107,7 +108,7 @@ export default function Login() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Email Address</FormLabel>
+                        <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.emailAddress")}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="name@example.com" 
@@ -125,9 +126,9 @@ export default function Login() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center justify-between">
-                          <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Password</FormLabel>
+                          <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.password")}</FormLabel>
                           <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-                            Forgot password?
+                            {t("auth.forgotPassword")}
                           </Link>
                         </div>
                         <FormControl>
@@ -143,7 +144,7 @@ export default function Login() {
                     )}
                   />
                   <Button type="submit" className="w-full h-14 text-lg font-medium mt-4 shadow-md hover:shadow-lg transition-all" disabled={login.isPending}>
-                    {login.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign In"}
+                     {login.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t("auth.signInButton")}
                     {!login.isPending && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
@@ -151,9 +152,9 @@ export default function Login() {
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">
-                Don't have an account?{" "}
+                 {t("auth.noAccount")}{" "}
                 <Link href="/register" className="text-primary font-medium hover:underline transition-all">
-                  Create one now
+                   {t("auth.createAccount")}
                 </Link>
               </p>
             </CardFooter>

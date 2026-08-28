@@ -1,0 +1,1232 @@
+EVENUM — CONTINUATION: SENIOR PRODUCT ENGINEERING GAP AUDIT, BILINGUAL COMPLETENESS, ADMIN EXPERIENCE & FINAL REFINEMENT
+
+IMPORTANT — READ THIS FIRST
+
+This is NOT a request to rebuild Evenum.
+
+This is NOT a request to repeat previous production-hardening work.
+
+This is NOT a generic "make the application production-ready" prompt.
+
+Evenum has already gone through extensive development, production hardening, performance work, PWA work, sharing improvements, voting UX refinement, financial-flow refinement, scalability work, reliability work, and multiple other major implementation phases.
+
+A substantial amount of work has already been completed.
+
+Your job now is to CONTINUE FROM THE CURRENT IMPLEMENTATION and perform a serious senior-level engineering + product + UX investigation to identify genuine remaining gaps, inconsistencies, incomplete implementations, weak experiences, missing administrative capabilities, and cross-system issues that previous passes may have missed.
+
+DO NOT blindly rewrite things.
+
+DO NOT assume something is missing merely because you personally would design it differently.
+
+DO NOT replace working architecture without a strong reason.
+
+DO NOT create regressions.
+
+DO NOT turn this into another cosmetic redesign.
+
+You must first understand what already exists, what has already been implemented, and what the latest development state is.
+
+============================================================
+1. CONTINUE FROM THE LATEST IMPLEMENTATION
+============================================================
+
+Before changing anything:
+
+Read the latest prompt / latest relevant text file in the attached assets folder.
+
+Treat that latest prompt and the current codebase as the continuation point of the project.
+
+Understand:
+
+- what has already been implemented
+- what architecture already exists
+- what production-hardening work has already been completed
+- what previous agents changed
+- what product decisions have already been established
+- what is intentionally configurable
+- what is intentionally optional
+- what must not be changed
+- what is already considered complete
+
+Do not repeat previous work simply because it appears in an earlier prompt.
+
+The purpose of this pass is to discover what remains.
+
+Think like the senior engineer inheriting a large production system from another excellent engineering team.
+
+You are responsible for discovering what they may have missed.
+
+============================================================
+2. CORE MINDSET — THIS IS AN ENGINEERING + PRODUCT AUDIT
+============================================================
+
+Do not limit the investigation to:
+
+"Does the code run?"
+
+That is insufficient.
+
+For every important area, ask:
+
+- Does it work?
+- Is the UX understandable?
+- Is the UX complete?
+- Is the terminology appropriate?
+- Is the state management correct?
+- Are loading, empty, error, success, disabled and expired states handled?
+- Are edge cases handled?
+- Are permissions correct?
+- Are role boundaries correct?
+- Is the experience consistent?
+- Is the feature discoverable?
+- Is the feature manageable by the appropriate administrator?
+- Is the feature properly represented in both frontend and backend?
+- Is the feature correctly represented in English and French?
+- Are financial values represented correctly?
+- Are currencies consistent?
+- Does the experience work on mobile?
+- Does it work as a PWA?
+- Does it work on iOS?
+- Does it work on Android?
+- Does it work on desktop?
+- Does it work after refresh?
+- Does it work after navigation?
+- Does it work after session changes?
+- Does it work with empty datasets?
+- Does it work with large datasets?
+- Does it work with unusual inputs?
+- Does it work when something fails?
+- Can an administrator actually operate and support the platform?
+- Can users recover from mistakes?
+- Are failures observable and traceable?
+- Are there hidden dead ends?
+- Are there unfinished-looking areas?
+- Are there inconsistencies between public experiences and management experiences?
+
+Think beyond implementation.
+
+Think about the entire product.
+
+============================================================
+3. BILINGUAL EXPERIENCE — MAJOR AUDIT
+============================================================
+
+This is one of the most important remaining areas.
+
+Evenum is intended to be genuinely bilingual:
+
+ENGLISH + FRENCH.
+
+The current implementation appears to have English significantly more complete than French.
+
+This must be investigated thoroughly.
+
+DO NOT merely check whether a language toggle exists.
+
+The existence of a language selector does NOT mean the application is bilingual.
+
+Perform a complete bilingual audit.
+
+When French is selected, the entire relevant experience should naturally operate in French.
+
+Audit:
+
+- Public homepage
+- Discovery
+- Voting
+- Candidate experiences
+- Position experiences
+- Elections
+- Events
+- Campaigns
+- Organizations
+- Tickets
+- Payment flows
+- Payment summaries
+- Confirmation screens
+- Success screens
+- Waiting screens
+- Results
+- Sharing
+- Public profiles
+- Forms
+- Validation messages
+- Error messages
+- Empty states
+- Loading states
+- Notifications
+- Toasts
+- Modals
+- Dialogues
+- Buttons
+- Navigation
+- Tabs
+- Menus
+- Filters
+- Search
+- Pagination
+- Date/time labels
+- Status labels
+- Financial labels
+- Receipts
+- Transaction history
+- Dashboard interfaces
+- Organization management interfaces
+- Platform administration interfaces
+- Support interfaces
+- PWA installation/help messaging
+- Offline states
+- Browser-facing messages
+- System-generated UI
+- Accessibility-related text
+- Any dynamically generated UI text
+
+Also inspect text that may not be obvious:
+
+- hardcoded strings
+- fallback strings
+- validation schemas
+- server-generated messages
+- API error messages surfaced to users
+- confirmation text
+- permission messages
+- status messages
+- notification templates
+- email-related text
+- receipt text
+- PDF/export labels
+- metadata where applicable
+- share-related content where applicable
+
+IMPORTANT:
+
+Do not "fix" French by hiding content.
+
+Do not simply hide English strings.
+
+The correct behaviour is to provide an appropriate French equivalent wherever the content is user-facing and should be translated.
+
+If some content is intentionally proper-noun, organization-defined, campaign-defined, candidate-defined, or user-generated content, do not incorrectly translate that content.
+
+Distinguish between:
+
+PLATFORM UI
+vs.
+USER/ORGANIZATION CONTENT.
+
+The platform UI must respect the selected language.
+
+Organization-created content should remain exactly as authored unless the product explicitly supports multilingual organization content.
+
+Also inspect language persistence.
+
+If a user selects French:
+
+- the preference should persist appropriately
+- navigation should not unexpectedly revert to English
+- refresh should not unexpectedly revert
+- PWA sessions should respect the preference
+- public experiences should behave consistently
+- authenticated experiences should behave consistently
+
+The language experience must feel native rather than like English with a few translated labels.
+
+============================================================
+4. LANGUAGE NEUTRALITY
+============================================================
+
+Evenum should not behave as though English is the "real" language and French is an optional translation layer.
+
+Both languages must be treated as first-class experiences.
+
+Check:
+
+- layout expansion caused by French text
+- button widths
+- card layouts
+- modal sizes
+- navigation
+- mobile layouts
+- truncation
+- text overflow
+- wrapping
+- table layouts
+- dashboards
+- charts
+- receipts
+- notifications
+- PWA screens
+
+French text may be longer than English.
+
+Ensure layouts adapt naturally rather than breaking.
+
+Do not hardcode English-oriented dimensions that cause French UI to overflow.
+
+============================================================
+5. PLATFORM ADMINISTRATION — MAJOR PRODUCT GAP AUDIT
+============================================================
+
+Perform a serious review of the Platform Admin experience.
+
+Do NOT assume that an admin dashboard is complete merely because it contains overview cards, charts, metrics, or tables.
+
+Ask:
+
+"If I am actually operating Evenum as a platform and something goes wrong, do I have the tools I need to understand and resolve it?"
+
+The Platform Admin should have a professional operational experience.
+
+Investigate whether the platform administrator can appropriately manage and monitor the platform.
+
+Review areas such as:
+
+- platform overview
+- organizations
+- users
+- platform activity
+- elections
+- events
+- campaigns
+- voting activity
+- payments
+- transactions
+- financial visibility
+- platform configuration
+- supported currencies
+- payment configuration
+- participation configuration
+- public resources
+- moderation where appropriate
+- support operations
+- system health where appropriate
+- auditability
+- operational visibility
+- failed operations
+- suspicious/inconsistent states
+- platform-level settings
+- feature configuration
+- language configuration
+- branding/configuration
+- support contact configuration
+- platform-wide defaults
+
+Do NOT add random admin features just to make the dashboard bigger.
+
+Every administrative capability must have a legitimate operational purpose.
+
+The question is:
+
+"Would the platform operator genuinely need this to operate Evenum professionally?"
+
+If yes and it is missing, investigate and implement appropriately.
+
+============================================================
+6. ADMIN EXPERIENCE — NOT JUST FUNCTIONALITY
+============================================================
+
+Evaluate the Platform Admin UX itself.
+
+Ask:
+
+Is this actually a professional administration product?
+
+Or does it merely expose backend functionality through a dashboard?
+
+Review:
+
+- information hierarchy
+- navigation
+- discoverability
+- terminology
+- tables
+- filters
+- search
+- detail pages
+- action placement
+- confirmation flows
+- destructive actions
+- bulk actions where appropriate
+- status visibility
+- loading states
+- empty states
+- error states
+- success feedback
+- audit visibility
+- responsiveness
+- mobile usability where appropriate
+- desktop usability
+- accessibility
+- clarity of operational actions
+
+Do not redesign everything.
+
+Refine where the existing experience is weak.
+
+============================================================
+7. ORGANIZATION WORKSPACE / OPERATOR EXPERIENCE
+============================================================
+
+Perform the same investigation for organization-facing management.
+
+Ask:
+
+Can an organization actually operate its Evenum presence professionally?
+
+Review:
+
+- organization profile
+- organization settings
+- elections
+- positions
+- candidates
+- voting configuration
+- events
+- campaigns
+- payments
+- financial visibility
+- participants
+- results
+- sharing
+- branding
+- language-related configuration
+- public profile
+- support/contact configuration
+- exports
+- reports
+- activity/history
+- statuses
+- lifecycle management
+
+Investigate whether there are features that technically exist but are difficult to discover.
+
+Investigate whether important actions are hidden.
+
+Investigate whether an organization can understand what is happening without needing developer knowledge.
+
+============================================================
+8. TERMINOLOGY CLEANUP — REMOVE INTERNAL DEVELOPMENT LANGUAGE
+============================================================
+
+The word:
+
+"ENGINE"
+
+must be treated as an internal development/architecture term unless there is a legitimate user-facing reason for it.
+
+Review the entire application.
+
+Identify places where internal engineering terminology is exposed to:
+
+- organizations
+- operators
+- platform administrators
+- participants
+- candidates
+- public users
+
+Examples:
+
+"Manager Engine"
+"Payment Engine"
+"Voting Engine"
+"Campaign Engine"
+etc.
+
+Do not expose internal architectural concepts merely because they exist in the code.
+
+Replace inappropriate public-facing terminology with natural product language.
+
+The UI should speak in terms of:
+
+- Manage
+- Settings
+- Payments
+- Voting
+- Campaigns
+- Events
+- Organization
+- Configuration
+- Activity
+- Reports
+- etc.
+
+Use the correct terminology according to context.
+
+Do NOT blindly replace every occurrence of "engine".
+
+Some internal code may legitimately use the term.
+
+The goal is:
+
+INTERNAL ARCHITECTURE ≠ PUBLIC PRODUCT LANGUAGE.
+
+============================================================
+9. CURRENCY / FINANCIAL CONSISTENCY AUDIT
+============================================================
+
+Perform a complete financial-display audit.
+
+There have been observations of unexpected currency representations in administrative interfaces, including dollar ($) representations where XAF should be expected.
+
+Investigate this thoroughly.
+
+Do NOT assume it is merely a visual bug.
+
+Trace the source.
+
+Determine whether currency comes from:
+
+- hardcoded UI
+- database defaults
+- locale
+- formatting utilities
+- platform configuration
+- organization configuration
+- payment configuration
+- environment variables
+- seed data
+- fallback logic
+- admin configuration
+- browser locale
+
+Ensure currency is semantically correct throughout the system.
+
+Check:
+
+- organization dashboards
+- platform admin
+- payments
+- transactions
+- voting payments
+- campaign payments
+- event payments
+- receipts
+- reports
+- exports
+- summaries
+- analytics
+- charts
+- participant-facing screens
+
+XAF must not unexpectedly become USD.
+
+Do not hardcode XAF everywhere if the architecture already supports platform-controlled currencies.
+
+Respect the established currency governance architecture.
+
+If XAF is the configured/default operational currency, it must be represented consistently where applicable.
+
+Investigate the root cause instead of patching individual screens.
+
+============================================================
+10. FINANCIAL DATA INTEGRITY
+============================================================
+
+Perform a serious audit of whether financial actions are actually recorded correctly.
+
+For example:
+
+A participant completes a payment.
+
+Ask:
+
+- Is the transaction persisted?
+- Is its status correct?
+- Is it associated with the correct organization?
+- Is it associated with the correct resource?
+- Is it associated with the correct participant?
+- Is the amount correct?
+- Is the currency correct?
+- Is the payment state distinguishable from a merely initiated transaction?
+- Is it visible where it should be visible?
+- Does the organization dashboard reflect it?
+- Does the platform admin have appropriate visibility?
+- Does the transaction history reflect it?
+- Does a failed payment avoid being recorded as successful?
+- Does a cancelled payment remain distinguishable?
+- Does a pending payment remain pending?
+- Can duplicate processing occur?
+- Is the system idempotent where necessary?
+
+The objective is not to redesign the payment gateway.
+
+The objective is to verify that Evenum's internal financial state is trustworthy.
+
+If external payment integration is not currently active, do not invent fake production behaviour.
+
+Instead verify that the internal architecture is correctly prepared for real payment events.
+
+============================================================
+11. DISCOVERY / PUBLIC EXPERIENCE AUDIT
+============================================================
+
+Investigate the discovery experience across all pillars.
+
+Do not only test voting.
+
+Check:
+
+- Events
+- Elections
+- Campaigns
+- Organizations
+- Candidates
+- Public profiles
+- Results
+- other public resources
+
+Look for:
+
+- dead ends
+- broken cards
+- inaccessible public resources
+- inconsistent metadata
+- incorrect links
+- broken navigation
+- missing loading states
+- missing empty states
+- unexpected runtime errors
+- language inconsistencies
+- sharing inconsistencies
+- mobile issues
+
+A resource that can technically exist but cannot naturally be discovered or reached through the product may represent a real UX gap.
+
+============================================================
+12. SUPPORT EXPERIENCE
+============================================================
+
+Evenum needs an appropriate support/contact experience.
+
+Investigate whether users have a clear way to get help.
+
+The Platform Admin should be able to configure appropriate support contact information.
+
+Where appropriate, this may include:
+
+- support phone number
+- WhatsApp contact
+- support email
+- help/contact destination
+
+Do not overbuild a ticketing system unless the existing architecture calls for it.
+
+The objective is simple:
+
+A user who encounters a problem should know how to contact the appropriate support channel.
+
+If WhatsApp is configured as the support channel, ensure the generated link is valid and opens naturally on supported devices.
+
+Do not hardcode personal numbers.
+
+Make this configurable by the appropriate platform administrator.
+
+============================================================
+13. USER EXPERIENCE QUALITY AUDIT
+============================================================
+
+Perform a real product UX audit.
+
+Do not focus only on code correctness.
+
+Look at:
+
+- first impression
+- navigation
+- hierarchy
+- clarity
+- feedback
+- transitions
+- loading
+- errors
+- empty states
+- confirmation
+- success
+- destructive actions
+- mobile interactions
+- touch targets
+- typography
+- spacing
+- consistency
+- accessibility
+- visual hierarchy
+- language adaptation
+- responsive behaviour
+
+Ask:
+
+"Would a normal person understand what to do here without technical knowledge?"
+
+Ask:
+
+"Does this interface feel like a finished professional product?"
+
+Ask:
+
+"Is any important action confusing, hidden, unnecessarily difficult, or visually weak?"
+
+============================================================
+14. DO NOT CONFUSE INTERNAL AND EXTERNAL CONTENT
+============================================================
+
+Be extremely careful about the distinction between:
+
+Platform UI
+Organization-created content
+Candidate-created content
+Campaign-created content
+Event-created content
+User-generated content
+Internal developer terminology
+
+Do not translate, rewrite, hide, or alter organization/user-created content simply because the platform language changed.
+
+Do not expose internal technical concepts.
+
+The application must intelligently distinguish between these layers.
+
+============================================================
+15. VISUAL / FRONTEND QUALITY
+============================================================
+
+The frontend must not be treated as secondary to backend correctness.
+
+Review:
+
+- public experiences
+- organization workspace
+- platform admin
+- discovery
+- voting
+- event experiences
+- campaign experiences
+- candidate experiences
+- payment experiences
+
+The question is not:
+
+"Does the feature exist?"
+
+The question is:
+
+"Is the feature presented professionally?"
+
+Improve only where there is a genuine deficiency.
+
+Do not introduce unnecessary redesign.
+
+Do not create visual inconsistency with the established Evenum design system.
+
+============================================================
+16. OPERATIONAL COMPLETENESS
+============================================================
+
+For important features, verify the full lifecycle.
+
+For example:
+
+CREATE
+→ CONFIGURE
+→ PUBLISH
+→ DISCOVER
+→ PARTICIPATE
+→ COMPLETE
+→ REVIEW
+→ REPORT
+→ SHARE
+→ ARCHIVE / END
+
+Check whether every important lifecycle has:
+
+- appropriate states
+- appropriate permissions
+- appropriate UI
+- appropriate feedback
+- appropriate visibility
+- appropriate expiration handling
+- appropriate administrative control
+
+Look for "half-built lifecycle" problems.
+
+A feature should not simply work in the happy path.
+
+============================================================
+17. STATE AND ERROR EXPERIENCE
+============================================================
+
+Audit all major states:
+
+- Loading
+- Empty
+- Success
+- Error
+- Pending
+- Disabled
+- Expired
+- Cancelled
+- Archived
+- Unauthorized
+- Forbidden
+- Offline
+- Retry
+- Partial failure
+
+Do not allow raw technical errors to become the user experience.
+
+Especially investigate:
+
+- runtime overlays
+- unhandled exceptions
+- plugin/runtime errors
+- blank screens
+- broken modals
+- failed navigation
+- failed async operations
+- failed API requests
+
+Where an error occurs, users should receive a meaningful product-level response.
+
+At the same time, the underlying technical error must remain observable for developers/operators.
+
+============================================================
+18. OBSERVABILITY AND TRACEABILITY
+============================================================
+
+A major requirement:
+
+When something fails, the team must be able to determine WHAT failed and WHERE it failed.
+
+Do not accept a generic:
+
+"Runtime Error"
+
+without useful diagnostic context.
+
+Review the application's error handling and observability architecture.
+
+Where appropriate, errors should contain:
+
+- unique error/reference ID
+- timestamp
+- operation/context
+- route or feature
+- environment
+- correlation/request ID
+- useful diagnostic metadata
+- safe user-facing message
+
+Sensitive information must never be exposed to end users.
+
+The developer/operator side should have enough information to trace failures.
+
+The objective is:
+
+USER sees:
+"Something went wrong. Please try again."
+
+OPERATOR/ENGINEER can determine:
+"Exactly what failed, where, under what operation, and why."
+
+============================================================
+19. RESPONSIVENESS AND DEVICE QUALITY
+============================================================
+
+Review the application across:
+
+- iPhone/iOS Safari
+- Android Chrome
+- desktop browsers
+- tablet-sized layouts
+- installed PWA mode
+
+Do not assume desktop responsiveness automatically means mobile quality.
+
+Check:
+
+- navigation
+- modals
+- forms
+- tables
+- dashboards
+- charts
+- voting flows
+- sharing
+- PWA behaviour
+- language switching
+- payment screens
+- public pages
+
+============================================================
+20. DO NOT OVERENGINEER
+============================================================
+
+This is critical.
+
+Do not add:
+
+- unnecessary abstractions
+- unnecessary dependencies
+- unnecessary services
+- unnecessary configuration
+- unnecessary database complexity
+- unnecessary UI
+- unnecessary admin controls
+
+Every change must have a reason.
+
+Prefer:
+
+SIMPLE + ROBUST + MAINTAINABLE
+
+over:
+
+COMPLEX + IMPRESSIVE + FRAGILE.
+
+============================================================
+21. REGRESSION SAFETY
+============================================================
+
+Before changing anything, understand dependencies.
+
+Do not break:
+
+- authentication
+- authorization
+- voting
+- candidates
+- positions
+- elections
+- events
+- campaigns
+- payments
+- financial architecture
+- discovery
+- sharing
+- PWA
+- caching
+- offline behaviour
+- Redis/BullMQ integrations where already implemented
+- realtime functionality
+- bilingual functionality
+- organization workflows
+- platform administration
+
+Every improvement must preserve existing behaviour unless the existing behaviour is demonstrably incorrect.
+
+============================================================
+22. TESTING
+============================================================
+
+Use the strongest practical testing approach available in the environment.
+
+Where appropriate, use:
+
+- Playwright
+- browser automation
+- API tests
+- integration tests
+- unit tests
+- database checks
+- responsive testing
+- language-switch testing
+- lifecycle testing
+- permission testing
+- failure testing
+
+Do not only test the happy path.
+
+Test realistic scenarios.
+
+Examples:
+
+- zero candidates
+- one candidate
+- many candidates
+- many positions
+- large event
+- expired election
+- completed campaign
+- unpublished resource
+- unauthorized user
+- organization admin
+- platform admin
+- French user
+- English user
+- mobile user
+- PWA user
+- offline/poor network
+- failed API
+- failed payment
+- pending payment
+- repeated request
+- refresh during operation
+- browser back/forward
+- deep link
+- shared link
+- expired link
+- empty dashboard
+- large dashboard dataset
+
+============================================================
+23. PERFORMANCE — ONLY WHERE A REAL GAP EXISTS
+============================================================
+
+Do not randomly optimize.
+
+Investigate real bottlenecks.
+
+Pay attention to:
+
+- unnecessary API calls
+- duplicate requests
+- repeated database queries
+- N+1 queries
+- unnecessary rerenders
+- oversized payloads
+- slow dashboard queries
+- large public pages
+- repeated data fetching
+- poor cache usage
+- unnecessary loading
+- expensive calculations
+- inefficient search/filtering
+
+If something is already performant, leave it alone.
+
+============================================================
+24. DATABASE / BACKEND INTEGRITY
+============================================================
+
+Inspect important data relationships and lifecycle integrity.
+
+Look for:
+
+- orphaned records
+- inconsistent statuses
+- missing foreign-key relationships
+- invalid states
+- race conditions
+- duplicate operations
+- non-idempotent mutations
+- inconsistent transaction states
+- stale cached data
+- incorrect authorization boundaries
+
+Do not modify schemas unnecessarily.
+
+Only make structural changes when they solve a genuine integrity or operational problem.
+
+============================================================
+25. ADMIN SHOULD BE ABLE TO OPERATE THE PRODUCT
+============================================================
+
+Ask this question throughout the audit:
+
+"If I am the person responsible for Evenum tomorrow and a real customer reports a problem, can I actually investigate and handle it from the product?"
+
+If the answer is no because a necessary operational capability is missing, identify it.
+
+Examples may include:
+
+- visibility
+- status inspection
+- transaction lookup
+- user lookup
+- organization lookup
+- activity history
+- error reference
+- configuration inspection
+- support configuration
+- operational controls
+
+Do not give administrators dangerous unrestricted powers.
+
+Use appropriate permissions, confirmations, auditability and safeguards.
+
+============================================================
+26. PRODUCT MATURITY TEST
+============================================================
+
+At the end of the investigation, ask:
+
+"If this were a major technology company releasing a product used by thousands or millions of people, what would an experienced product engineer still consider embarrassing, confusing, incomplete, fragile, or operationally dangerous?"
+
+Find those issues.
+
+Then ask:
+
+"Is this actually a problem, or am I inventing work?"
+
+Only implement genuine improvements.
+
+============================================================
+27. IMPLEMENTATION RULE
+============================================================
+
+Do not produce a long theoretical report and stop.
+
+Investigate.
+
+Identify.
+
+Prioritize.
+
+Implement.
+
+Test.
+
+Verify.
+
+Fix regressions.
+
+Retest.
+
+For each issue:
+
+1. Reproduce or establish evidence.
+2. Determine the root cause.
+3. Decide whether it is actually a defect/gap.
+4. Determine the smallest robust solution.
+5. Implement it.
+6. Test it.
+7. Verify adjacent flows.
+8. Check English/French implications.
+9. Check responsive implications.
+10. Check admin/public implications where relevant.
+
+============================================================
+28. PRIORITY OF THIS PASS
+============================================================
+
+The highest-priority areas for this continuation are:
+
+1. COMPLETE ENGLISH/FRENCH BILINGUAL EXPERIENCE
+2. PLATFORM ADMIN CAPABILITY AND UX
+3. ORGANIZATION ADMIN/OPERATOR UX
+4. INTERNAL "ENGINE" TERMINOLOGY LEAKAGE
+5. CURRENCY / FINANCIAL DISPLAY CONSISTENCY
+6. FINANCIAL DATA VISIBILITY AND INTEGRITY
+7. SUPPORT / CONTACT EXPERIENCE
+8. PUBLIC DISCOVERY AND RESOURCE ACCESSIBILITY
+9. ERROR HANDLING + OBSERVABILITY
+10. GENERAL PRODUCT/UX GAPS DISCOVERED DURING INVESTIGATION
+
+But do not restrict yourself only to these items.
+
+These are the areas already observed.
+
+Your job is also to discover related gaps that naturally accompany them.
+
+============================================================
+29. FINAL STANDARD
+============================================================
+
+Do not approach this as:
+
+"Fix the things the user mentioned."
+
+Approach it as:
+
+"The user has identified several symptoms. Determine the underlying product, engineering, UX, architecture, and operational gaps associated with those symptoms."
+
+Do not patch symptoms if a systemic solution is appropriate.
+
+Do not make broad changes if a small targeted fix is sufficient.
+
+Do not leave known gaps simply because they were not explicitly listed.
+
+At the same time, do not invent unnecessary work.
+
+The objective is a mature, professional Evenum platform.
+
+Not a demo.
+
+Not an MVP.
+
+Not a prototype.
+
+Not a dashboard that merely looks complete.
+
+A platform that can actually be operated, supported, understood, maintained, and used professionally.
+
+============================================================
+30. COMPLETION CRITERIA
+============================================================
+
+This pass is complete only when:
+
+- English and French are both treated as first-class experiences.
+- No major user-facing platform UI unnecessarily falls back to English when French is selected.
+- French layouts remain visually correct.
+- Platform administration is genuinely operationally useful.
+- Organization administration is genuinely usable.
+- Internal engineering terminology is not exposed unnecessarily.
+- Currency representation is semantically correct.
+- Financial state is trustworthy and observable.
+- Support/contact pathways exist where appropriate.
+- Public resources are naturally discoverable.
+- Major lifecycle states are coherent.
+- Error states are professional.
+- Technical failures are traceable.
+- The frontend is not neglected.
+- The backend is not neglected.
+- Mobile and PWA experiences remain stable.
+- Existing production functionality continues working.
+- No unnecessary architectural complexity is introduced.
+- Genuine gaps discovered during the audit are addressed.
+- Tests have been performed against the important affected flows.
+- No obvious unfinished or inconsistent areas remain.
+
+============================================================
+FINAL INSTRUCTION
+
+Take this seriously as the FINAL SENIOR-LEVEL CONTINUATION PASS.
+
+The previous engineering work is valuable and should be preserved.
+
+Do not restart the project.
+
+Do not rewrite Evenum.
+
+Do not blindly "improve everything."
+
+Instead, inherit the existing system, understand it deeply, investigate it like a senior engineer/product engineer responsible for a major production platform, discover what previous passes missed, and make the necessary improvements with discipline.
+
+The standard is:
+
+STABLE.
+COMPLETE.
+BILINGUAL.
+OPERABLE.
+OBSERVABLE.
+CONSISTENT.
+PROFESSIONAL.
+MAINTAINABLE.
+SCALABLE.
+POLISHED.
+
+Most importantly:
+
+DO NOT CONFUSE "THE FEATURE EXISTS" with "THE PRODUCT IS COMPLETE."
+
+A feature can exist and still have:
+- poor UX,
+- incomplete language support,
+- missing administrative controls,
+- weak lifecycle handling,
+- inconsistent financial representation,
+- poor error handling,
+- weak discoverability,
+- missing operational tooling,
+- or hidden edge-case failures.
+
+Find those gaps.
+
+Fix the real ones.
+
+Preserve what already works.
+
+Do not introduce regressions.
+
+Treat Evenum as a serious production product.

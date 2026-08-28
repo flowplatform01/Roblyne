@@ -5,23 +5,24 @@ import { useListOrganizations } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Building2, Plus, ArrowRight, Loader2, CalendarDays, Vote, Megaphone } from "lucide-react";
-import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
-  const { data: organizations, isLoading } = useListOrganizations();
+  const { data: organizations, isLoading, isError, refetch } = useListOrganizations();
+  const { t, i18n } = useTranslation();
 
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-border/50">
           <div>
-            <h1 className="text-4xl font-serif font-bold tracking-tight mb-2">Workspaces</h1>
-            <p className="text-muted-foreground text-lg font-light">Select an organization to manage its engines.</p>
+            <h1 className="text-4xl font-serif font-bold tracking-tight mb-2">{t("dashboard.yourOrganizations")}</h1>
+            <p className="text-muted-foreground text-lg font-light">{t("dashboard.manageWorkspaces")}</p>
           </div>
           <Button asChild size="lg" className="h-12 px-6 shadow-sm hover:shadow-md transition-all">
             <Link href="/organizations/new">
               <Plus className="mr-2 h-5 w-5" />
-              New Organization
+              {t("dashboard.newOrganization")}
             </Link>
           </Button>
         </div>
@@ -30,19 +31,25 @@ export default function Dashboard() {
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
+        ) : isError ? (
+          <div className="bg-card border border-border/60 rounded-sm p-12 text-center max-w-2xl mx-auto w-full shadow-sm mt-8">
+            <h2 className="text-2xl font-serif font-bold mb-3">{t("common.somethingWentWrong")}</h2>
+            <p className="text-muted-foreground mb-6">{t("common.tryAgain")}</p>
+            <Button onClick={() => refetch()}>{t("common.tryAgain")}</Button>
+          </div>
         ) : !organizations || organizations.length === 0 ? (
           <div className="bg-card border border-border/60 rounded-sm p-16 text-center max-w-2xl mx-auto w-full shadow-sm mt-8">
             <div className="w-20 h-20 bg-primary/5 text-primary rounded-full flex items-center justify-center mx-auto mb-8 ring-1 ring-primary/20">
               <Building2 className="h-10 w-10" />
             </div>
-            <h2 className="text-3xl font-serif font-bold mb-4">No organizations yet</h2>
+            <h2 className="text-3xl font-serif font-bold mb-4">{t("dashboard.noOrganizationsTitle")}</h2>
             <p className="text-muted-foreground text-lg font-light mb-10 leading-relaxed">
-              Create your first organization workspace to start building premium elections, events, and campaigns.
+              {t("dashboard.noOrganizationsDescription")}
             </p>
             <Button size="lg" asChild className="h-14 px-8 text-lg">
               <Link href="/organizations/new">
                 <Plus className="mr-2 h-5 w-5" />
-                Initialize Workspace
+                {t("dashboard.createOrganization")}
               </Link>
             </Button>
           </div>
@@ -63,7 +70,11 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <CardTitle className="font-serif text-2xl mb-2 line-clamp-1 group-hover:text-primary transition-colors">{org.name}</CardTitle>
                       <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        Since {org.createdAt ? format(new Date(org.createdAt), 'MMM yyyy') : '—'}
+                         {t("dashboard.createdOn", {
+                           date: org.createdAt
+                             ? new Intl.DateTimeFormat(i18n.language, { month: "short", year: "numeric" }).format(new Date(org.createdAt))
+                             : "—",
+                         })}
                       </div>
                     </div>
                   </div>
@@ -72,29 +83,29 @@ export default function Dashboard() {
                   {org.description ? (
                     <p className="text-foreground/70 font-light leading-relaxed line-clamp-2">{org.description}</p>
                   ) : (
-                    <p className="text-muted-foreground/50 italic font-light">No description provided</p>
+                    <p className="text-muted-foreground/50 italic font-light">{t("dashboard.noDescriptionProvided")}</p>
                   )}
                   
                   {/* Mock stats - we don't have stats in the list endpoint, but visual indicators look good */}
                   <div className="mt-8 flex gap-6 border-t border-border/50 pt-6">
                     <div className="flex flex-col gap-1">
                       <Vote className="h-4 w-4 text-muted-foreground mb-1" />
-                      <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Elections</span>
+                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.elections")}</span>
                     </div>
                     <div className="flex flex-col gap-1">
                       <CalendarDays className="h-4 w-4 text-muted-foreground mb-1" />
-                      <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Events</span>
+                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.events")}</span>
                     </div>
                     <div className="flex flex-col gap-1">
                       <Megaphone className="h-4 w-4 text-muted-foreground mb-1" />
-                      <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Campaigns</span>
+                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.campaigns")}</span>
                     </div>
                   </div>
                 </CardContent>
                 <div className="px-8 py-4 bg-muted/10 border-t border-border/50 group-hover:bg-primary/5 transition-colors duration-500">
                   <Button variant="ghost" className="w-full justify-between h-12 text-base font-medium group-hover:text-primary" asChild>
                     <Link href={`/organizations/${org.id}`}>
-                      Enter Workspace <ArrowRight className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
+                       {t("dashboard.enterWorkspace")} <ArrowRight className="h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </Button>
                 </div>

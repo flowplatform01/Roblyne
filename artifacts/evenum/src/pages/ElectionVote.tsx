@@ -22,6 +22,8 @@ import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
 import { hexToHsl } from "@/lib/branding";
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 function CountdownBlock({ value, label }: { value: number; label: string }) {
   return (
@@ -40,6 +42,7 @@ export default function ElectionVote() {
   const [, params] = useRoute("/elections/:id/vote");
   const electionId = params?.id ? parseInt(params.id, 10) : 0;
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
 
   // Deep-link support: ?positionId=X&candidateId=Y from candidate profile page
   const directPositionId = (() => {
@@ -126,8 +129,8 @@ export default function ElectionVote() {
       // Multi-select: enforce the cap with a toast
       if (cur.length >= maxSelections) {
         toast({
-          title: 'Selection limit reached',
-          description: `You may select up to ${maxSelections} candidate${maxSelections !== 1 ? 's' : ''} for this position.`,
+          title: t("voting.selectionLimitReached"),
+          description: t("voting.selectionLimitDescription", { count: maxSelections }),
           variant: 'destructive',
         });
         return prev;
@@ -139,16 +142,16 @@ export default function ElectionVote() {
   const submitBallot = () => {
     if (lifecycleState !== "live") {
       toast({
-        title: lifecycleState === "upcoming" ? "Voting has not opened yet" : "Voting has ended",
+        title: lifecycleState === "upcoming" ? t("voting.notOpen") : t("voting.ended"),
         description: lifecycleState === "upcoming"
-          ? "Please return when this election opens."
-          : "This election is no longer accepting ballots.",
+          ? t("voting.notOpenDescription")
+          : t("voting.endedDescription"),
         variant: "destructive",
       });
       return;
     }
     if (selectedCandidateCount === 0) {
-      toast({ title: 'Select at least one candidate', description: 'Choose a candidate before submitting your ballot.', variant: 'destructive' });
+      toast({ title: t("voting.selectCandidate"), description: t("voting.selectCandidateDescription"), variant: 'destructive' });
       return;
     }
     submitVote.mutate(
@@ -168,7 +171,7 @@ export default function ElectionVote() {
         onSuccess: () => setStep('success'),
         onError: (error: any) => {
           setStep('review');
-          toast({ variant: 'destructive', title: 'Ballot submission failed', description: error?.data?.error || 'There was an error submitting your ballot. Please try again.' });
+          toast({ variant: 'destructive', title: t("voting.submissionFailed"), description: error?.data?.error || t("voting.submissionFailedDescription") });
         },
       }
     );
@@ -204,8 +207,9 @@ export default function ElectionVote() {
 
   // Payment helpers
   const feeRequired = Boolean(election.requiresPayment);
-  const feeCur = 'XAF';
-  const feeSym = 'XAF ';
+  const feeCur = election.currency || 'XAF';
+  const formatMoney = (amount: number | string | null | undefined) =>
+    formatCurrency(amount, feeCur, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
   const pricePerVote = Number(election.paymentAmount || 0);
   const amountInput = paymentAmountInput === ''
     ? pricePerVote * Math.max(selectedCandidateCount, 1)
@@ -478,11 +482,11 @@ export default function ElectionVote() {
             </>
           )}
           <div className="relative z-10 container mx-auto px-4 pt-16 pb-12 max-w-xl text-center animate-in fade-in duration-500">
-            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">Participation Summary</p>
+            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">{t("voting.participationSummary")}</p>
             <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
-              {feeSym}{amountToPay.toLocaleString('en-US')}
+              {formatMoney(amountToPay)}
             </div>
-            <p className="text-background/50 font-light">{feeCur} · {totalVoteUnits} vote{totalVoteUnits === 1 ? '' : 's'}</p>
+            <p className="text-background/50 font-light">{feeCur} · {totalVoteUnits} {totalVoteUnits === 1 ? t("voting.vote") : t("voting.votes")}</p>
           </div>
         </div>
 
@@ -495,10 +499,10 @@ export default function ElectionVote() {
           </button>
 
           <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-4">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Details</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("voting.paymentDetails")}</p>
             {paymentMode === 'amount_first' ? (
               <div className="space-y-2">
-                <Label htmlFor="payment-amount">Amount to pay (XAF)</Label>
+                 <Label htmlFor="payment-amount">{t("voting.amountToPay", { currency: feeCur })}</Label>
                 <Input id="payment-amount" type="number" min="0" step="1" value={paymentAmountInput} onChange={e => setPaymentAmountInput(e.target.value)} />
               </div>
             ) : (
@@ -508,22 +512,22 @@ export default function ElectionVote() {
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-muted-foreground block">Price per candidate vote</span><strong>{feeSym}{pricePerVote.toLocaleString('en-US')}</strong></div>
-              <div><span className="text-muted-foreground block">Selected candidates</span><strong>{selectedCandidateCount}</strong></div>
-              <div><span className="text-muted-foreground block">Total vote units</span><strong>{totalVoteUnits}</strong></div>
-              <div className="col-span-2 pt-3 border-t border-border/40"><span className="text-muted-foreground block">Total payable</span><strong className="text-xl text-primary">{feeSym}{amountToPay.toLocaleString('en-US')}</strong></div>
+               <div><span className="text-muted-foreground block">{t("voting.pricePerVote")}</span><strong>{formatMoney(pricePerVote)}</strong></div>
+               <div><span className="text-muted-foreground block">{t("voting.selectedCandidates")}</span><strong>{selectedCandidateCount}</strong></div>
+               <div><span className="text-muted-foreground block">{t("voting.totalVoteUnits")}</span><strong>{totalVoteUnits}</strong></div>
+               <div className="col-span-2 pt-3 border-t border-border/40"><span className="text-muted-foreground block">{t("voting.totalPayable")}</span><strong className="text-xl text-primary">{formatMoney(amountToPay)}</strong></div>
             </div>
           </div>
 
           <div className="bg-muted/30 border border-border/50 rounded-sm p-5 mb-6 space-y-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Your Selections</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">{t("voting.yourSelections")}</p>
             {positionList.map(position => {
               const selected = allCandidates.filter(c => (selections[position.id] || []).includes(c.id));
               return (
                 <div key={position.id} className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-muted-foreground truncate">{position.title}</span>
                   <span className="font-medium shrink-0">
-                    {selected.length === 0 ? <span className="text-muted-foreground/50 italic">Abstain</span> : selected.map(c => c.name).join(', ')}
+                     {selected.length === 0 ? <span className="text-muted-foreground/50 italic">{t("voting.abstain")}</span> : selected.map(c => c.name).join(', ')}
                   </span>
                 </div>
               );
@@ -1266,20 +1270,20 @@ export default function ElectionVote() {
               <div className="px-8 py-4 bg-amber-50/60 border-t border-amber-200/40 flex items-center gap-3">
                 <Wallet className="h-4 w-4 text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-700 font-medium">
-                  Payment required: {feeSym}{amountToPay.toLocaleString('en-US')} for {totalVoteUnits} vote{totalVoteUnits === 1 ? '' : 's'}
+                  {t("voting.paymentRequired", { amount: formatMoney(amountToPay), count: totalVoteUnits, votes: totalVoteUnits === 1 ? t("voting.vote") : t("voting.votes") })}
                 </p>
               </div>
             )}
 
             <div className="px-8 py-4 bg-muted/20 border-t border-border/40 flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
-              Once submitted, this ballot is sealed and cannot be modified.
+              {t("voting.sealedBallot")}
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <Button variant="outline" size="lg" className="h-14 px-8 rounded-sm" onClick={() => setStep(totalPositions - 1)}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Ballot
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t("common.back")} to Ballot
             </Button>
             <Button
               size="lg"
@@ -1294,7 +1298,7 @@ export default function ElectionVote() {
               ) : (
                 <ShieldCheck className="mr-2 h-5 w-5" />
               )}
-              {feeRequired && !hasPaid ? `Pay ${feeSym}${amountToPay.toLocaleString('en-US')} & Submit` : 'Cast Official Vote'}
+              {feeRequired && !hasPaid ? t("voting.payAndSubmit", { amount: formatMoney(amountToPay) }) : t("voting.castOfficialVote")}
             </Button>
           </div>
         </div>

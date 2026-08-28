@@ -69,13 +69,13 @@ export default function Settings() {
       
       if (res.ok) {
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-        toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
+         toast({ title: t("settings.profileUpdated"), description: t("settings.profileSaved") });
       } else {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to save profile");
+         throw new Error(err.error || t("common.tryAgain"));
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Update failed", description: error?.message || "Could not save profile. Please try again." });
+       toast({ variant: "destructive", title: t("admin.saveFailed"), description: error?.message || t("common.tryAgain") });
     } finally {
       setIsSavingProfile(false);
     }
@@ -84,11 +84,11 @@ export default function Settings() {
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ variant: "destructive", title: "Passwords don't match", description: "Please ensure your new passwords match." });
+       toast({ variant: "destructive", title: t("settings.passwordMismatch"), description: t("common.tryAgain") });
       return;
     }
     if (newPassword.length < 8) {
-      toast({ variant: "destructive", title: "Password too short", description: "New password must be at least 8 characters." });
+       toast({ variant: "destructive", title: t("settings.passwordTooShort"), description: "Minimum 8 characters." });
       return;
     }
 
@@ -103,16 +103,16 @@ export default function Settings() {
       });
 
       if (res.ok) {
-        toast({ title: "Password changed", description: "Your password has been updated successfully." });
+         toast({ title: t("settings.changePassword"), description: t("settings.passwordUpdated") });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to change password");
+         throw new Error(err.error || t("common.tryAgain"));
       }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Update failed", description: error?.message || "Could not change password. Please try again." });
+       toast({ variant: "destructive", title: t("admin.saveFailed"), description: error?.message || t("common.tryAgain") });
     } finally {
       setIsSavingPassword(false);
     }
@@ -121,18 +121,23 @@ export default function Settings() {
   const handleEmailNotifsChange = (checked: boolean) => {
     setEmailNotifs(checked);
     localStorage.setItem('settings_emailNotifs', checked.toString());
-    toast({ title: "Preferences saved", description: "Notification settings updated." });
+      toast({ title: t("admin.settingsSaved") });
   };
 
   const handleActivityDigestChange = (checked: boolean) => {
     setActivityDigest(checked);
     localStorage.setItem('settings_activityDigest', checked.toString());
-    toast({ title: "Preferences saved", description: "Notification settings updated." });
+      toast({ title: t("admin.settingsSaved") });
   };
 
   const handleLanguageChange = (value: string) => {
     i18n.changeLanguage(value);
-    toast({ title: "Language updated", description: `Language changed to ${value === 'en' ? 'English' : 'Français'}.` });
+    toast({
+      title: i18n.t("settings.languageUpdated"),
+      description: i18n.t("settings.languageChanged", {
+        language: value === "en" ? i18n.t("settings.english") : i18n.t("settings.french"),
+      }),
+    });
   };
 
   const profileChanged = displayName.trim() !== (user?.name || "") || avatarValue !== (user?.avatarUrl || undefined);
@@ -141,9 +146,9 @@ export default function Settings() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-serif font-bold tracking-tight">Account Settings</h1>
+           <h1 className="text-3xl font-serif font-bold tracking-tight">{t("settings.title")}</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Manage your profile, security preferences, and account settings.
+            {t("settings.description")}
           </p>
         </div>
 
@@ -153,25 +158,25 @@ export default function Settings() {
               value="profile" 
               className="w-full justify-start px-4 py-3 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:border"
             >
-              <User className="mr-2 h-4 w-4" /> Profile
+               <User className="mr-2 h-4 w-4" /> {t("settings.profile")}
             </TabsTrigger>
             <TabsTrigger 
               value="security" 
               className="w-full justify-start px-4 py-3 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:border"
             >
-              <Lock className="mr-2 h-4 w-4" /> Security
+               <Lock className="mr-2 h-4 w-4" /> {t("settings.security")}
             </TabsTrigger>
             <TabsTrigger 
               value="notifications" 
               className="w-full justify-start px-4 py-3 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:border"
             >
-              <Bell className="mr-2 h-4 w-4" /> Notifications
+               <Bell className="mr-2 h-4 w-4" /> {t("settings.notifications")}
             </TabsTrigger>
             <TabsTrigger 
               value="language" 
               className="w-full justify-start px-4 py-3 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:border"
             >
-              <Globe className="mr-2 h-4 w-4" /> Language & Region
+               <Globe className="mr-2 h-4 w-4" /> {t("settings.languageRegion")}
             </TabsTrigger>
           </TabsList>
 
@@ -179,37 +184,37 @@ export default function Settings() {
             <TabsContent value="profile" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif">Public Profile</CardTitle>
-                  <CardDescription>This information will be displayed to other users in your organizations.</CardDescription>
+                  <CardTitle className="font-serif">{t("settings.publicProfile")}</CardTitle>
+                  <CardDescription>{t("settings.publicProfileDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form id="profile-form" onSubmit={handleProfileSave} className="space-y-6">
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                       <div className="shrink-0">
-                        <Label className="text-sm font-medium mb-2 block">Profile Picture</Label>
+                         <Label className="text-sm font-medium mb-2 block">{t("settings.profilePicture")}</Label>
                         <ImageUpload
                           value={avatarValue}
                           onChange={(val) => setAvatarValue(val)}
                           label=""
                           aspectRatio="square"
                           className="w-32"
-                          placeholder="Upload photo"
+                           placeholder={t("settings.uploadPhoto")}
                         />
                         <p className="text-xs text-muted-foreground mt-1 text-center">PNG, JPG up to 2MB</p>
                       </div>
                       <div className="flex-1 space-y-4">
                         <div className="grid gap-2">
-                          <Label htmlFor="displayName">Display Name</Label>
+                           <Label htmlFor="displayName">{t("settings.displayName")}</Label>
                           <Input 
                             id="displayName" 
                             value={displayName} 
                             onChange={(e) => setDisplayName(e.target.value)} 
                             required
-                            placeholder="Your full name"
+                             placeholder={t("settings.yourFullName")}
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="email">Email Address</Label>
+                           <Label htmlFor="email">{t("common.email")}</Label>
                           <Input 
                             id="email" 
                             value={user?.email || ""} 
@@ -217,7 +222,7 @@ export default function Settings() {
                             disabled
                             className="bg-muted"
                           />
-                          <p className="text-xs text-muted-foreground">Email addresses cannot be changed at this time.</p>
+                           <p className="text-xs text-muted-foreground">{t("settings.emailCannotChange")}</p>
                         </div>
                       </div>
                     </div>
@@ -226,7 +231,7 @@ export default function Settings() {
                 <CardFooter className="bg-muted/30 border-t px-6 py-4">
                   <Button type="submit" form="profile-form" disabled={isSavingProfile || !displayName.trim() || !profileChanged}>
                     {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Changes
+                     {t("settings.saveChanges")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -235,24 +240,24 @@ export default function Settings() {
             <TabsContent value="security" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif">Change Password</CardTitle>
-                  <CardDescription>Update your password to keep your account secure.</CardDescription>
+                  <CardTitle className="font-serif">{t("settings.changePassword")}</CardTitle>
+                  <CardDescription>{t("settings.changePasswordDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form id="password-form" onSubmit={handlePasswordSave} className="space-y-4 max-w-md">
                     <div className="grid gap-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
+                       <Label htmlFor="currentPassword">{t("settings.currentPassword")}</Label>
                       <Input 
                         id="currentPassword" 
                         type="password" 
                         required
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Your current password"
+                         placeholder={t("settings.currentPassword")}
                       />
                     </div>
                     <div className="grid gap-2 pt-2">
-                      <Label htmlFor="newPassword">New Password</Label>
+                       <Label htmlFor="newPassword">{t("settings.newPassword")}</Label>
                       <Input 
                         id="newPassword" 
                         type="password" 
@@ -260,11 +265,11 @@ export default function Settings() {
                         minLength={8}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 8 characters"
+                         placeholder="Minimum 8 characters"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                       <Label htmlFor="confirmPassword">{t("settings.confirmNewPassword")}</Label>
                       <Input 
                         id="confirmPassword" 
                         type="password" 
@@ -272,11 +277,11 @@ export default function Settings() {
                         minLength={8}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat your new password"
+                         placeholder={t("settings.confirmNewPassword")}
                       />
                       {confirmPassword && newPassword !== confirmPassword && (
                         <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" /> Passwords do not match
+                           <AlertTriangle className="h-3 w-3" /> {t("settings.passwordMismatch")}
                         </p>
                       )}
                     </div>
@@ -289,7 +294,7 @@ export default function Settings() {
                     disabled={isSavingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
                   >
                     {isSavingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                    Update Password
+                     {t("settings.updatePassword")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -298,22 +303,22 @@ export default function Settings() {
             <TabsContent value="notifications" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif">Email Notifications</CardTitle>
-                  <CardDescription>Control what updates you receive via email.</CardDescription>
+                  <CardTitle className="font-serif">{t("settings.emailNotifications")}</CardTitle>
+                  <CardDescription>{t("settings.emailNotificationsDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center justify-between space-x-4">
                     <div className="space-y-1">
-                      <Label className="text-base font-medium">Important Updates</Label>
-                      <p className="text-sm text-muted-foreground">Receive emails about new elections, events, or campaigns in your organizations.</p>
+                       <Label className="text-base font-medium">{t("settings.importantUpdates")}</Label>
+                       <p className="text-sm text-muted-foreground">{t("settings.importantUpdatesDescription")}</p>
                     </div>
                     <Switch checked={emailNotifs} onCheckedChange={handleEmailNotifsChange} />
                   </div>
                   
                   <div className="border-t pt-6 flex items-center justify-between space-x-4">
                     <div className="space-y-1">
-                      <Label className="text-base font-medium">Weekly Activity Digest</Label>
-                      <p className="text-sm text-muted-foreground">Receive a weekly summary of participation across your hosted items.</p>
+                       <Label className="text-base font-medium">{t("settings.weeklyDigest")}</Label>
+                       <p className="text-sm text-muted-foreground">{t("settings.weeklyDigestDescription")}</p>
                     </div>
                     <Switch checked={activityDigest} onCheckedChange={handleActivityDigestChange} />
                   </div>
@@ -324,19 +329,19 @@ export default function Settings() {
             <TabsContent value="language" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif">Language & Region</CardTitle>
-                  <CardDescription>Select your preferred language for the interface.</CardDescription>
+                  <CardTitle className="font-serif">{t("settings.languageRegion")}</CardTitle>
+                  <CardDescription>{t("settings.languageRegionDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-2 max-w-sm">
-                    <Label htmlFor="language">Display Language</Label>
+                     <Label htmlFor="language">{t("settings.displayLanguage")}</Label>
                     <Select value={i18n.language.startsWith('fr') ? 'fr' : 'en'} onValueChange={handleLanguageChange}>
                       <SelectTrigger id="language">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="fr">Français</SelectItem>
+                         <SelectItem value="en">{t("settings.english")}</SelectItem>
+                         <SelectItem value="fr">{t("settings.french")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

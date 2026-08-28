@@ -10,7 +10,7 @@ export const commissionConfigsTable = pgTable("commission_configs", {
   pillar: text("pillar").notNull().unique(),
   // Percentage rate stored as decimal fraction, e.g. 0.0500 = 5%
   rate: decimal("rate", { precision: 5, scale: 4 }).notNull().default("0.0500"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   isActive: integer("is_active").notNull().default(1), // 1 | 0
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -29,7 +29,7 @@ export const financialTransactionsTable = pgTable("financial_transactions", {
   commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).notNull(),
   commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }).notNull(),
   orgEarnings: decimal("org_earnings", { precision: 12, scale: 2 }).notNull(),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   // status: completed | refunded | disputed
   status: text("status").notNull().default("completed"),
   // paymentProvider: platform (simulated) | stripe | etc.
@@ -53,7 +53,7 @@ export const settlementsTable = pgTable("settlements", {
   id: serial("id").primaryKey(),
   orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("XAF"),
   // status: pending_settlement | ready | released | completed
   status: text("status").notNull().default("pending_settlement"),
   transactionCount: integer("transaction_count").notNull().default(0),

@@ -14,6 +14,8 @@ import { hexToHsl } from "@/lib/branding";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { useCountdown } from "@/hooks/useLifecycle";
+import { useTranslation } from "react-i18next";
+import { formatCurrency } from "@/lib/currency";
 
 const FAQS = [
   {
@@ -68,6 +70,8 @@ export default function EventRegister() {
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
   const countdown = useCountdown(event?.endsAt);
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
 
   const shareUrl = `${window.location.origin}/events/${eventId}/register`;
 
@@ -145,14 +149,14 @@ export default function EventRegister() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Registration Unavailable</h1>
-          <p className="text-xl text-muted-foreground font-light mb-8">This event is not currently accepting registrations.</p>
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("eventRegister.registrationUnavailable")}</h1>
+          <p className="text-xl text-muted-foreground font-light mb-8">{t("eventRegister.registrationUnavailableDescription")}</p>
           {event.organizationName && (
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
               {orgLogoUrl
                 ? <img src={orgLogoUrl} alt={event.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
                 : <Building2 className="h-3.5 w-3.5 shrink-0" />}
-              <span>Organized by{' '}
+              <span>{t("eventRegister.organizedBy")}{' '}
                 {orgId
                   ? <Link href={`/organizations/${orgId}/public`} className="font-medium hover:text-foreground transition-colors">{event.organizationName}</Link>
                   : <span className="font-medium">{event.organizationName}</span>}
@@ -171,15 +175,15 @@ export default function EventRegister() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Registration Closed</h1>
-          <p className="text-xl text-muted-foreground font-light mb-8">Registration for this event has ended.</p>
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("eventRegister.registrationClosed")}</h1>
+          <p className="text-xl text-muted-foreground font-light mb-8">{t("eventRegister.registrationClosedDescription")}</p>
           {event.organizationName && (
             <div className="flex flex-col items-center gap-3">
               <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
                 {orgLogoUrl
                   ? <img src={orgLogoUrl} alt={event.organizationName} className="w-4 h-4 rounded-full object-cover shrink-0" />
                   : <Building2 className="h-3.5 w-3.5 shrink-0" />}
-                <span>Organized by{' '}
+                <span>{t("eventRegister.organizedBy")}{' '}
                   {orgId
                     ? <Link href={`/organizations/${orgId}/public`} className="font-medium hover:text-foreground transition-colors">{event.organizationName}</Link>
                     : <span className="font-medium">{event.organizationName}</span>}
@@ -187,7 +191,7 @@ export default function EventRegister() {
               </div>
               {orgId && (
                 <Link href={`/organizations/${orgId}/public`} className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors inline-flex items-center gap-1">
-                  See more from this organizer <ArrowRight className="h-3 w-3" />
+                  {t("eventRegister.seeMoreFromOrganizer")} <ArrowRight className="h-3 w-3" />
                 </Link>
               )}
             </div>
@@ -256,19 +260,19 @@ export default function EventRegister() {
                   <p className="font-serif font-bold text-xl">{formData.name}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Ticket Type</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.ticketType")}</p>
                   <p className="font-medium text-lg text-emerald-600">{ticketTypeName}</p>
                 </div>
                 {event.startsAt && (
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Date</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.date")}</p>
                     <p className="font-medium">{format(new Date(event.startsAt), 'MMMM d, yyyy')}</p>
                     <p className="text-sm text-muted-foreground">{format(new Date(event.startsAt), 'h:mm a')}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Location</p>
-                  <p className="font-medium">{event.isOnline ? 'Online Event' : (event.location || 'TBA')}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.location")}</p>
+                  <p className="font-medium">{event.isOnline ? t("eventRegister.onlineEvent") : (event.location || t("eventRegister.locationTba"))}</p>
                 </div>
                 <div className="pt-4 border-t border-border/50">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Entry Code</p>
@@ -281,15 +285,15 @@ export default function EventRegister() {
                 <div className="p-4 bg-white rounded-sm border border-border/60 shadow-sm">
                   <QRCodeSVG value={ticketCode} size={140} level="M" includeMargin={false} />
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Scan at door</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("eventRegister.scanAtDoor")}</p>
               </div>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
-            <Button variant="outline" className="h-12 px-8" onClick={handleAddToCalendar}>
-              <CalendarDays className="mr-2 h-4 w-4" /> Add to Calendar
+              <Button variant="outline" className="h-12 px-8" onClick={handleAddToCalendar}>
+              <CalendarDays className="mr-2 h-4 w-4" /> {t("eventRegister.addToCalendar")}
             </Button>
           </div>
         </div>
@@ -323,7 +327,7 @@ export default function EventRegister() {
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
             <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 font-bold uppercase tracking-widest text-xs">
-              {event.isOnline ? 'Online' : 'In Person'}
+              {event.isOnline ? t("eventRegister.online") : t("eventRegister.inPerson")}
             </Badge>
             <Badge className="bg-background/10 text-background/70 border-background/20 font-bold uppercase tracking-widest text-xs capitalize">
               {event.status}
@@ -361,13 +365,13 @@ export default function EventRegister() {
           {/* Registration deadline countdown */}
           {event.endsAt && !countdown.expired && (
             <div className="text-center">
-              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-4">Registration closes in</p>
+              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-4">{t("eventRegister.registrationClosesIn")}</p>
               <div className="flex items-center justify-center gap-3">
                 {[
-                  { value: countdown.days, label: 'Days' },
-                  { value: countdown.hours, label: 'Hours' },
-                  { value: countdown.minutes, label: 'Min' },
-                  { value: countdown.seconds, label: 'Sec' },
+                  { value: countdown.days, label: t("eventRegister.days") },
+                  { value: countdown.hours, label: t("eventRegister.hours") },
+                  { value: countdown.minutes, label: t("eventRegister.minutes") },
+                  { value: countdown.seconds, label: t("eventRegister.seconds") },
                 ].map(({ value, label }) => (
                   <div key={label} className="flex flex-col items-center bg-background/10 backdrop-blur-md border border-background/20 rounded-sm px-4 py-3 min-w-[60px]">
                     <span className="text-2xl font-serif font-bold tabular-nums leading-none mb-1">
@@ -393,13 +397,13 @@ export default function EventRegister() {
             <section>
               <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
                 <span className="w-6 h-0.5 bg-emerald-600 block" />
-                About this event
+                {t("eventRegister.aboutEvent")}
               </h2>
               <div className="mt-5 text-foreground/80 font-light leading-relaxed">
                 {event.description ? (
                   <p className="whitespace-pre-line">{event.description}</p>
                 ) : (
-                  <p className="italic text-muted-foreground">No description provided.</p>
+                  <p className="italic text-muted-foreground">{t("eventRegister.noEventDescription")}</p>
                 )}
               </div>
             </section>
@@ -408,7 +412,7 @@ export default function EventRegister() {
             <section>
               <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
                 <span className="w-6 h-0.5 bg-emerald-600 block" />
-                Venue
+                {t("eventRegister.venue")}
               </h2>
               <div className="mt-5 bg-card border border-border/60 rounded-sm p-6 flex items-start gap-4">
                 {event.isOnline ? (
@@ -468,11 +472,11 @@ export default function EventRegister() {
               <Card className="shadow-2xl border-border rounded-sm overflow-hidden">
                 <div className="h-1.5 w-full bg-emerald-600" />
                 <CardHeader className="px-8 pt-8 pb-5 border-b border-border/40">
-                  <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center gap-3 mb-1">
                     <Ticket className="h-5 w-5 text-emerald-600" />
-                    <CardTitle className="font-serif text-xl">Register</CardTitle>
+                    <CardTitle className="font-serif text-xl">{t("eventRegister.registration")}</CardTitle>
                   </div>
-                  <CardDescription className="font-light">Select a ticket and fill in your details.</CardDescription>
+                  <CardDescription className="font-light">{t("eventRegister.enterDetails")}</CardDescription>
                 </CardHeader>
 
                 <CardContent className="p-8 space-y-6 bg-card">
@@ -483,7 +487,7 @@ export default function EventRegister() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Ticket</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("eventRegister.selectTicket")}</p>
                       {ticketTypes.map(ticket => {
                         const isSoldOut = ticket.quantity !== null && (ticket.sold || 0) >= ticket.quantity;
                         const isSelected = selectedTicketId === ticket.id;
@@ -512,11 +516,11 @@ export default function EventRegister() {
                                 {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
                               </span>
                               {isSoldOut ? (
-                                <Badge variant="secondary" className="text-xs">Sold Out</Badge>
+                                <Badge variant="secondary" className="text-xs">{t("eventRegister.soldOut")}</Badge>
                               ) : saleNotStarted ? (
-                                <Badge variant="secondary" className="text-xs">Sales Not Open</Badge>
+                                <Badge variant="secondary" className="text-xs">{t("eventRegister.salesNotOpen")}</Badge>
                               ) : saleEnded ? (
-                                <Badge variant="secondary" className="text-xs">Sales Closed</Badge>
+                                <Badge variant="secondary" className="text-xs">{t("eventRegister.salesClosed")}</Badge>
                               ) : (
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                                   isSelected ? 'bg-emerald-600 border-emerald-600' : 'border-muted-foreground/30'
@@ -535,7 +539,7 @@ export default function EventRegister() {
                   <form id="reg-form" onSubmit={handleRegister} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        Full Name
+                        {t("eventRegister.fullName")}
                       </Label>
                       <Input
                         id="name"
@@ -549,7 +553,7 @@ export default function EventRegister() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        Email Address
+                        {t("eventRegister.emailAddress")}
                       </Label>
                       <Input
                         id="email"
@@ -568,10 +572,10 @@ export default function EventRegister() {
                 <CardFooter className="flex-col pt-0 pb-8 px-8 gap-4 bg-card">
                   {/* Price summary */}
                   <div className="w-full flex items-center justify-between py-4 border-t border-border/40">
-                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Total</span>
+                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{t("eventRegister.total")}</span>
                     <span className="text-2xl font-serif font-bold text-emerald-700">
                       {selectedTicket
-                        ? selectedTicket.price === 0 ? 'Free' : `$${selectedTicket.price.toFixed(2)}`
+                        ? selectedTicket.price === 0 ? t("eventRegister.free") : formatCurrency(selectedTicket.price, selectedTicket.currency || (event as any).currency || "XAF", locale)
                         : '—'}
                     </span>
                   </div>
@@ -585,13 +589,13 @@ export default function EventRegister() {
                     {registerMutation.isPending ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     ) : null}
-                    Complete Registration
+                    {t("eventRegister.completeRegistration")}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
 
                   <p className="text-[11px] text-center text-muted-foreground flex items-center gap-1.5 justify-center">
                     <ShieldCheck className="h-3.5 w-3.5 opacity-50" />
-                    Your details are handled securely
+                    {t("eventRegister.secureDetails")}
                   </p>
                 </CardFooter>
               </Card>

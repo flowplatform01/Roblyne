@@ -40,7 +40,7 @@ const ticketTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   price: z.coerce.number().min(0).default(0),
-  currency: z.string().default("USD"),
+  currency: z.string().default("XAF"),
   quantity: z.coerce.number().min(1).optional().or(z.literal("")),
 });
 
@@ -149,7 +149,7 @@ export default function EventDetail() {
       name: "",
       description: "",
       price: 0,
-      currency: "USD",
+      currency: "XAF",
       quantity: "",
     },
   });
