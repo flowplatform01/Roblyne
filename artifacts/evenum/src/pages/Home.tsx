@@ -44,7 +44,10 @@ export default function Home() {
               </span>
             </div>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tight mb-8 leading-[1.1] text-card">
-               {t("home.heroTitle")}
+               <span className="block">{t("home.heroTitle")}</span>
+               <span className="block mt-3 text-3xl md:text-5xl lg:text-6xl font-normal tracking-normal text-card/90">
+                 {t("home.heroSubtitle")}
+               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted/80 mb-12 max-w-2xl mx-auto font-sans font-light leading-relaxed">
                {t("home.heroDescription")}
