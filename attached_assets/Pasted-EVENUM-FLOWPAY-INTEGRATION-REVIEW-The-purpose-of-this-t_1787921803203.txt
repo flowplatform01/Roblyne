@@ -1,0 +1,344 @@
+EVENUM → FLOWPAY INTEGRATION REVIEW
+
+The purpose of this task is not to redesign Evenum or introduce a new payment architecture.
+
+I need you to inspect the existing Evenum codebase and produce a professional technical integration brief for the FlowPay engineering team.
+
+The most important requirement is this:
+
+Describe how Evenum currently works today. Do not describe how Evenum “should” work, how it “will” work, or how FlowPay “should” work.
+
+The FlowPay team already has its own production architecture, policies, payment models, security requirements, and operational standards. We are not asking them to change those.
+
+Instead, we want to clearly explain Evenum’s existing behavior so their engineering team can review it and determine the appropriate integration requirements, mappings, configurations, credentials, constraints, or adjustments needed for Evenum to operate correctly with the existing FlowPay environment.
+
+⸻
+
+1. Inspect the Existing Implementation
+
+Before writing anything, inspect the actual Evenum codebase.
+
+Trace the real implementation of:
+
+* event creation
+* voting/elections
+* campaigns
+* ticketing
+* paid registrations
+* collections
+* donations/contributions where implemented
+* payment-related configuration
+* transaction creation
+* payment status handling
+* success/failure handling
+* callbacks/webhooks if present
+* receipts/references
+* refunds or reversals if implemented
+* organizer financial records
+* relevant database entities
+* API endpoints
+* frontend payment flows
+* backend payment flows
+
+Do not rely on assumptions from this prompt.
+
+Use the actual implementation as the source of truth.
+
+If something is not currently implemented, clearly identify it instead of inventing behavior.
+
+⸻
+
+2. Explain How Money Currently Enters and Moves Through Evenum
+
+Document the current Evenum flow in practical terms.
+
+For example, where applicable, explain what currently happens when:
+
+* an attendee purchases a paid ticket;
+* a participant pays for a campaign;
+* a voter encounters a paid voting configuration;
+* a user makes a contribution;
+* an organizer receives or expects proceeds.
+
+Explain the actual sequence from the user’s action through Evenum’s backend and database.
+
+Describe:
+
+User action → Evenum flow → transaction/payment state → resulting Evenum state
+
+Do not redesign the flow.
+
+The purpose is simply to allow the FlowPay engineering team to understand exactly what Evenum is doing today.
+
+⸻
+
+3. Document the Existing Payment Data Model
+
+Identify the actual information Evenum currently creates, stores, or expects around a payment.
+
+Where applicable, document:
+
+* transaction identifiers
+* internal references
+* amounts
+* currency
+* payer information
+* beneficiary/recipient information
+* event or organization association
+* purpose of payment
+* ticket/registration association
+* campaign association
+* voting association
+* payment provider information
+* payment status
+* timestamps
+* metadata
+* reconciliation information
+
+Use the actual field names and concepts from the implementation where appropriate.
+
+Do not invent fields merely because they might be useful.
+
+⸻
+
+4. Explain Transaction and Payment States
+
+Document how Evenum currently represents payment lifecycle states.
+
+For example, if the implementation contains concepts such as:
+
+* pending
+* initiated
+* successful
+* failed
+* cancelled
+* expired
+* refunded
+
+explain how they are currently used and where they are stored.
+
+If the implementation uses different terminology, document the actual terminology.
+
+The objective is to give FlowPay engineering a clear picture of the existing state model so they can determine how it maps to their own production payment lifecycle.
+
+⸻
+
+5. Explain the Different Collection Contexts
+
+Evenum has multiple product experiences where money may be involved.
+
+Separate them clearly instead of treating everything as one generic “payment.”
+
+Document the current behavior for each applicable context, including:
+
+Event Ticketing
+
+Explain how Evenum currently handles a paid ticket purchase, including the relationship between:
+
+* event
+* ticket type
+* attendee
+* registration
+* payment
+* ticket issuance
+* confirmation.
+
+Campaigns / Collections
+
+Explain how Evenum currently handles monetary contributions or campaign collections, including the relationship between:
+
+* campaign
+* goal
+* contributor
+* contribution
+* payment
+* collection status.
+
+Voting / Elections
+
+If payment is currently supported for a voting experience, document exactly how it currently works.
+
+Explain:
+
+* what triggers payment;
+* what the payment is associated with;
+* what happens after successful payment;
+* how Evenum records the resulting state.
+
+Do not assume that voting payments work the same way as ticketing.
+
+Other Existing Payment Experiences
+
+Identify any other implemented monetary workflows and document them separately.
+
+⸻
+
+6. Explain Organization and Recipient Context
+
+Inspect how Evenum currently associates financial activity with organizations and their events.
+
+Document:
+
+* how organizations are represented;
+* how events belong to organizations;
+* how collections are associated with organizations;
+* whether Evenum currently has a recipient/beneficiary concept;
+* how organizer ownership is represented;
+* what identifiers are available for identifying the relevant organization or destination.
+
+Again, document what currently exists.
+
+Do not create a hypothetical recipient architecture.
+
+⸻
+
+7. Identify the Integration Boundary
+
+Clearly distinguish:
+
+What Evenum currently owns
+
+from
+
+What a payment infrastructure such as FlowPay would handle.
+
+Do this without prescribing how FlowPay must implement anything.
+
+For example, identify the Evenum responsibilities around:
+
+* initiating a user payment experience;
+* identifying what the payment is for;
+* associating a payment with an event/organization;
+* maintaining Evenum’s business records;
+* reacting to payment outcomes.
+
+Then identify the information Evenum currently has available that may be relevant at the integration boundary.
+
+The FlowPay engineering team should be able to look at this and determine how their existing production services can integrate with it.
+
+⸻
+
+8. Identify Current Assumptions and Dependencies
+
+Review the implementation carefully for assumptions Evenum currently makes about payment processing.
+
+Examples could include:
+
+* expected payment statuses;
+* synchronous versus asynchronous behavior;
+* callback/webhook expectations;
+* transaction references;
+* currencies;
+* amount precision;
+* provider identifiers;
+* redirect behavior;
+* confirmation timing;
+* idempotency;
+* retry behavior.
+
+Only document assumptions that actually exist in the implementation.
+
+Do not create new requirements.
+
+⸻
+
+9. Identify Gaps From Evenum’s Side
+
+If the inspection reveals something Evenum currently lacks that would be necessary for a proper FlowPay integration, document it as an Evenum-side integration gap.
+
+For example:
+
+“Evenum currently does not expose X.”
+
+or:
+
+“The current implementation assumes Y.”
+
+Do not say:
+
+“FlowPay needs to change X.”
+
+Instead, present the finding neutrally so that the FlowPay engineering team can review it.
+
+⸻
+
+10. Request for FlowPay Engineering Review 
+
+End the document with a concise professional request.
+
+The request should communicate that:
+
+Evenum is presenting its current production behavior and integration boundary for technical review.
+
+We would appreciate the FlowPay engineering team’s guidance on:
+
+* required integration specifications;
+* supported payment flows;
+* required identifiers;
+* required payloads;
+* authentication requirements;
+* webhook/callback requirements;
+* transaction status mapping;
+* recipient/destination requirements;
+* reconciliation requirements;
+* supported currencies and amount rules;
+* security requirements;
+* operational requirements;
+* any additional conditions Evenum needs to satisfy before production integration.
+
+Do not dictate these requirements to FlowPay.
+
+We are asking the FlowPay engineering team to review the existing Evenum implementation against their established production environment and provide the necessary integration requirements.
+
+⸻
+
+IMPORTANT WRITING RULES
+
+The resulting document must be:
+
+* professional;
+* technically precise;
+* collaborative;
+* factual;
+* based on the existing Evenum implementation;
+* easy for another engineering team to review.
+
+Avoid language such as:
+
+* “FlowPay should…”
+* “FlowPay must change…”
+* “FlowPay needs to implement…”
+* “We will build…”
+* “Evenum should…”
+* “In the future, Evenum will…”
+
+Unless referring explicitly to a requirement or question that needs confirmation from the FlowPay team.
+
+Prefer language such as:
+
+* “Evenum currently…”
+* “The current implementation…”
+* “Evenum records…”
+* “The current flow…”
+* “The integration boundary currently exposes…”
+* “This is available to the payment integration layer…”
+* “We would appreciate confirmation from the FlowPay engineering team…”
+* “Please review whether this aligns with the existing FlowPay production requirements.”
+
+⸻
+
+FINAL REQUIREMENT
+
+Do not modify Evenum’s payment architecture merely for the purpose of producing this document.
+
+Do not invent missing functionality.
+
+Do not redesign FlowPay.
+
+Do not prescribe FlowPay’s architecture.
+
+Inspect the existing Evenum implementation, understand how it currently handles its financial workflows, trace the real data and transaction flows, and produce a clear integration brief in request.md (create the file request.md) and that allows the FlowPay engineering team to understand Evenum accurately and respond with their own established integration requirements.
+
+The goal is simple:
+
+FlowPay should understand exactly how Evenum currently works financially, and Evenum should receive the information necessary to integrate cleanly with the existing FlowPay production environment.
