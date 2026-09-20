@@ -12,3 +12,4 @@
 - [Workspace script imports](workspace-script-imports.md) — utility scripts should consume shared libraries through workspace package exports
 - [Evenum frontend build](evenum-frontend-build.md) — standalone Vite builds require PORT and the configured BASE_PATH
 - [Evenum route middleware scope](evenum-route-middleware-scope.md) — router-level authorization must be path-scoped when routers share an API mount
+- [Evenum sticky header](evenum-sticky-header.md) — avoid overflow-hidden ancestors around the global sticky navbar
