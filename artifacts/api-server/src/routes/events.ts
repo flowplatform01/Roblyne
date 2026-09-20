@@ -14,6 +14,7 @@ import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
 import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 
 const router: IRouter = Router();
 
@@ -275,12 +276,19 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     return;
   }
 
-  // ── Atomic sold-count check and ticket issuance ───────────────────────
-  // The transaction re-reads ticket type FOR UPDATE to prevent overselling under concurrency.
+  const isPaid = Number(tt.price) > 0;
+  if (isPaid && !bodyParsed.data.customerPhone?.trim()) {
+    res.status(400).json({ error: "A customer phone number is required for paid event registration" });
+    return;
+  }
+
+  // ── Atomic sold-count check and ticket issuance/reservation ───────────
+  // Paid tickets reserve inventory now and are issued only after FlowPay
+  // confirms payment through the webhook.
   const ticketCode = uuidv4().replace(/-/g, "").substring(0, 12).toUpperCase();
 
   try {
-    const ticket = await db.transaction(async (tx) => {
+    const paymentOrTicket = await db.transaction(async (tx) => {
       // Lock the ticket type row to prevent concurrent oversells
       const [lockedEvent] = (await tx.execute(
         sql`SELECT id, status, starts_at, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
@@ -299,7 +307,15 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       }
       if (lockedEvent.capacity !== null) {
         const capacityResult = await tx.execute(
-          sql`SELECT COUNT(*)::int AS count FROM tickets WHERE event_id = ${paramParsed.data.eventId} AND status <> 'cancelled'`
+          sql`
+            SELECT (
+              (SELECT COUNT(*) FROM tickets WHERE event_id = ${paramParsed.data.eventId} AND status <> 'cancelled') +
+              (SELECT COUNT(*) FROM payment_intents
+               WHERE pillar = 'event'
+                 AND entity_id = ${paramParsed.data.eventId}
+                 AND status IN ('initializing', 'pending', 'processing'))
+            )::int AS count
+          `
         );
         const registeredCount = Number((capacityResult.rows[0] as any)?.count ?? 0);
         if (registeredCount >= lockedEvent.capacity) {
@@ -325,11 +341,30 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
         throw Object.assign(new Error("Sold out"), { code: "SOLD_OUT" });
       }
 
+      await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
+
+      if (isPaid) {
+        const { intent } = await createPaymentIntent({
+          orgId: event.orgId,
+          pillar: "event",
+          entityId: event.id,
+          entityTitle: event.title,
+          transactionType: "ticket",
+          amount: Number(lockedTt.price),
+          currency: lockedTt.currency || "XAF",
+          customerName: attendeeName,
+          customerEmail: attendeeEmail,
+          customerPhone: bodyParsed.data.customerPhone!,
+          payload: { event: { ticketTypeId, attendeeName, attendeeEmail, ticketCode } },
+          database: tx,
+        });
+        return { paymentIntent: intent };
+      }
+
       const [inserted] = await tx.insert(ticketsTable).values({
         eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
-        ticketCode, status: "valid",
+        ticketCode, status: "valid", paymentStatus: "not_required",
       }).returning();
-      await tx.execute(sql`UPDATE ticket_types SET sold = sold + 1 WHERE id = ${ticketTypeId}`);
       if (Number(lockedTt.price) > 0) {
         await recordTransaction({
           orgId: event.orgId,
@@ -343,9 +378,27 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
           payerEmail: attendeeEmail,
         }, tx);
       }
-      return inserted;
+      return { ticket: inserted };
     });
 
+    if (paymentOrTicket.paymentIntent) {
+      try {
+        const intent = await initializePaymentIntent(paymentOrTicket.paymentIntent);
+        res.status(201).json({
+          paymentRequired: true,
+          paymentId: intent.id,
+          paymentStatus: intent.paymentStatus,
+          checkoutUrl: intent.checkoutUrl,
+        });
+      } catch (error: any) {
+        await failPaymentIntent(paymentOrTicket.paymentIntent.id, error?.message || "Payment initialization failed");
+        await db.execute(sql`UPDATE ticket_types SET sold = GREATEST(sold - 1, 0) WHERE id = ${ticketTypeId}`);
+        res.status(502).json({ error: "Unable to start the payment. Please try again." });
+      }
+      return;
+    }
+
+    const ticket = paymentOrTicket.ticket;
     res.status(201).json({
       ...ticket,
       eventTitle: event.title,

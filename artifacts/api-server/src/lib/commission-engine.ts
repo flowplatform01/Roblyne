@@ -28,6 +28,11 @@ export interface RecordTransactionInput {
   currency?: string;
   payerName?: string;
   payerEmail?: string;
+  paymentProvider?: string;
+  paymentStatus?: string;
+  flowpayTransactionId?: string;
+  idempotencyKey?: string;
+  status?: string;
 }
 
 export async function getPlatformCurrency(database: any = db): Promise<string> {
@@ -97,6 +102,8 @@ export async function recordTransaction(input: RecordTransactionInput, database:
   const {
     orgId, pillar, entityId, entityTitle, transactionType,
     grossAmount, currency = "XAF", payerName, payerEmail,
+    paymentProvider = "platform", paymentStatus = "not_required",
+    flowpayTransactionId, idempotencyKey, status = "completed",
   } = input;
 
   if (grossAmount <= 0) {
@@ -119,8 +126,11 @@ export async function recordTransaction(input: RecordTransactionInput, database:
       commissionAmount: String(breakdown.commissionAmount),
       orgEarnings: String(breakdown.orgEarnings),
       currency,
-      status: "completed",
-      paymentProvider: "platform",
+       status,
+       paymentProvider,
+       paymentStatus,
+       flowpayTransactionId: flowpayTransactionId ?? null,
+       idempotencyKey: idempotencyKey ?? null,
       settlementStatus: "pending",
       payerName: payerName ?? null,
       payerEmail: payerEmail ?? null,

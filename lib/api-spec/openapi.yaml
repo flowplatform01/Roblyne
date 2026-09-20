@@ -801,7 +801,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MessageResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/MessageResponse"
+                  - $ref: "#/components/schemas/PaymentInitialization"
         "403":
           description: Not eligible or already voted
           content:
@@ -1174,7 +1176,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Ticket"
+                oneOf:
+                  - $ref: "#/components/schemas/Ticket"
+                  - $ref: "#/components/schemas/PaymentInitialization"
 
   /events/{eventId}/attendees:
     get:
@@ -1416,7 +1420,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CampaignResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/CampaignResponse"
+                  - $ref: "#/components/schemas/PaymentInitialization"
 
   /campaigns/{campaignId}/submissions:
     get:
@@ -1854,6 +1860,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/SearchResults"
 
+  /payments/{paymentId}:
+    get:
+      operationId: getPaymentStatus
+      tags: [payments]
+      summary: Get the public status of a payment attempt
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatus"
+        "404":
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     # ── SHARED ───────────────────────────────────────────────────────────────
@@ -1901,6 +1932,39 @@ components:
       properties:
         message:
           type: string
+
+    PaymentInitialization:
+      type: object
+      required: [paymentRequired, paymentId, paymentStatus]
+      properties:
+        paymentRequired:
+          type: boolean
+          enum: [true]
+        paymentId:
+          type: integer
+        paymentStatus:
+          type: string
+          enum: [pending, processing, succeeded, failed]
+        checkoutUrl:
+          type: ["string", "null"]
+
+    PaymentStatus:
+      type: object
+      required: [id, status, paymentStatus]
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [initializing, pending, processing, succeeded, failed]
+        paymentStatus:
+          type: string
+          enum: [pending, processing, succeeded, failed]
+        checkoutUrl:
+          type: ["string", "null"]
+        result:
+          type: [object, "null"]
+          additionalProperties: true
 
     # ── AUTH ─────────────────────────────────────────────────────────────────
     AuthUser:
@@ -2447,6 +2511,15 @@ components:
       type: object
       required: [selections]
       properties:
+        customerName:
+          type: string
+          description: Required for paid voting
+        customerEmail:
+          type: string
+          description: Required for paid voting
+        customerPhone:
+          type: string
+          description: Required for paid voting
         voterEmail:
           type: string
           description: Required when the election uses allowlist eligibility and the voter is not authenticated
@@ -2760,6 +2833,9 @@ components:
           minLength: 1
         attendeeEmail:
           type: string
+        customerPhone:
+          type: string
+          description: Required for paid tickets
         inviteCode:
           type: string
           description: Required when the event visibility is invite_only
@@ -2792,6 +2868,13 @@ components:
         status:
           type: string
           enum: [valid, used, cancelled]
+        paymentStatus:
+          type: string
+          enum: [not_required, pending, processing, succeeded, failed]
+        flowpayTransactionId:
+          type: ["string", "null"]
+        idempotencyKey:
+          type: ["string", "null"]
         checkedInAt:
           type: ["string", "null"]
           format: date-time
@@ -3062,6 +3145,9 @@ components:
           minLength: 1
         submitterEmail:
           type: string
+        customerPhone:
+          type: string
+          description: Required for paid campaign participation
 
         data:
           type: object
@@ -3088,6 +3174,13 @@ components:
         status:
           type: string
           enum: [pending, confirmed, rejected]
+        paymentStatus:
+          type: string
+          enum: [not_required, pending, processing, succeeded, failed]
+        flowpayTransactionId:
+          type: ["string", "null"]
+        idempotencyKey:
+          type: ["string", "null"]
         submittedAt:
           type: string
           format: date-time
@@ -3214,9 +3307,16 @@ components:
           type: string
         status:
           type: string
-          enum: [completed, refunded, disputed]
+          enum: [pending, completed, failed, refunded, disputed]
         paymentProvider:
           type: string
+        paymentStatus:
+          type: string
+          enum: [not_required, pending, processing, succeeded, failed]
+        flowpayTransactionId:
+          type: ["string", "null"]
+        idempotencyKey:
+          type: ["string", "null"]
         settlementStatus:
           type: string
           enum: [pending, ready, released, completed]

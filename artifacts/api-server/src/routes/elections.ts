@@ -20,6 +20,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 
 const router: IRouter = Router();
 
@@ -426,6 +427,12 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Election not found" }); return; }
+  const paymentAmount = Number(election.paymentAmount || 0);
+  const isPaid = election.requiresPayment && paymentAmount > 0;
+  if (isPaid && (!bodyParsed.data.customerName?.trim() || !bodyParsed.data.customerEmail?.trim() || !bodyParsed.data.customerPhone?.trim())) {
+    res.status(400).json({ error: "A customer name, email, and phone number are required for paid voting" });
+    return;
+  }
   const viewerRole = req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
   if (election.visibility === "private" && !viewerRole) {
     res.status(403).json({ error: "This election is private and is not open to public voting" });
@@ -529,8 +536,49 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
     return;
   }
 
+  if (isPaid) {
+    const pendingResult = await db.execute(sql`
+      SELECT id
+      FROM payment_intents
+      WHERE pillar = 'election'
+        AND entity_id = ${electionId}
+        AND status IN ('initializing', 'pending', 'processing')
+        AND payload->'election'->>'voterIdentifier' = ${voterIdentifier}
+      LIMIT 1
+    `);
+    if (pendingResult.rows.length > 0) {
+      res.status(409).json({ error: "A payment for this ballot is already in progress" });
+      return;
+    }
+  }
+
   try {
-    await db.transaction(async (tx) => {
+    const voteOrPayment = await db.transaction(async (tx) => {
+      if (isPaid) {
+        const { intent } = await createPaymentIntent({
+          orgId: election.orgId,
+          pillar: "election",
+          entityId: election.id,
+          entityTitle: election.title,
+          transactionType: "vote",
+          amount: paymentAmount * selectedCandidateCount * voteQuantity,
+          currency: election.currency || "XAF",
+          customerName: bodyParsed.data.customerName!,
+          customerEmail: bodyParsed.data.customerEmail!,
+          customerPhone: bodyParsed.data.customerPhone!,
+          payload: {
+            election: {
+              voterIdentifier,
+              voterEmail: bodyParsed.data.voterEmail,
+              voteQuantity,
+              selections: bodyParsed.data.selections,
+            },
+          },
+          database: tx,
+        });
+        return { paymentIntent: intent };
+      }
+
       const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier, quantity: voteQuantity }).returning();
       // Bulk insert all selections in one statement
       const selectionValues = bodyParsed.data.selections.flatMap(selection =>
@@ -542,7 +590,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
         await tx.insert(voteSelectionsTable).values(selectionValues);
       }
 
-      if (election.requiresPayment && Number(election.paymentAmount || 0) > 0) {
+      if (isPaid) {
         await recordTransaction({
           orgId: election.orgId,
           pillar: "election",
@@ -554,7 +602,24 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
           payerEmail: bodyParsed.data.voterEmail,
         }, tx);
       }
+      return { vote };
     });
+
+    if (voteOrPayment.paymentIntent) {
+      try {
+        const intent = await initializePaymentIntent(voteOrPayment.paymentIntent);
+        res.json({
+          paymentRequired: true,
+          paymentId: intent.id,
+          paymentStatus: intent.paymentStatus,
+          checkoutUrl: intent.checkoutUrl,
+        });
+      } catch (error: any) {
+        await failPaymentIntent(voteOrPayment.paymentIntent.id, error?.message || "Payment initialization failed");
+        res.status(502).json({ error: "Unable to start the payment. Please try again." });
+      }
+      return;
+    }
   } catch (err: any) {
     // Unique constraint violation — two concurrent requests raced past the duplicate check
     if (err?.code === "23505") {

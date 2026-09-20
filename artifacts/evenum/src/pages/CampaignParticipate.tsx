@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -22,22 +22,39 @@ import { useToast } from '@/hooks/use-toast';
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 
 export default function CampaignParticipate() {
   const [, params] = useRoute("/campaigns/:id/participate");
   const campaignId = params?.id ? parseInt(params.id, 10) : 0;
 
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [baseData, setBaseData] = useState({ name: '', email: '' });
+  const [baseData, setBaseData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
+  const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [paymentPending, setPaymentPending] = useState(false);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const { data: analytics } = useGetCampaignAnalytics(campaignId);
   const submitMutation = useSubmitCampaignResponse();
+  const { data: paymentStatus } = usePaymentStatus(paymentId);
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const countdown = useCountdown(campaign?.endsAt);
   const lifecycleState = getLifecycleState(campaign?.startsAt, campaign?.endsAt, countdown.now);
+
+  useEffect(() => {
+    if (!paymentStatus || paymentId === null) return;
+    if (paymentStatus.status === "succeeded") {
+      setPaymentPending(false);
+      setPaymentId(null);
+      setIsSuccess(true);
+    } else if (paymentStatus.status === "failed") {
+      setPaymentPending(false);
+      setPaymentId(null);
+      toast({ title: "Payment failed", description: "Your contribution was not completed. Please try again.", variant: "destructive" });
+    }
+  }, [paymentStatus, paymentId, toast]);
 
   const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
 
@@ -84,11 +101,24 @@ export default function CampaignParticipate() {
         data: {
           submitterName: baseData.name,
           submitterEmail: baseData.email,
+           customerPhone: baseData.phone || undefined,
           data: formData,
         },
       },
       {
-        onSuccess: () => setIsSuccess(true),
+        onSuccess: (result) => {
+          if ("paymentRequired" in result) {
+            if (!result.checkoutUrl) {
+              toast({ title: "Payment unavailable", description: "FlowPay did not return a checkout link.", variant: "destructive" });
+              return;
+            }
+            setPaymentId(result.paymentId);
+            setPaymentPending(true);
+            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            return;
+          }
+          setIsSuccess(true);
+        },
         onError: () => toast({ title: t("campaignParticipate.failedToSubmit"), description: t("campaignParticipate.failedToSubmitDescription"), variant: 'destructive' }),
       }
     );
@@ -106,6 +136,20 @@ export default function CampaignParticipate() {
   }
 
   if (!campaign) return null;
+
+  if (paymentPending) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <Loader2 className="h-12 w-12 animate-spin text-amber-600/60 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
+          <p className="text-lg text-muted-foreground font-light">
+            Complete the FlowPay checkout in the new tab. This page will update when your contribution is confirmed.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
 
   const formatMoney = (amount: number | string | null | undefined) =>
     formatCurrency(amount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
@@ -223,7 +267,7 @@ export default function CampaignParticipate() {
               onClick={() => {
                 setIsSuccess(false);
                 setFormData({});
-                setBaseData({ name: '', email: '' });
+                 setBaseData({ name: '', email: '', phone: '' });
               }}
             >
               Submit Another Response
@@ -456,6 +500,22 @@ export default function CampaignParticipate() {
                     className="h-12 rounded-sm"
                   />
                 </div>
+                {campaign.requiresPayment && (
+                  <div className="space-y-2">
+                    <Label htmlFor="base-phone" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                      Phone Number <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="base-phone"
+                      type="tel"
+                      required
+                      placeholder="+237 6XX XXX XXX"
+                      value={baseData.phone}
+                      onChange={e => setBaseData({ ...baseData, phone: e.target.value })}
+                      className="h-12 rounded-sm"
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="base-email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Email Address <span className="text-destructive">*</span>
@@ -519,7 +579,7 @@ export default function CampaignParticipate() {
               type="submit"
               form="campaign-form"
               className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-amber-600 hover:bg-amber-700 text-white rounded-sm"
-              disabled={submitMutation.isPending || lifecycleState !== "live"}
+              disabled={submitMutation.isPending || lifecycleState !== "live" || (Boolean(campaign.requiresPayment) && !baseData.phone)}
             >
               {submitMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit My Response'}

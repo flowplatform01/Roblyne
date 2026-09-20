@@ -51,12 +51,16 @@ export const ticketsTable = pgTable("tickets", {
   attendeeEmail: text("attendee_email").notNull(),
   ticketCode: text("ticket_code").notNull().unique(),
   status: text("status").notNull().default("valid"), // valid | used | cancelled
+  paymentStatus: text("payment_status").notNull().default("not_required"),
+  flowpayTransactionId: text("flowpay_transaction_id"),
+  idempotencyKey: text("idempotency_key"),
   checkedInAt: timestamp("checked_in_at"),
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
 }, (table) => ({
   eventIdIdx: index("tickets_event_id_idx").on(table.eventId),
   ticketTypeIdIdx: index("tickets_ticket_type_id_idx").on(table.ticketTypeId),
   attendeeEmailIdx: index("tickets_attendee_email_idx").on(table.attendeeEmail),
+  flowpayTransactionIdx: index("tickets_flowpay_transaction_idx").on(table.flowpayTransactionId),
 }));
 
 export const insertEventSchema = createInsertSchema(eventsTable).omit({ id: true, createdAt: true });

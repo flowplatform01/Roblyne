@@ -51,7 +51,12 @@ app.use(cors({
   origin: true,
   credentials: true,
 }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({
+  limit: "10mb",
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = Buffer.from(buf);
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 const sessionSecret = process.env.SESSION_SECRET;

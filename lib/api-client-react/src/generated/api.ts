@@ -72,6 +72,8 @@ import type {
   OrganizationMemberUpdate,
   OrganizationStats,
   OrganizationUpdate,
+  PaymentInitialization,
+  PaymentStatus,
   Position,
   PositionInput,
   PositionUpdate,
@@ -2530,9 +2532,9 @@ export const getSubmitVoteUrl = (electionId: number,) => {
  * @summary Submit a vote in an election
  */
 export const submitVote = async (electionId: number,
-    voteInput: VoteInput, options?: RequestInit): Promise<MessageResponse> => {
+    voteInput: VoteInput, options?: RequestInit): Promise<MessageResponse | PaymentInitialization> => {
 
-  return customFetch<MessageResponse>(getSubmitVoteUrl(electionId),
+  return customFetch<MessageResponse | PaymentInitialization>(getSubmitVoteUrl(electionId),
   {
     ...options,
     method: 'POST',
@@ -3726,9 +3728,9 @@ export const getRegisterForEventUrl = (eventId: number,) => {
  * @summary Register for an event (purchase or claim ticket)
  */
 export const registerForEvent = async (eventId: number,
-    registrationInput: RegistrationInput, options?: RequestInit): Promise<Ticket> => {
+    registrationInput: RegistrationInput, options?: RequestInit): Promise<Ticket | PaymentInitialization> => {
 
-  return customFetch<Ticket>(getRegisterForEventUrl(eventId),
+  return customFetch<Ticket | PaymentInitialization>(getRegisterForEventUrl(eventId),
   {
     ...options,
     method: 'POST',
@@ -4476,9 +4478,9 @@ export const getSubmitCampaignResponseUrl = (campaignId: number,) => {
  * @summary Submit a response to a campaign
  */
 export const submitCampaignResponse = async (campaignId: number,
-    campaignResponseInput: CampaignResponseInput, options?: RequestInit): Promise<CampaignResponse> => {
+    campaignResponseInput: CampaignResponseInput, options?: RequestInit): Promise<CampaignResponse | PaymentInitialization> => {
 
-  return customFetch<CampaignResponse>(getSubmitCampaignResponseUrl(campaignId),
+  return customFetch<CampaignResponse | PaymentInitialization>(getSubmitCampaignResponseUrl(campaignId),
   {
     ...options,
     method: 'POST',
@@ -6083,6 +6085,83 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = E
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getSearchQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPaymentStatusUrl = (paymentId: number,) => {
+
+
+
+
+  return `/api/payments/${paymentId}`
+}
+
+/**
+ * @summary Get the public status of a payment attempt
+ */
+export const getPaymentStatus = async (paymentId: number, options?: RequestInit): Promise<PaymentStatus> => {
+
+  return customFetch<PaymentStatus>(getGetPaymentStatusUrl(paymentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentStatusQueryKey = (paymentId: number,) => {
+    return [
+    `/api/payments/${paymentId}`
+    ] as const;
+    }
+
+
+export const getGetPaymentStatusQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentStatusQueryKey(paymentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentStatus>>> = ({ signal }) => getPaymentStatus(paymentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: paymentId !== null && paymentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPaymentStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getPaymentStatus>>>
+export type GetPaymentStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the public status of a payment attempt
+ */
+
+export function useGetPaymentStatus<TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(
+ paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPaymentStatusQueryOptions(paymentId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

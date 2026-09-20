@@ -928,6 +928,9 @@ export const submitVoteBodyVoteQuantityDefault = 1;
 
 
 export const SubmitVoteBody = zod.object({
+  "customerName": zod.string().optional().describe('Required for paid voting'),
+  "customerEmail": zod.string().optional().describe('Required for paid voting'),
+  "customerPhone": zod.string().optional().describe('Required for paid voting'),
   "voterEmail": zod.string().optional().describe('Required when the election uses allowlist eligibility and the voter is not authenticated'),
   "inviteCode": zod.string().optional().describe('Required when the election visibility is invite_only'),
   "voteQuantity": zod.number().min(1).default(submitVoteBodyVoteQuantityDefault).describe('Number of voting units purchased'),
@@ -937,9 +940,14 @@ export const SubmitVoteBody = zod.object({
 }))
 })
 
-export const SubmitVoteResponse = zod.object({
+export const SubmitVoteResponse = zod.union([zod.object({
   "message": zod.string()
-})
+}),zod.object({
+  "paymentRequired": zod.literal(true),
+  "paymentId": zod.number(),
+  "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "checkoutUrl": zod.string().nullish()
+})])
 
 
 /**
@@ -1363,11 +1371,12 @@ export const RegisterForEventBody = zod.object({
   "ticketTypeId": zod.number(),
   "attendeeName": zod.string().min(1),
   "attendeeEmail": zod.string(),
+  "customerPhone": zod.string().optional().describe('Required for paid tickets'),
   "inviteCode": zod.string().optional().describe('Required when the event visibility is invite_only'),
   "quantity": zod.number().min(1).default(registerForEventBodyQuantityDefault)
 })
 
-export const RegisterForEventResponse = zod.object({
+export const RegisterForEventResponse = zod.union([zod.object({
   "id": zod.number(),
   "eventId": zod.number(),
   "eventTitle": zod.string().nullish(),
@@ -1377,9 +1386,17 @@ export const RegisterForEventResponse = zod.object({
   "attendeeEmail": zod.string(),
   "ticketCode": zod.string(),
   "status": zod.enum(['valid', 'used', 'cancelled']),
+  "paymentStatus": zod.enum(['not_required', 'pending', 'processing', 'succeeded', 'failed']).optional(),
+  "flowpayTransactionId": zod.string().nullish(),
+  "idempotencyKey": zod.string().nullish(),
   "checkedInAt": zod.coerce.date().nullish(),
   "issuedAt": zod.coerce.date()
-})
+}),zod.object({
+  "paymentRequired": zod.literal(true),
+  "paymentId": zod.number(),
+  "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "checkoutUrl": zod.string().nullish()
+})])
 
 
 /**
@@ -1713,10 +1730,11 @@ export const SubmitCampaignResponseParams = zod.object({
 export const SubmitCampaignResponseBody = zod.object({
   "submitterName": zod.string().min(1),
   "submitterEmail": zod.string(),
+  "customerPhone": zod.string().optional().describe('Required for paid campaign participation'),
   "data": zod.record(zod.string(), zod.unknown()).describe('Field values keyed by field ID')
 })
 
-export const SubmitCampaignResponseResponse = zod.object({
+export const SubmitCampaignResponseResponse = zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
   "submitterName": zod.string(),
@@ -1724,8 +1742,16 @@ export const SubmitCampaignResponseResponse = zod.object({
   "data": zod.record(zod.string(), zod.unknown()),
   "amountPaid": zod.number().nullish(),
   "status": zod.enum(['pending', 'confirmed', 'rejected']).optional(),
+  "paymentStatus": zod.enum(['not_required', 'pending', 'processing', 'succeeded', 'failed']).optional(),
+  "flowpayTransactionId": zod.string().nullish(),
+  "idempotencyKey": zod.string().nullish(),
   "submittedAt": zod.coerce.date()
-})
+}),zod.object({
+  "paymentRequired": zod.literal(true),
+  "paymentId": zod.number(),
+  "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "checkoutUrl": zod.string().nullish()
+})])
 
 
 /**
@@ -1743,6 +1769,9 @@ export const ListCampaignSubmissionsResponseItem = zod.object({
   "data": zod.record(zod.string(), zod.unknown()),
   "amountPaid": zod.number().nullish(),
   "status": zod.enum(['pending', 'confirmed', 'rejected']).optional(),
+  "paymentStatus": zod.enum(['not_required', 'pending', 'processing', 'succeeded', 'failed']).optional(),
+  "flowpayTransactionId": zod.string().nullish(),
+  "idempotencyKey": zod.string().nullish(),
   "submittedAt": zod.coerce.date()
 })
 export const ListCampaignSubmissionsResponse = zod.array(ListCampaignSubmissionsResponseItem)
@@ -1847,8 +1876,11 @@ export const ListOrgTransactionsResponse = zod.object({
   "commissionAmount": zod.number().describe('Platform commission amount'),
   "orgEarnings": zod.number().describe('Amount earned by the organization'),
   "currency": zod.string(),
-  "status": zod.enum(['completed', 'refunded', 'disputed']),
+  "status": zod.enum(['pending', 'completed', 'failed', 'refunded', 'disputed']),
   "paymentProvider": zod.string().optional(),
+  "paymentStatus": zod.enum(['not_required', 'pending', 'processing', 'succeeded', 'failed']).optional(),
+  "flowpayTransactionId": zod.string().nullish(),
+  "idempotencyKey": zod.string().nullish(),
   "settlementStatus": zod.enum(['pending', 'ready', 'released', 'completed']),
   "settlementId": zod.number().nullish(),
   "payerName": zod.string().nullish(),
@@ -1990,8 +2022,11 @@ export const ListAdminTransactionsResponse = zod.object({
   "commissionAmount": zod.number().describe('Platform commission amount'),
   "orgEarnings": zod.number().describe('Amount earned by the organization'),
   "currency": zod.string(),
-  "status": zod.enum(['completed', 'refunded', 'disputed']),
+  "status": zod.enum(['pending', 'completed', 'failed', 'refunded', 'disputed']),
   "paymentProvider": zod.string().optional(),
+  "paymentStatus": zod.enum(['not_required', 'pending', 'processing', 'succeeded', 'failed']).optional(),
+  "flowpayTransactionId": zod.string().nullish(),
+  "idempotencyKey": zod.string().nullish(),
   "settlementStatus": zod.enum(['pending', 'ready', 'released', 'completed']),
   "settlementId": zod.number().nullish(),
   "payerName": zod.string().nullish(),
@@ -2221,4 +2256,20 @@ export const SearchResponse = zod.object({
   "participantsCount": zod.number().optional(),
   "createdAt": zod.coerce.date()
 }))
+})
+
+
+/**
+ * @summary Get the public status of a payment attempt
+ */
+export const GetPaymentStatusParams = zod.object({
+  "paymentId": zod.coerce.number()
+})
+
+export const GetPaymentStatusResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['initializing', 'pending', 'processing', 'succeeded', 'failed']),
+  "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "checkoutUrl": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish()
 })

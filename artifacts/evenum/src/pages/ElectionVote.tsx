@@ -24,6 +24,7 @@ import { hexToHsl } from "@/lib/branding";
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 
 function CountdownBlock({ value, label }: { value: number; label: string }) {
   return (
@@ -76,7 +77,12 @@ export default function ElectionVote() {
   const [voterEmail, setVoterEmail] = useState('');
   const [voteQuantity, setVoteQuantity] = useState(1);
   const [paymentAmountInput, setPaymentAmountInput] = useState('');
+  const [paymentCustomerName, setPaymentCustomerName] = useState('');
+  const [paymentCustomerEmail, setPaymentCustomerEmail] = useState('');
+  const [paymentCustomerPhone, setPaymentCustomerPhone] = useState('');
+  const [paymentId, setPaymentId] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
+  const { data: paymentStatus } = usePaymentStatus(paymentId);
 
   // ── Display preferences ───────────────────────────────────────────────────
   const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
@@ -96,6 +102,21 @@ export default function ElectionVote() {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!paymentStatus || paymentId === null) return;
+    if (paymentStatus.status === "succeeded") {
+      setHasPaid(true);
+      setPaymentProcessing(false);
+      setPaymentId(null);
+      setStep("success");
+    } else if (paymentStatus.status === "failed") {
+      setPaymentProcessing(false);
+      setPaymentId(null);
+      setStep("review");
+      toast({ title: "Payment failed", description: "Your ballot was not recorded. Please try again.", variant: "destructive" });
+    }
+  }, [paymentStatus, paymentId, toast]);
 
   // Jump to position when arriving from a candidate profile deep-link
   useEffect(() => {
@@ -165,11 +186,28 @@ export default function ElectionVote() {
           voteQuantity: computedQuantity,
           inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
           voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
+          customerName: feeRequired ? paymentCustomerName || undefined : undefined,
+          customerEmail: feeRequired ? paymentCustomerEmail || undefined : undefined,
+          customerPhone: feeRequired ? paymentCustomerPhone || undefined : undefined,
         },
       },
       {
-        onSuccess: () => setStep('success'),
+        onSuccess: (result) => {
+          setPaymentProcessing(false);
+          if ("paymentRequired" in result) {
+            if (!result.checkoutUrl) {
+              toast({ title: "Payment unavailable", description: "FlowPay did not return a checkout link.", variant: "destructive" });
+              setStep("review");
+              return;
+            }
+            setPaymentId(result.paymentId);
+            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            return;
+          }
+          setStep('success');
+        },
         onError: (error: any) => {
+          setPaymentProcessing(false);
           setStep('review');
           toast({ variant: 'destructive', title: t("voting.submissionFailed"), description: error?.data?.error || t("voting.submissionFailedDescription") });
         },
@@ -453,18 +491,9 @@ export default function ElectionVote() {
         toast({ title: "Voting has ended", description: "The ballot deadline passed before payment completed.", variant: "destructive" });
         return;
       }
+      if (paymentId !== null) return;
       setPaymentProcessing(true);
-      setTimeout(() => {
-        if (election.endsAt && Date.now() >= Date.parse(election.endsAt)) {
-          setPaymentProcessing(false);
-          setStep("review");
-          toast({ title: "Voting has ended", description: "The ballot deadline passed before payment completed.", variant: "destructive" });
-          return;
-        }
-        setHasPaid(true);
-        setPaymentProcessing(false);
-        submitBallot();
-      }, 2000);
+      submitBallot();
     };
 
     return (
@@ -511,6 +540,34 @@ export default function ElectionVote() {
                 <Input id="vote-quantity" type="number" min="1" step="1" value={voteQuantity} onChange={e => setVoteQuantity(Math.max(1, parseInt(e.target.value || '1', 10)))} />
               </div>
             )}
+            <div className="space-y-3 pt-2">
+              <Label htmlFor="payment-customer-name">Full name</Label>
+              <Input
+                id="payment-customer-name"
+                value={paymentCustomerName}
+                onChange={e => setPaymentCustomerName(e.target.value)}
+                placeholder="Your full name"
+                disabled={paymentProcessing}
+              />
+              <Label htmlFor="payment-customer-email">Email address</Label>
+              <Input
+                id="payment-customer-email"
+                type="email"
+                value={paymentCustomerEmail}
+                onChange={e => setPaymentCustomerEmail(e.target.value)}
+                placeholder="you@example.com"
+                disabled={paymentProcessing}
+              />
+              <Label htmlFor="payment-customer-phone">Phone number</Label>
+              <Input
+                id="payment-customer-phone"
+                type="tel"
+                value={paymentCustomerPhone}
+                onChange={e => setPaymentCustomerPhone(e.target.value)}
+                placeholder="+237 6XX XXX XXX"
+                disabled={paymentProcessing}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
                <div><span className="text-muted-foreground block">{t("voting.pricePerVote")}</span><strong>{formatMoney(pricePerVote)}</strong></div>
                <div><span className="text-muted-foreground block">{t("voting.selectedCandidates")}</span><strong>{selectedCandidateCount}</strong></div>
@@ -544,7 +601,7 @@ export default function ElectionVote() {
               <span className="ml-auto text-lg">🔒</span>
             </div>
             <div className="p-6">
-              <Button className="w-full h-14 text-base rounded-sm" onClick={handlePayment} disabled={paymentProcessing}>
+              <Button className="w-full h-14 text-base rounded-sm" onClick={handlePayment} disabled={paymentProcessing || !paymentCustomerName || !paymentCustomerEmail || !paymentCustomerPhone}>
                 {paymentProcessing ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Confirming payment…</>
                 ) : (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -16,6 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useCountdown } from "@/hooks/useLifecycle";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 
 const FAQS = [
   {
@@ -60,8 +61,10 @@ export default function EventRegister() {
   const eventId = params?.id ? parseInt(params.id, 10) : 0;
 
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
+  const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [paymentPending, setPaymentPending] = useState(false);
   const [ticketCode, setTicketCode] = useState('');
   const [ticketTypeName, setTicketTypeName] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -69,9 +72,25 @@ export default function EventRegister() {
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
+  const { data: paymentStatus } = usePaymentStatus(paymentId);
   const countdown = useCountdown(event?.endsAt);
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
+
+  useEffect(() => {
+    if (!paymentStatus || paymentId === null) return;
+    if (paymentStatus.status === "succeeded" && paymentStatus.result) {
+      const result = paymentStatus.result as any;
+      setTicketCode(result.ticketCode || "");
+      setTicketTypeName(result.ticketTypeName || "General Admission");
+      setPaymentPending(false);
+      setPaymentId(null);
+      setIsSuccess(true);
+    } else if (paymentStatus.status === "failed") {
+      setPaymentPending(false);
+      setPaymentId(null);
+    }
+  }, [paymentStatus, paymentId]);
 
   const shareUrl = `${window.location.origin}/events/${eventId}/register`;
 
@@ -91,6 +110,7 @@ export default function EventRegister() {
     if (countdown.expired) return;
     if (selectedTicket?.saleStartsAt && Date.parse(selectedTicket.saleStartsAt) > now) return;
     if (selectedTicket?.saleEndsAt && Date.parse(selectedTicket.saleEndsAt) <= now) return;
+    if (selectedTicket && selectedTicket.price > 0 && !formData.phone.trim()) return;
 
     registerMutation.mutate(
       {
@@ -98,16 +118,28 @@ export default function EventRegister() {
         data: {
           ticketTypeId: selectedTicketId,
           attendeeName: formData.name,
-          attendeeEmail: formData.email,
+           attendeeEmail: formData.email,
+           customerPhone: formData.phone || undefined,
           quantity: 1,
         },
       },
       {
         onSuccess: (result) => {
+          if ("paymentRequired" in result) {
+            if (!result.checkoutUrl) {
+              registerMutation.reset();
+              return;
+            }
+            setPaymentId(result.paymentId);
+            setPaymentPending(true);
+            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            return;
+          }
           setIsSuccess(true);
           setTicketCode(result?.ticketCode || `TKT-${Math.floor(Math.random() * 1000000)}`);
           setTicketTypeName(selectedTicket?.name || 'General Admission');
         },
+        onError: () => setPaymentPending(false),
       }
     );
   };
@@ -137,6 +169,20 @@ export default function EventRegister() {
   }
 
   if (!event) return null;
+
+  if (paymentPending) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
+          <Loader2 className="h-12 w-12 animate-spin text-emerald-600/60 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
+          <p className="text-lg text-muted-foreground font-light">
+            Complete the FlowPay checkout in the new tab. This page will update when your payment is confirmed.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
 
   const primaryStyle: React.CSSProperties = (event as any).accentColor
     ? { "--primary": hexToHsl((event as any).accentColor) } as React.CSSProperties
@@ -551,6 +597,23 @@ export default function EventRegister() {
                         className="h-12"
                       />
                     </div>
+                    {selectedTicket && selectedTicket.price > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                          Phone Number
+                        </Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          required
+                          placeholder="+237 6XX XXX XXX"
+                          value={formData.phone}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                          disabled={!selectedTicketId || registerMutation.isPending}
+                          className="h-12"
+                        />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         {t("eventRegister.emailAddress")}
@@ -584,7 +647,7 @@ export default function EventRegister() {
                     type="submit"
                     form="reg-form"
                     className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm"
-                    disabled={!selectedTicketId || selectedTicketUnavailable || !formData.name || !formData.email || countdown.expired || registerMutation.isPending}
+                     disabled={!selectedTicketId || selectedTicketUnavailable || !formData.name || !formData.email || (Boolean(selectedTicket && selectedTicket.price > 0) && !formData.phone) || countdown.expired || registerMutation.isPending}
                   >
                     {registerMutation.isPending ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />

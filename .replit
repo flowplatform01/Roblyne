@@ -21,3 +21,14 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+FLOWPAY_API_BASE_URL = "https://flowpayapi2.onrender.com/"
+FLOWPAY_CLIENT_ID = "client_1b8b8da89e696ce23faa5884cd5c5674"
+FLOWPAY_CLIENT_SECRET = "client_secret_c584e78c37e4fe4be62dffbd21335661"
+FLOWPAY_PUBLIC_KEY = "fpub_76f976f83f646330f10db57c8d463355"
+FLOWPAY_SECRET_KEY = "fsec_13024e2d2c47524d883772e3f17751f4"
+FLOWPAY_WEBHOOK_SECRET = "fwhsec_4462efe3aa022691963a4c1c63fb784e"
+SESSION_SECRET = "6OluVSZejRobTMpbUe0VNUDH5cLz50M2EmHMg/8CuGKByFBJ/vOBwlSJibE96cZWFUpRpKJf8t8+h7ADIL3KZA=="

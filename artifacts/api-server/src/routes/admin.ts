@@ -58,8 +58,9 @@ router.get("/admin/platform-settings/public", async (_req, res): Promise<void> =
   });
 });
 
-// All subsequent routes require platform admin
-router.use(requirePlatformAdmin);
+// All subsequent /admin routes require platform admin. Keep the path scope
+// here because this router is mounted alongside public routes at /api.
+router.use("/admin", requirePlatformAdmin);
 
 router.get("/admin/platform-settings", async (_req, res): Promise<void> => {
   const [settings] = await db.select().from(platformSettingsTable).limit(1);

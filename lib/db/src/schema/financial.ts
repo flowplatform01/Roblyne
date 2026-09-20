@@ -32,8 +32,12 @@ export const financialTransactionsTable = pgTable("financial_transactions", {
   currency: text("currency").notNull().default("XAF"),
   // status: completed | refunded | disputed
   status: text("status").notNull().default("completed"),
-  // paymentProvider: platform (simulated) | stripe | etc.
+  // status: pending | completed | failed | refunded | disputed
+  // paymentProvider: platform (legacy simulated) | flowpay | etc.
   paymentProvider: text("payment_provider").notNull().default("platform"),
+  paymentStatus: text("payment_status").notNull().default("not_required"),
+  flowpayTransactionId: text("flowpay_transaction_id"),
+  idempotencyKey: text("idempotency_key"),
   // settlementStatus: pending | ready | released | completed
   settlementStatus: text("settlement_status").notNull().default("pending"),
   settlementId: integer("settlement_id"),
@@ -43,6 +47,8 @@ export const financialTransactionsTable = pgTable("financial_transactions", {
 }, (table) => ({
   orgIdIdx: index("financial_transactions_org_id_idx").on(table.orgId),
   entityIdx: index("financial_transactions_entity_idx").on(table.pillar, table.entityId),
+  flowpayTransactionIdx: index("financial_transactions_flowpay_transaction_idx").on(table.flowpayTransactionId),
+  idempotencyKeyIdx: index("financial_transactions_idempotency_key_idx").on(table.idempotencyKey),
   settlementIdIdx: index("financial_transactions_settlement_id_idx").on(table.settlementId),
   settlementStatusIdx: index("financial_transactions_settlement_status_idx").on(table.settlementStatus),
   createdAtIdx: index("financial_transactions_created_at_idx").on(table.createdAt),

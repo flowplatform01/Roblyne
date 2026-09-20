@@ -38,11 +38,15 @@ export const campaignResponsesTable = pgTable("campaign_responses", {
   data: jsonb("data").notNull().default({}),
   amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }),
   status: text("status").notNull().default("pending"), // pending | confirmed | rejected
+  paymentStatus: text("payment_status").notNull().default("not_required"),
+  flowpayTransactionId: text("flowpay_transaction_id"),
+  idempotencyKey: text("idempotency_key"),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
 }, (table) => ({
   campaignIdIdx: index("campaign_responses_campaign_id_idx").on(table.campaignId),
   statusIdx: index("campaign_responses_status_idx").on(table.status),
   submitterEmailIdx: index("campaign_responses_submitter_email_idx").on(table.submitterEmail),
+  flowpayTransactionIdx: index("campaign_responses_flowpay_transaction_idx").on(table.flowpayTransactionId),
 }));
 
 export const insertCampaignSchema = createInsertSchema(campaignsTable).omit({ id: true, createdAt: true, currentAmount: true });

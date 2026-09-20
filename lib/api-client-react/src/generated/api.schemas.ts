@@ -51,6 +51,60 @@ export interface MessageResponse {
   message: string;
 }
 
+export type PaymentInitializationPaymentStatus = typeof PaymentInitializationPaymentStatus[keyof typeof PaymentInitializationPaymentStatus];
+
+
+export const PaymentInitializationPaymentStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export interface PaymentInitialization {
+  paymentRequired: true;
+  paymentId: number;
+  paymentStatus: PaymentInitializationPaymentStatus;
+  /** @nullable */
+  checkoutUrl?: string | null;
+}
+
+export type PaymentStatusStatus = typeof PaymentStatusStatus[keyof typeof PaymentStatusStatus];
+
+
+export const PaymentStatusStatus = {
+  initializing: 'initializing',
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export type PaymentStatusPaymentStatus = typeof PaymentStatusPaymentStatus[keyof typeof PaymentStatusPaymentStatus];
+
+
+export const PaymentStatusPaymentStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PaymentStatusResult = { [key: string]: unknown } | null;
+
+export interface PaymentStatus {
+  id: number;
+  status: PaymentStatusStatus;
+  paymentStatus: PaymentStatusPaymentStatus;
+  /** @nullable */
+  checkoutUrl?: string | null;
+  /** @nullable */
+  result?: PaymentStatusResult;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
@@ -686,6 +740,12 @@ export type VoteInputSelectionsItem = {
 };
 
 export interface VoteInput {
+  /** Required for paid voting */
+  customerName?: string;
+  /** Required for paid voting */
+  customerEmail?: string;
+  /** Required for paid voting */
+  customerPhone?: string;
   /** Required when the election uses allowlist eligibility and the voter is not authenticated */
   voterEmail?: string;
   /** Required when the election visibility is invite_only */
@@ -870,6 +930,8 @@ export interface RegistrationInput {
   /** @minLength 1 */
   attendeeName: string;
   attendeeEmail: string;
+  /** Required for paid tickets */
+  customerPhone?: string;
   /** Required when the event visibility is invite_only */
   inviteCode?: string;
   /** @minimum 1 */
@@ -885,6 +947,17 @@ export const TicketStatus = {
   cancelled: 'cancelled',
 } as const;
 
+export type TicketPaymentStatus = typeof TicketPaymentStatus[keyof typeof TicketPaymentStatus];
+
+
+export const TicketPaymentStatus = {
+  not_required: 'not_required',
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
 export interface Ticket {
   id: number;
   eventId: number;
@@ -897,6 +970,11 @@ export interface Ticket {
   attendeeEmail: string;
   ticketCode: string;
   status: TicketStatus;
+  paymentStatus?: TicketPaymentStatus;
+  /** @nullable */
+  flowpayTransactionId?: string | null;
+  /** @nullable */
+  idempotencyKey?: string | null;
   /** @nullable */
   checkedInAt?: string | null;
   issuedAt: string;
@@ -1062,6 +1140,8 @@ export interface CampaignResponseInput {
   /** @minLength 1 */
   submitterName: string;
   submitterEmail: string;
+  /** Required for paid campaign participation */
+  customerPhone?: string;
   /** Field values keyed by field ID */
   data: CampaignResponseInputData;
 }
@@ -1077,6 +1157,17 @@ export const CampaignResponseStatus = {
   rejected: 'rejected',
 } as const;
 
+export type CampaignResponsePaymentStatus = typeof CampaignResponsePaymentStatus[keyof typeof CampaignResponsePaymentStatus];
+
+
+export const CampaignResponsePaymentStatus = {
+  not_required: 'not_required',
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
 export interface CampaignResponse {
   id: number;
   campaignId: number;
@@ -1086,6 +1177,11 @@ export interface CampaignResponse {
   /** @nullable */
   amountPaid?: number | null;
   status?: CampaignResponseStatus;
+  paymentStatus?: CampaignResponsePaymentStatus;
+  /** @nullable */
+  flowpayTransactionId?: string | null;
+  /** @nullable */
+  idempotencyKey?: string | null;
   submittedAt: string;
 }
 
@@ -1164,9 +1260,22 @@ export type FinancialTransactionStatus = typeof FinancialTransactionStatus[keyof
 
 
 export const FinancialTransactionStatus = {
+  pending: 'pending',
   completed: 'completed',
+  failed: 'failed',
   refunded: 'refunded',
   disputed: 'disputed',
+} as const;
+
+export type FinancialTransactionPaymentStatus = typeof FinancialTransactionPaymentStatus[keyof typeof FinancialTransactionPaymentStatus];
+
+
+export const FinancialTransactionPaymentStatus = {
+  not_required: 'not_required',
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
 } as const;
 
 export type FinancialTransactionSettlementStatus = typeof FinancialTransactionSettlementStatus[keyof typeof FinancialTransactionSettlementStatus];
@@ -1200,6 +1309,11 @@ export interface FinancialTransaction {
   currency: string;
   status: FinancialTransactionStatus;
   paymentProvider?: string;
+  paymentStatus?: FinancialTransactionPaymentStatus;
+  /** @nullable */
+  flowpayTransactionId?: string | null;
+  /** @nullable */
+  idempotencyKey?: string | null;
   settlementStatus: FinancialTransactionSettlementStatus;
   /** @nullable */
   settlementId?: number | null;

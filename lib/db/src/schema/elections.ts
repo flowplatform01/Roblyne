@@ -70,10 +70,14 @@ export const votesTable = pgTable("votes", {
   electionId: integer("election_id").notNull().references(() => electionsTable.id, { onDelete: "cascade" }),
   voterIdentifier: text("voter_identifier").notNull(), // userId or sessionId
   quantity: integer("quantity").notNull().default(1),
+  paymentStatus: text("payment_status").notNull().default("not_required"),
+  flowpayTransactionId: text("flowpay_transaction_id"),
+  idempotencyKey: text("idempotency_key"),
   votedAt: timestamp("voted_at").notNull().defaultNow(),
 }, (table) => ({
   // Hard DB-level guarantee against double-voting, not just an application-level check.
   electionVoterUnique: uniqueIndex("votes_election_voter_unique").on(table.electionId, table.voterIdentifier),
+  flowpayTransactionIdx: index("votes_flowpay_transaction_idx").on(table.flowpayTransactionId),
 }));
 
 export const voteSelectionsTable = pgTable("vote_selections", {

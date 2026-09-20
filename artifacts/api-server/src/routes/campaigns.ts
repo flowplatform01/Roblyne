@@ -10,6 +10,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 
 const router: IRouter = Router();
 
@@ -183,7 +184,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   const bodyParsed = SubmitCampaignResponseBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
 
-  const { submitterName, submitterEmail, data } = bodyParsed.data;
+  const { submitterName, submitterEmail, customerPhone, data } = bodyParsed.data;
   const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
   if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(campaign.orgId, req.session.userId) : null;
@@ -213,7 +214,30 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
 
   // ── Atomic: insert response + update current_amount in one transaction ──
   const paymentAmount = campaign.requiresPayment ? Number(campaign.paymentAmount ?? 0) : 0;
-  const response = await db.transaction(async (tx) => {
+  if (paymentAmount > 0 && !customerPhone?.trim()) {
+    res.status(400).json({ error: "A customer phone number is required for paid campaign participation" });
+    return;
+  }
+
+  const responseOrPayment = await db.transaction(async (tx) => {
+    if (paymentAmount > 0) {
+      const { intent } = await createPaymentIntent({
+        orgId: campaign.orgId,
+        pillar: "campaign",
+        entityId: campaign.id,
+        entityTitle: campaign.title,
+        transactionType: "campaign_response",
+        amount: paymentAmount,
+        currency: campaign.currency || await getPlatformCurrency(),
+        customerName: submitterName,
+        customerEmail: submitterEmail,
+        customerPhone: customerPhone!,
+        payload: { campaign: { submitterName, submitterEmail, data } },
+        database: tx,
+      });
+      return { paymentIntent: intent };
+    }
+
     const [inserted] = await tx.insert(campaignResponsesTable).values({
       campaignId: paramParsed.data.campaignId,
       submitterName,
@@ -221,6 +245,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
       data,
       amountPaid: paymentAmount > 0 ? String(paymentAmount) : null,
       status: paymentAmount > 0 ? "confirmed" : "pending",
+      paymentStatus: "not_required",
     }).returning();
 
     if (paymentAmount > 0) {
@@ -240,9 +265,30 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
       }, tx);
     }
 
-    return inserted;
+    return { response: inserted };
   });
 
+  if (responseOrPayment.paymentIntent) {
+    try {
+      const intent = await initializePaymentIntent(responseOrPayment.paymentIntent);
+      res.status(201).json({
+        paymentRequired: true,
+        paymentId: intent.id,
+        paymentStatus: intent.paymentStatus,
+        checkoutUrl: intent.checkoutUrl,
+      });
+    } catch (error: any) {
+      await failPaymentIntent(responseOrPayment.paymentIntent.id, error?.message || "Payment initialization failed");
+      res.status(502).json({ error: "Unable to start the payment. Please try again." });
+    }
+    return;
+  }
+
+  const response = responseOrPayment.response;
+  if (!response) {
+    res.status(500).json({ error: "Campaign response was not created" });
+    return;
+  }
   res.status(201).json({
     ...response,
     amountPaid: response.amountPaid ? parseFloat(response.amountPaid) : null,
