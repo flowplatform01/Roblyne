@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { logger } from "./logger";
 
 export type FlowPayPaymentStatus = "pending" | "processing" | "succeeded" | "failed";
+export type FlowPayEnvironment = "sandbox" | "production";
 
 export interface FlowPayTransaction {
   id: string | null;
@@ -18,22 +19,42 @@ interface FlowPayConfig {
   secretKey: string;
   webhookSecret: string;
   provider: string;
+  environment: FlowPayEnvironment;
+  timeoutMs: number;
 }
 
-function requiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing required FlowPay configuration: ${name}`);
+function requiredEnv(name: string, fallbackName?: string): string {
+  const value = process.env[name]?.trim() || (fallbackName ? process.env[fallbackName]?.trim() : undefined);
+  if (!value) {
+    throw new Error(
+      `Missing required FlowPay configuration: ${name}${fallbackName ? ` (or ${fallbackName})` : ""}`,
+    );
+  }
   return value;
 }
 
 function getConfig(): FlowPayConfig {
+  const configuredEnvironment = process.env.FLOWPAY_ENVIRONMENT?.trim().toLowerCase();
+  const environment = configuredEnvironment === "production"
+    ? "production"
+    : configuredEnvironment === "sandbox"
+      ? "sandbox"
+      : process.env.NODE_ENV === "production" ? "production" : "sandbox";
+  const configuredTimeout = Number(process.env.FLOWPAY_TIMEOUT_MS);
+  const environmentPrefix = `FLOWPAY_${environment.toUpperCase()}`;
+  const env = (suffix: string) => `${environmentPrefix}_${suffix}`;
+
   return {
-    baseUrl: requiredEnv("FLOWPAY_API_BASE_URL").replace(/\/+$/, ""),
-    clientId: requiredEnv("FLOWPAY_CLIENT_ID"),
-    publicKey: requiredEnv("FLOWPAY_PUBLIC_KEY"),
-    secretKey: requiredEnv("FLOWPAY_SECRET_KEY"),
-    webhookSecret: requiredEnv("FLOWPAY_WEBHOOK_SECRET"),
-    provider: process.env.FLOWPAY_PROVIDER?.trim() || "FAPSHI",
+    baseUrl: requiredEnv(env("API_BASE_URL"), "FLOWPAY_API_BASE_URL").replace(/\/+$/, ""),
+    clientId: requiredEnv(env("CLIENT_ID"), "FLOWPAY_CLIENT_ID"),
+    publicKey: requiredEnv(env("PUBLIC_KEY"), "FLOWPAY_PUBLIC_KEY"),
+    secretKey: requiredEnv(env("SECRET_KEY"), "FLOWPAY_SECRET_KEY"),
+    webhookSecret: requiredEnv(env("WEBHOOK_SECRET"), "FLOWPAY_WEBHOOK_SECRET"),
+    provider: process.env[env("PROVIDER")]?.trim() || process.env.FLOWPAY_PROVIDER?.trim() || "FAPSHI",
+    environment,
+    timeoutMs: Number.isFinite(configuredTimeout) && configuredTimeout >= 1_000
+      ? Math.min(configuredTimeout, 60_000)
+      : 15_000,
   };
 }
 
@@ -60,11 +81,29 @@ export function normalizeFlowPayStatus(value: unknown): FlowPayPaymentStatus {
 
 function normalizeTransaction(body: unknown, externalReference: string): FlowPayTransaction {
   const root = asRecord(body);
-  const transaction = asRecord(root.transaction ?? root.data ?? body);
+  const data = asRecord(root.data);
+  const transaction = asRecord(
+    root.transaction
+      ?? data.transaction
+      ?? data.payment
+      ?? root.payment
+      ?? (root.status || root.externalReference ? root : data),
+  );
   return {
-    id: firstString(transaction.id, transaction.transactionId, transaction.reference),
-    externalReference: firstString(transaction.externalReference, externalReference) || externalReference,
-    status: normalizeFlowPayStatus(transaction.status),
+    id: firstString(transaction.id, transaction.transactionId, transaction.reference, root.id, root.transactionId),
+    externalReference: firstString(
+      transaction.externalReference,
+      transaction.external_reference,
+      root.externalReference,
+      root.external_reference,
+      externalReference,
+    ) || externalReference,
+    status: normalizeFlowPayStatus(
+      transaction.status
+        ?? transaction.paymentStatus
+        ?? root.status
+        ?? root.paymentStatus,
+    ),
     checkoutUrl: firstString(
       transaction.checkoutSessionUrl,
       transaction.checkoutUrl,
@@ -72,9 +111,22 @@ function normalizeTransaction(body: unknown, externalReference: string): FlowPay
       transaction.paymentUrl,
       root.checkoutSessionUrl,
       root.checkoutUrl,
+      root.sessionUrl,
+      root.paymentUrl,
     ),
     raw: transaction,
   };
+}
+
+class FlowPayRequestError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+    readonly statusCode?: number,
+  ) {
+    super(message);
+    this.name = "FlowPayRequestError";
+  }
 }
 
 export async function initializeFlowPayPayment(input: {
@@ -104,17 +156,18 @@ export async function initializeFlowPayPayment(input: {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const response = await fetch(`${config.baseUrl}/payments/initialize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "x-flowpay-client-id": config.clientId,
-          "x-flowpay-public-key": config.publicKey,
-          "x-flowpay-secret-key": config.secretKey,
-          "Idempotency-Key": input.idempotencyKey,
-        },
-        body: JSON.stringify(body),
-      });
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "x-flowpay-client-id": config.clientId,
+            "x-flowpay-public-key": config.publicKey,
+            "x-flowpay-secret-key": config.secretKey,
+            "Idempotency-Key": input.idempotencyKey,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(config.timeoutMs),
+        });
 
       const responseText = await response.text();
       let responseBody: unknown = null;
@@ -127,13 +180,18 @@ export async function initializeFlowPayPayment(input: {
       if (!response.ok) {
         const errorBody = asRecord(responseBody);
         const message = firstString(errorBody.message, errorBody.error, errorBody.detail) || `FlowPay returned HTTP ${response.status}`;
-        throw new Error(message);
+        throw new FlowPayRequestError(message, response.status === 408 || response.status === 429 || response.status >= 500, response.status);
       }
 
       return normalizeTransaction(responseBody, input.externalReference);
     } catch (error) {
       lastError = error;
-      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 250));
+      const retryable = !(error instanceof FlowPayRequestError) || error.retryable;
+      if (attempt === 0 && retryable) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+        continue;
+      }
+      break;
     }
   }
 

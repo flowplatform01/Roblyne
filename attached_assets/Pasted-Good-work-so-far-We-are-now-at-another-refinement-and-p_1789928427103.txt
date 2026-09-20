@@ -1,0 +1,291 @@
+Good work so far. We are now at another refinement and production-readiness stage.
+
+Do not rebuild existing functionality or introduce unnecessary changes. Inspect the current implementation first, understand the existing design system and payment integration, then make only the changes that are genuinely necessary.
+
+1. Theme Selector Placement
+
+The current theme selector is exposed in the main header.
+
+Review this placement and move the theme preference into the same user-preference area used for language selection.
+
+The intended experience is:
+
+* The application detects the user’s system language by default.
+* Language remains accessible from the existing side menu / preference area.
+* Theme preference should also live in that same preference area.
+* Remove the standalone theme control from the main header if it is currently there.
+* Keep the interface clean and avoid adding unnecessary header controls.
+
+Theme options should remain:
+
+* System
+* Light
+* Dark
+
+The default preference should be System.
+
+The system preference should follow the device/browser preference until the user explicitly chooses another option.
+
+Once manually selected, persist that preference across sessions.
+
+Do not break the existing language preference or navigation.
+
+⸻
+
+2. Dark Theme Visual Audit
+
+The current dark theme is already strong and should not be unnecessarily redesigned.
+
+However, perform a careful visual audit of the entire application in dark mode.
+
+Pay particular attention to areas where the existing branding or accent treatment appears to transition into light blue/cyan tones.
+
+Determine whether these colours are intentional, necessary, or simply the result of shared colour tokens interacting with the dark theme.
+
+Review:
+
+* primary actions
+* secondary actions
+* links
+* active states
+* selected states
+* navigation
+* cards
+* borders
+* dividers
+* icons
+* badges
+* inputs
+* buttons
+* event branding
+* voting interfaces
+* campaign interfaces
+* ticketing interfaces
+* public pages
+* organization workspaces
+* modals and sheets
+* success/error states.
+
+The objective is not to remove the blue/cyan identity.
+
+Instead, determine whether the dark-theme colour system can be refined so the branding feels intentional, cohesive and premium.
+
+Preserve the current strengths of the dark theme.
+
+Only make changes where they materially improve visual consistency, contrast, hierarchy or readability.
+
+Do not introduce arbitrary gradients or generic “dark mode” styling.
+
+⸻
+
+3. Theme Consistency Across the Application
+
+Verify that theme changes propagate correctly throughout the entire application.
+
+There should be no isolated screens that remain visually inconsistent after switching themes.
+
+Check:
+
+* public experiences
+* discovery
+* event pages
+* voting
+* campaigns
+* ticketing
+* collections
+* organization workspace
+* account settings
+* authentication
+* administrative interfaces
+* dialogs
+* dropdowns
+* sheets
+* notifications
+* loading states
+* error states.
+
+Also test:
+
+System → Light
+System → Dark
+Light → Dark
+Dark → Light
+
+Verify that the preference persists after refresh and reopening the application.
+
+⸻
+
+4. FlowPay Production Integration Readiness
+
+Now review the existing Evenum ↔ FlowPay integration carefully.
+
+Important distinction:
+
+Do not redesign FlowPay or prescribe how FlowPay should operate.
+
+FlowPay is an existing production payment platform with its own architecture, policies and operational requirements.
+
+Evenum’s responsibility is to ensure that its own implementation is ready to operate correctly with FlowPay’s production environment.
+
+Inspect the current integration and verify that Evenum is prepared for the transition from the current sandbox environment to the real production environment.
+
+Review the existing implementation for:
+
+* FlowPay configuration
+* environment handling
+* API integration
+* authentication
+* transaction creation
+* transaction references
+* payment status handling
+* callbacks/webhooks
+* asynchronous payment confirmation
+* success/failure states
+* pending states
+* retries
+* idempotency
+* reconciliation
+* currency handling
+* amount handling
+* organization associations
+* event associations
+* ticket associations
+* campaign/collection associations
+* voting payment associations where applicable
+* error handling
+* timeout handling
+* network failure handling
+* duplicate payment protection.
+
+Do not replace working production architecture simply for the sake of changing it.
+
+⸻
+
+5. Sandbox → Production Transition Readiness
+
+The current FlowPay environment is understood to be operating in sandbox mode.
+
+Sandbox transactions should therefore be treated as simulations of the production payment flow, not as evidence that real funds are currently moving.
+
+Inspect Evenum’s implementation and determine whether it is structurally ready for the same integration to operate against the production environment once FlowPay authorizes the switch.
+
+Specifically verify:
+
+* environment configuration is cleanly separated;
+* sandbox credentials are not hardcoded;
+* production credentials can be supplied securely;
+* production endpoints can be configured without code rewrites;
+* transaction references remain reliable;
+* webhook/callback handling does not depend on sandbox-only behaviour;
+* payment status handling works for asynchronous production behaviour;
+* failures are handled safely;
+* no test-only assumptions leak into production;
+* no mock payment path is accidentally used in production;
+* sensitive credentials are never exposed to the client;
+* logging does not expose sensitive payment information.
+
+If anything on the Evenum side would prevent a seamless transition, identify and fix it.
+
+⸻
+
+6. Do Not Pretend to Verify What Is Not Accessible
+
+If the actual FlowPay production environment, credentials, operational dashboard, production endpoints, or live transaction capability are not accessible from this development environment, do not claim that FlowPay itself has been verified as production-ready.
+
+Instead:
+
+1. Verify everything that can genuinely be verified from Evenum.
+2. Identify anything that requires FlowPay-side confirmation.
+3. Clearly separate:
+    * Verified on Evenum
+    * Requires FlowPay confirmation
+    * Blocked by unavailable production access
+
+The goal is accurate engineering readiness, not a false “production ready” declaration.
+
+⸻
+
+7. Production Transaction Readiness Checklist
+
+Create a concise internal verification checklist covering the complete payment lifecycle:
+
+User initiates payment
+→ Evenum creates/initiates the transaction
+→ FlowPay processes the transaction
+→ payment status changes
+→ Evenum receives/obtains the resulting status
+→ Evenum updates the relevant business record
+→ user receives the correct result
+→ transaction can be reconciled.
+
+Run this against every implemented monetary context in Evenum, including applicable:
+
+* ticket purchases
+* event registrations
+* campaign collections
+* contributions
+* paid voting flows
+* other implemented collection flows.
+
+Do not assume that every payment context behaves identically. Inspect each actual implementation.
+
+⸻
+
+8. Final Regression Testing
+
+After making the changes, test the application thoroughly.
+
+Use Playwright or equivalent browser automation where appropriate.
+
+Verify:
+
+Theme
+
+* System default
+* Light
+* Dark
+* persistence
+* mobile
+* desktop
+* PWA
+
+Language
+
+* Existing language switching remains functional.
+* Theme changes do not interfere with localization.
+
+Payments
+
+* Existing sandbox flows still work.
+* No payment workflow regresses.
+* Payment states remain correct.
+* Errors remain graceful.
+* No client-side secret exposure exists.
+
+Responsive Experience
+
+Test important flows on:
+
+* mobile
+* tablet-sized layouts
+* desktop
+* installed PWA
+* browser mode.
+
+⸻
+
+Final Objective
+
+This stage should leave Evenum with:
+
+1. A cleaner preference experience with theme and language handled naturally.
+2. A polished and consistent dark theme without unnecessarily redesigning what already works.
+3. A reliable System/Light/Dark preference model.
+4. An Evenum payment integration that is genuinely prepared for the FlowPay production environment.
+5. No sandbox-only assumptions hidden inside production flows.
+6. Clear identification of anything that can only be confirmed by the FlowPay engineering/operations side.
+7. No regressions to the existing production-ready functionality.
+
+Do not make changes simply because they are possible.
+
+Inspect first, understand the existing implementation, make targeted improvements, test them thoroughly, and preserve everything that is already working well.

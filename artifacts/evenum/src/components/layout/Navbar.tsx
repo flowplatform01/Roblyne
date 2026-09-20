@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import { EvenumLogo } from '@/components/branding/EvenumLogo';
 import { 
   Building2, 
@@ -162,7 +163,13 @@ export function Navbar() {
                   )}
                 </nav>
                 <div className="flex flex-col gap-4 pt-6 border-t">
-                  <div className="sm:hidden"><LanguageSwitcher /></div>
+                  <div className="sm:hidden flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{t('theme.label')}</span>
+                    <div className="flex items-center gap-1">
+                      <LanguageSwitcher />
+                      <ThemeToggle />
+                    </div>
+                  </div>
                   {!isAuthenticated ? (
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild className="w-full justify-start">

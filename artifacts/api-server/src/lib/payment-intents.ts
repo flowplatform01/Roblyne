@@ -147,7 +147,24 @@ function asRecord(value: unknown): Record<string, any> {
 function transactionFromWebhook(payload: unknown): Record<string, any> {
   const root = asRecord(payload);
   const data = asRecord(root.data);
-  return asRecord(data.transaction ?? root.transaction);
+  return asRecord(
+    data.transaction
+      ?? data.payment
+      ?? root.transaction
+      ?? root.payment
+      ?? (data.externalReference || data.external_reference || data.status ? data : root),
+  );
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function statusRank(status: FlowPayPaymentStatus): number {
+  return status === "pending" ? 1 : status === "processing" ? 2 : 3;
 }
 
 export async function processFlowPayWebhook(input: {
@@ -156,10 +173,19 @@ export async function processFlowPayWebhook(input: {
   payload: unknown;
 }): Promise<{ duplicate: boolean; status: FlowPayPaymentStatus; paymentId?: number }> {
   const transaction = transactionFromWebhook(input.payload);
-  const externalReference = typeof transaction.externalReference === "string" ? transaction.externalReference : null;
+  const root = asRecord(input.payload);
+  const data = asRecord(root.data);
+  const externalReference = firstString(
+    transaction.externalReference,
+    transaction.external_reference,
+    data.externalReference,
+    data.external_reference,
+    root.externalReference,
+    root.external_reference,
+  );
   if (!externalReference) throw new Error("Webhook transaction is missing externalReference");
-  const status = normalizeFlowPayStatus(transaction.status);
-  const flowpayTransactionId = typeof transaction.id === "string" ? transaction.id : null;
+  const status = normalizeFlowPayStatus(transaction.status ?? transaction.paymentStatus);
+  const flowpayTransactionId = firstString(transaction.id, transaction.transactionId, transaction.reference);
 
   return db.transaction(async (tx) => {
     const [webhookEvent] = await tx.insert(paymentWebhookEventsTable).values({
@@ -178,7 +204,9 @@ export async function processFlowPayWebhook(input: {
     }
 
     const payload = asRecord(intent.payload);
-    const currentStatus = status;
+    const currentStatus = statusRank(status) < statusRank(normalizeFlowPayStatus(intent.status))
+      ? normalizeFlowPayStatus(intent.status)
+      : status;
     await tx.update(paymentIntentsTable).set({
       status: currentStatus,
       paymentStatus: currentStatus,

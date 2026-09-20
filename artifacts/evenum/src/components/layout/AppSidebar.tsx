@@ -12,6 +12,7 @@ import {
 import { useListOrganizations, Organization } from '@workspace/api-client-react';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import {
   Sidebar,
   SidebarContent,
@@ -138,8 +139,9 @@ export function AppSidebar({ orgId }: { orgId?: string }) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex items-center justify-end mt-2 pt-2 border-t">
+        <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t">
           <LanguageSwitcher />
+          <ThemeToggle />
         </div>
       </SidebarFooter>
     </Sidebar>

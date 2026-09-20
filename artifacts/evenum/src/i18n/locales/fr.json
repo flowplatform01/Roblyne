@@ -55,6 +55,13 @@
     "createOrganization": "Créer une organisation",
     "logOut": "Se déconnecter"
   },
+  "theme": {
+    "choose": "Choisir le thème",
+    "label": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
   "auth": {
     "signInToEvenum": "Connexion à Evenum",
     "enterDetails": "Entrez vos informations pour accéder à votre tableau de bord",

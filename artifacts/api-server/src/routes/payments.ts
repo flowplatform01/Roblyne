@@ -7,8 +7,13 @@ const router: IRouter = Router();
 // FlowPay sends this request without an Evenum session. Authentication is the
 // HMAC signature over the exact raw JSON body, not a browser/session cookie.
 router.post("/payments/webhooks/flowpay", async (req, res): Promise<void> => {
-  const eventId = req.header("x-flowpay-event-id");
-  const eventType = req.header("x-flowpay-event-type") || String(req.body?.type || "");
+  const eventId = req.header("x-flowpay-event-id")
+    || (typeof req.body?.eventId === "string" ? req.body.eventId : undefined)
+    || (typeof req.body?.event_id === "string" ? req.body.event_id : undefined);
+  const eventType = req.header("x-flowpay-event-type")
+    || (typeof req.body?.eventType === "string" ? req.body.eventType : undefined)
+    || (typeof req.body?.event_type === "string" ? req.body.event_type : undefined)
+    || (typeof req.body?.type === "string" ? req.body.type : undefined);
   const signature = req.header("x-flowpay-signature");
   const rawBody = (req as any).rawBody as Buffer | undefined;
 
