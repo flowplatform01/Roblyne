@@ -28,11 +28,11 @@ import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 
 function CountdownBlock({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center bg-background/10 backdrop-blur-md border border-background/20 rounded-sm px-5 py-3.5 min-w-[72px]">
-      <span className="text-3xl font-serif font-bold tabular-nums leading-none mb-1 text-background">
+    <div className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-sm px-5 py-3.5 min-w-[72px]">
+      <span className="text-3xl font-serif font-bold tabular-nums leading-none mb-1 text-white">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="text-[10px] font-bold uppercase tracking-widest text-background/50">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{label}</span>
     </div>
   );
 }
@@ -498,7 +498,7 @@ export default function ElectionVote() {
 
     return (
       <Layout>
-        <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
+        <div className="relative bg-[#0A1628] text-white overflow-hidden" style={primaryStyle}>
           {heroImageUrl ? (
             <>
               <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
@@ -506,16 +506,16 @@ export default function ElectionVote() {
             </>
           ) : (
             <>
-              <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628]/95 to-[#0A1628]/90" />
               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 39px,currentColor 39px,currentColor 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,currentColor 39px,currentColor 40px)' }} />
             </>
           )}
           <div className="relative z-10 container mx-auto px-4 pt-16 pb-12 max-w-xl text-center animate-in fade-in duration-500">
-            <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-3">{t("voting.participationSummary")}</p>
-            <div className="text-6xl md:text-7xl font-serif font-bold text-background mb-2 tracking-tight">
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-3">{t("voting.participationSummary")}</p>
+            <div className="text-6xl md:text-7xl font-serif font-bold text-white mb-2 tracking-tight">
               {formatMoney(amountToPay)}
             </div>
-            <p className="text-background/50 font-light">{feeCur} · {totalVoteUnits} {totalVoteUnits === 1 ? t("voting.vote") : t("voting.votes")}</p>
+            <p className="text-white/50 font-light">{feeCur} · {totalVoteUnits} {totalVoteUnits === 1 ? t("voting.vote") : t("voting.votes")}</p>
           </div>
         </div>
 
@@ -626,7 +626,7 @@ export default function ElectionVote() {
     return (
       <Layout>
         {/* Election hero */}
-        <div className="relative bg-foreground text-background overflow-hidden" style={primaryStyle}>
+        <div className="relative bg-[#0A1628] text-white overflow-hidden" style={primaryStyle}>
           {heroImageUrl ? (
             <>
               <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
@@ -634,7 +634,7 @@ export default function ElectionVote() {
             </>
           ) : (
             <>
-              <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/90" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628]/95 to-[#0A1628]/90" />
               <div className="absolute inset-0 opacity-[0.03]" style={{
                 backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
               }} />
@@ -647,13 +647,13 @@ export default function ElectionVote() {
               orgPublicUrl ? (
                 <Link
                   href={orgPublicUrl}
-                  className="inline-flex items-center justify-center gap-2 text-background/60 text-xs font-bold uppercase tracking-widest mb-6 hover:text-background/90 transition-colors group"
+                  className="inline-flex items-center justify-center gap-2 text-white/60 text-xs font-bold uppercase tracking-widest mb-6 hover:text-white/90 transition-colors group"
                 >
                   {(election as any).organizationLogoUrl ? (
                     <img
                       src={(election as any).organizationLogoUrl}
                       alt={election.organizationName}
-                      className="w-7 h-7 rounded object-cover border border-background/20 group-hover:border-background/50 transition-colors"
+                        className="w-7 h-7 rounded object-cover border border-white/20 group-hover:border-white/50 transition-colors"
                     />
                   ) : (
                     <Building2 className="h-3.5 w-3.5" />
@@ -662,9 +662,9 @@ export default function ElectionVote() {
                   <LinkIcon className="h-3 w-3 opacity-40 group-hover:opacity-80 transition-opacity" />
                 </Link>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-background/50 text-xs font-bold uppercase tracking-widest mb-6">
+                <div className="flex items-center justify-center gap-2 text-white/50 text-xs font-bold uppercase tracking-widest mb-6">
                   {(election as any).organizationLogoUrl ? (
-                    <img src={(election as any).organizationLogoUrl} alt={election.organizationName} className="w-7 h-7 rounded object-cover border border-background/20" />
+                    <img src={(election as any).organizationLogoUrl} alt={election.organizationName} className="w-7 h-7 rounded object-cover border border-white/20" />
                   ) : (
                     <Building2 className="h-3.5 w-3.5" />
                   )}
@@ -673,12 +673,12 @@ export default function ElectionVote() {
               )
             )}
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight mb-6 text-background">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight mb-6 text-white">
               {election.title}
             </h1>
 
             {election.description && (
-              <p className="text-xl text-background/60 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
+              <p className="text-xl text-white/60 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
                 {election.description}
               </p>
             )}
@@ -688,14 +688,14 @@ export default function ElectionVote() {
                 url={shareUrl}
                 title={election.title}
                 description={election.description || `Vote in ${election.title}`}
-                className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+                className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"
               />
             </div>
 
             {/* Countdown */}
             {election.endsAt && !countdown.expired && (
               <div className="mb-10">
-                <p className="text-background/40 text-[10px] font-bold uppercase tracking-widest mb-4">Polls close in</p>
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-4">Polls close in</p>
                 <div className="flex items-center justify-center gap-2">
                   <CountdownBlock value={countdown.days} label="Days" />
                   <CountdownBlock value={countdown.hours} label="Hours" />
@@ -706,7 +706,7 @@ export default function ElectionVote() {
             )}
 
             {/* Dates */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-background/40 text-sm mb-4">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-white/40 text-sm mb-4">
               {election.startsAt && (
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
@@ -726,7 +726,7 @@ export default function ElectionVote() {
               <div className="mt-2 mb-2">
                 <Link
                   href={`/elections/${electionId}/results`}
-                  className="inline-flex items-center gap-1.5 text-background/50 hover:text-background/80 text-xs font-medium transition-colors border border-background/20 hover:border-background/40 rounded-sm px-3 py-1.5"
+                  className="inline-flex items-center gap-1.5 text-white/50 hover:text-white/80 text-xs font-medium transition-colors border border-white/20 hover:border-white/40 rounded-sm px-3 py-1.5"
                 >
                   <BarChart2 className="h-3.5 w-3.5" />
                   View current standings
@@ -1255,23 +1255,23 @@ export default function ElectionVote() {
 
           {/* Official ballot card */}
           <div className="bg-card border-2 border-border rounded-sm shadow-2xl overflow-hidden mb-10">
-            <div className="bg-foreground text-background px-8 py-6 relative overflow-hidden">
+            <div className="bg-[#0A1628] text-white px-8 py-6 relative overflow-hidden">
               <div className="absolute inset-0 opacity-[0.04]" style={{
                 backgroundImage: 'repeating-linear-gradient(45deg, currentColor, currentColor 1px, transparent 0, transparent 50%)',
                 backgroundSize: '8px 8px',
               }} />
               <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-sm bg-background/10 flex items-center justify-center border border-background/20">
-                    <VoteIcon className="h-5 w-5 text-background/70" />
+                  <div className="w-10 h-10 rounded-sm bg-white/10 flex items-center justify-center border border-white/20">
+                    <VoteIcon className="h-5 w-5 text-white/70" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-background/40 mb-0.5">Official Ballot</p>
-                    <p className="font-serif font-bold text-lg text-background leading-tight">{election.title}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Official Ballot</p>
+                    <p className="font-serif font-bold text-lg text-white leading-tight">{election.title}</p>
                   </div>
                 </div>
                 {election.organizationName && (
-                  <p className="text-xs text-background/40 hidden sm:block text-right max-w-[140px] leading-tight">{election.organizationName}</p>
+                  <p className="text-xs text-white/40 hidden sm:block text-right max-w-[140px] leading-tight">{election.organizationName}</p>
                 )}
               </div>
             </div>

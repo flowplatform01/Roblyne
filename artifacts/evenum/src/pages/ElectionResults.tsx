@@ -63,7 +63,7 @@ export default function ElectionResults() {
   return (
     <Layout>
       {/* Hero */}
-      <div className="bg-foreground text-background relative overflow-hidden" style={primaryStyle}>
+      <div className="bg-[#0A1628] text-white relative overflow-hidden" style={primaryStyle}>
         {heroImageUrl ? (
           <>
             <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
@@ -71,7 +71,7 @@ export default function ElectionResults() {
           </>
         ) : (
           <>
-            <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground to-primary/30" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628] to-primary/30" />
             <div className="absolute inset-0 opacity-[0.03]" style={{
               backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
             }} />
@@ -82,7 +82,7 @@ export default function ElectionResults() {
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             {isEnded ? 'Official Results' : 'Live Results'}
           </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-background mb-4">
+          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-white mb-4">
             {election.title}
           </h1>
           {election.organizationName && (
@@ -91,7 +91,7 @@ export default function ElectionResults() {
               return orgId ? (
                 <Link
                   href={`/organizations/${orgId}/public`}
-                  className="inline-flex items-center gap-2 text-background/50 hover:text-background/80 transition-colors font-medium mb-6 text-lg group"
+                  className="inline-flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors font-medium mb-6 text-lg group"
                 >
                   {(election as any).organizationLogoUrl ? (
                     <img src={(election as any).organizationLogoUrl} alt={election.organizationName} className="w-6 h-6 rounded object-cover border border-background/20" />
@@ -102,32 +102,32 @@ export default function ElectionResults() {
                   <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-80 transition-opacity" />
                 </Link>
               ) : (
-                <p className="text-background/50 font-medium mb-6 text-lg">{election.organizationName}</p>
+                <p className="text-white/50 font-medium mb-6 text-lg">{election.organizationName}</p>
               );
             })()
           )}
           {election.endsAt && isEnded && (
-            <p className="text-background/30 text-sm mb-10">
+            <p className="text-white/30 text-sm mb-10">
               Concluded {format(new Date(election.endsAt), "MMMM d, yyyy 'at' h:mm a")}
             </p>
           )}
 
           {/* Key metrics */}
-          <div className="flex flex-wrap items-stretch justify-center gap-px bg-background/10 rounded-sm border border-background/10 overflow-hidden max-w-lg mx-auto mb-10">
-            <div className="flex-1 text-center px-6 py-5 bg-background/5 hover:bg-background/10 transition-colors min-w-[100px]">
-              <p className="text-3xl font-serif font-bold text-background tabular-nums">{results.totalVotes}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-background/40 mt-1">Total Votes</p>
+          <div className="flex flex-wrap items-stretch justify-center gap-px bg-white/10 rounded-sm border border-white/10 overflow-hidden max-w-lg mx-auto mb-10">
+            <div className="flex-1 text-center px-6 py-5 bg-white/5 hover:bg-white/10 transition-colors min-w-[100px]">
+              <p className="text-3xl font-serif font-bold text-white tabular-nums">{results.totalVotes}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-1">Total Votes</p>
             </div>
             {turnoutPct !== null && (
-              <div className="flex-1 text-center px-6 py-5 bg-background/5 hover:bg-background/10 transition-colors min-w-[100px]">
+              <div className="flex-1 text-center px-6 py-5 bg-white/5 hover:bg-white/10 transition-colors min-w-[100px]">
                 <p className="text-3xl font-serif font-bold text-emerald-400 tabular-nums">{turnoutPct}%</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-background/40 mt-1">Turnout</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-1">Turnout</p>
               </div>
             )}
             {results.positions && (
-              <div className="flex-1 text-center px-6 py-5 bg-background/5 hover:bg-background/10 transition-colors min-w-[100px]">
-                <p className="text-3xl font-serif font-bold text-background tabular-nums">{results.positions.length}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-background/40 mt-1">Positions</p>
+              <div className="flex-1 text-center px-6 py-5 bg-white/5 hover:bg-white/10 transition-colors min-w-[100px]">
+                <p className="text-3xl font-serif font-bold text-white tabular-nums">{results.positions.length}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mt-1">Positions</p>
               </div>
             )}
           </div>
@@ -137,7 +137,7 @@ export default function ElectionResults() {
               url={`${window.location.origin}/elections/${electionId}/results`}
               title={election.title + ' — Results'}
               description={`Official results for ${election.title}`}
-              className="h-12 px-6 bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+              className="h-12 px-6 bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"
             />
           </div>
         </div>

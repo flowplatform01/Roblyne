@@ -126,7 +126,7 @@ export default function CreateElection() {
         </Button>
 
         <div className="mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 mb-4">
+           <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-white/10 dark:text-white mb-4">
             <Vote className="h-6 w-6" />
           </div>
           <h1 className="text-3xl font-serif font-bold tracking-tight">Create Election</h1>
@@ -366,9 +366,9 @@ export default function CreateElection() {
                               </FormItem>
                             )}
                           />
-                           <div className="rounded-md border border-primary/20 bg-primary/5 p-3 self-end">
+                           <div className="rounded-md border border-primary/20 bg-primary/5 dark:border-white/20 dark:bg-white/5 p-3 self-end">
                              <p className="text-xs text-muted-foreground">Estimated amount your organization receives</p>
-                             <p className="text-lg font-semibold text-primary">
+                             <p className="text-lg font-semibold text-primary dark:text-white">
                                 {formatCurrency(estimatedReceipt, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
                              </p>
                            </div>

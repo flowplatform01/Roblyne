@@ -30,6 +30,19 @@ Import from `@/components/branding/ShareButton`. Props: `url`, `title`, `descrip
 ## BrandedHero Usage
 `BrandedHero` from `@/components/branding/BrandedHero`. Key props: `title`, `subtitle`, `org` (any entity with accentColor/theme), `imageUrl` (hero or cover), `logoUrl`, `badge`, `actions`. Falls back to dark dot-grid when no imageUrl.
 
+## Dark branded surfaces
+Fixed dark hero and ticket surfaces should use explicit navy/white tokens rather than `bg-foreground`/`text-background`; keep cobalt primary for actions and switch secondary blue wells to translucent white in dark mode.
+
+**Why:** Semantic foreground/background tokens invert between light and dark themes, which can turn an intentionally dark branded surface light cream and make foreground-based text lose contrast.
+
+**How to apply:** Use the fixed Evenum navy surface for public hero/header treatments, white with opacity for text and borders on those surfaces, and pair light-mode `bg-primary/10`–`bg-primary/15` treatments with `dark:bg-white/10`–`dark:bg-white/5` and `dark:text-white`.
+
+The dark CTA token is intentionally deeper and less saturated than the light-mode cobalt, with white CTA text for contrast.
+
+**Why:** The former electric blue competed with the midnight background and soft-white typography, making primary actions feel generic and disconnected from the mature dark theme.
+
+**How to apply:** Preserve the dark token as the shared source for primary buttons, rings, sidebar actions, and primary chart accents; do not compensate with gradients or layout changes.
+
 ## AccentColorPicker
 `AccentColorPicker` from `@/components/branding/AccentColorPicker`. Props: `value: string`, `onChange: (color: string) => void`, `className?`.
 

@@ -266,29 +266,29 @@ export default function EventRegister() {
           {/* Ticket */}
           <div className="border border-border/70 rounded-sm overflow-hidden shadow-2xl bg-card">
             {/* Header */}
-            <div className="bg-foreground text-background px-8 py-6 relative overflow-hidden">
+            <div className="bg-[#0A1628] text-white px-8 py-6 relative overflow-hidden">
               <div className="absolute inset-0 opacity-5">
                 <Ticket className="absolute -right-4 -top-4 w-40 h-40 rotate-12" />
               </div>
-              <p className="text-background/50 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+              <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
                 <ShieldCheck className="w-3.5 h-3.5" /> Official Ticket ·{' '}
                 {(event as any).orgId ? (
-                  <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-background/90 transition-colors inline-flex items-center gap-1.5">
+                  <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-white/90 transition-colors inline-flex items-center gap-1.5">
                     {(event as any).organizationLogoUrl && (
-                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-background/20 inline-block shrink-0" />
+                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-white/20 inline-block shrink-0" />
                     )}
                     {event.organizationName || 'Evenum'}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
                   </Link>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">
                     {(event as any).organizationLogoUrl && (
-                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-background/20 inline-block shrink-0" />
+                      <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-white/20 inline-block shrink-0" />
                     )}
                     {event.organizationName || 'Evenum'}
                   </span>
                 )}
               </p>
-              <h2 className="text-background text-3xl font-serif font-bold leading-tight relative z-10">{event.title}</h2>
+              <h2 className="text-white text-3xl font-serif font-bold leading-tight relative z-10">{event.title}</h2>
             </div>
 
             {/* Tear line */}
@@ -362,20 +362,20 @@ export default function EventRegister() {
   return (
     <Layout>
       {/* Hero */}
-      <div className="relative bg-foreground text-background overflow-hidden">
+      <div className="relative bg-[#0A1628] text-white overflow-hidden">
         {((event as any).heroImageUrl || event.coverImageUrl) && (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-30"
             style={{ backgroundImage: `url(${(event as any).heroImageUrl || event.coverImageUrl})` }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/50 to-foreground/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628]/50 to-[#0A1628]/95" />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
             <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 font-bold uppercase tracking-widest text-xs">
               {event.isOnline ? t("eventRegister.online") : t("eventRegister.inPerson")}
             </Badge>
-            <Badge className="bg-background/10 text-background/70 border-background/20 font-bold uppercase tracking-widest text-xs capitalize">
+            <Badge className="bg-white/10 text-white/70 border-white/20 font-bold uppercase tracking-widest text-xs capitalize">
               {event.status}
             </Badge>
           </div>
@@ -388,11 +388,11 @@ export default function EventRegister() {
               url={shareUrl}
               title={event.title}
               description={event.description || `Register for ${event.title}`}
-              className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+              className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"
             />
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 text-background/70 text-sm font-medium mb-10">
+          <div className="flex flex-wrap justify-center gap-6 text-white/70 text-sm font-medium mb-10">
             {event.startsAt && (
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-emerald-400" />
@@ -411,7 +411,7 @@ export default function EventRegister() {
           {/* Registration deadline countdown */}
           {event.endsAt && !countdown.expired && (
             <div className="text-center">
-              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-4">{t("eventRegister.registrationClosesIn")}</p>
+              <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-4">{t("eventRegister.registrationClosesIn")}</p>
               <div className="flex items-center justify-center gap-3">
                 {[
                   { value: countdown.days, label: t("eventRegister.days") },
@@ -419,11 +419,11 @@ export default function EventRegister() {
                   { value: countdown.minutes, label: t("eventRegister.minutes") },
                   { value: countdown.seconds, label: t("eventRegister.seconds") },
                 ].map(({ value, label }) => (
-                  <div key={label} className="flex flex-col items-center bg-background/10 backdrop-blur-md border border-background/20 rounded-sm px-4 py-3 min-w-[60px]">
+                  <div key={label} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-sm px-4 py-3 min-w-[60px]">
                     <span className="text-2xl font-serif font-bold tabular-nums leading-none mb-1">
                       {String(value).padStart(2, '0')}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-background/40">{label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{label}</span>
                   </div>
                 ))}
               </div>

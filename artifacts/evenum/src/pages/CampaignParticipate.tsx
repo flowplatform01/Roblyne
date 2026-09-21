@@ -347,14 +347,14 @@ export default function CampaignParticipate() {
   return (
     <Layout>
       {/* Campaign hero */}
-      <div className="relative bg-foreground text-background overflow-hidden">
+      <div className="relative bg-[#0A1628] text-white overflow-hidden">
         {((campaign as any).heroImageUrl || campaign.coverImageUrl) && (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-25"
             style={{ backgroundImage: `url(${(campaign as any).heroImageUrl || campaign.coverImageUrl})` }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-foreground/60 to-foreground/95" />
+         <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628]/60 to-[#0A1628]/95" />
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'repeating-linear-gradient(45deg, currentColor, currentColor 1px, transparent 0, transparent 50%)',
           backgroundSize: '24px 24px',
@@ -364,14 +364,14 @@ export default function CampaignParticipate() {
             (campaign as any).orgId ? (
               <Link
                 href={`/organizations/${(campaign as any).orgId}/public`}
-                className="inline-flex items-center gap-1.5 text-background/40 hover:text-background/70 transition-colors text-xs font-bold uppercase tracking-widest mb-5"
+                 className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors text-xs font-bold uppercase tracking-widest mb-5"
               >
                 <Building2 className="w-3 h-3" />
                 {campaign.organizationName}
                 <ExternalLink className="w-2.5 h-2.5 opacity-50" />
               </Link>
             ) : (
-              <p className="text-background/40 text-xs font-bold uppercase tracking-widest mb-5">
+               <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-5">
                 {campaign.organizationName}
               </p>
             )
@@ -381,11 +381,11 @@ export default function CampaignParticipate() {
               {campaign.type?.replace('_', ' ')}
             </Badge>
           </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-background mb-6">
+           <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-white mb-6">
             {campaign.title}
           </h1>
           {campaign.description && (
-            <p className="text-xl text-background/65 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
+             <p className="text-xl text-white/65 font-light max-w-2xl mx-auto mb-6 leading-relaxed">
               {campaign.description}
             </p>
           )}
@@ -395,15 +395,15 @@ export default function CampaignParticipate() {
               url={shareUrl}
               title={campaign.title}
               description={campaign.description || `Participate in ${campaign.title}`}
-              className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+               className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"
             />
           </div>
 
           {/* Live participation stats */}
           {participantCount !== null && participantCount > 0 && (
-            <div className="mt-10 inline-flex items-center gap-3 bg-background/10 backdrop-blur-md border border-background/20 px-6 py-3.5 rounded-full">
+             <div className="mt-10 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-3.5 rounded-full">
               <Users className="h-4 w-4 text-amber-400" />
-              <span className="text-sm font-bold text-background">
+               <span className="text-sm font-bold text-white">
                 <span className="text-amber-400 font-serif text-xl">{participantCount.toLocaleString()}</span>
                 {' '}{t("campaignParticipate.peopleParticipated")}
               </span>

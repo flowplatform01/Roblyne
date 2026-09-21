@@ -104,7 +104,7 @@ export default function OrganizationWorkspace() {
             {org.logoUrl ? (
               <img src={org.logoUrl} alt={org.name} className="w-16 h-16 rounded bg-muted object-cover border border-border/60" />
             ) : (
-              <div className="w-16 h-16 rounded bg-primary/10 text-primary flex items-center justify-center border border-border/30">
+              <div className="w-16 h-16 rounded bg-primary/10 text-primary dark:bg-white/10 dark:text-white flex items-center justify-center border border-border/30 dark:border-white/20">
                 <span className="font-serif font-bold text-2xl">{org.name.charAt(0)}</span>
               </div>
             )}
@@ -374,7 +374,7 @@ function TeamSection({ orgId }: { orgId: number }) {
       case 'owner':
         return <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 capitalize">{role}</Badge>;
       case 'admin':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 capitalize">{role}</Badge>;
+         return <Badge className="bg-primary/15 text-primary border-primary/25 dark:bg-white/10 dark:text-white dark:border-white/20 capitalize">{role}</Badge>;
       default:
         return <Badge variant="outline" className="capitalize">{role}</Badge>;
     }
@@ -383,7 +383,7 @@ function TeamSection({ orgId }: { orgId: number }) {
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+        <div className="p-2 bg-primary/10 text-primary dark:bg-white/10 dark:text-white rounded-lg">
           <Users className="h-6 w-6" />
         </div>
         <div>
@@ -456,7 +456,7 @@ function TeamSection({ orgId }: { orgId: number }) {
               const canModify = canManage && !isOwner && !isSelf;
               return (
                 <div key={member.id} className="flex items-center gap-4 p-4 hover:bg-muted/20 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-serif font-bold">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary dark:bg-white/10 dark:text-white flex items-center justify-center shrink-0 font-serif font-bold">
                     {(member.name || member.email || '?').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -557,7 +557,7 @@ function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
   return (
     <div className="space-y-8 max-w-2xl">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary/10 text-primary rounded-lg">
+        <div className="p-2 bg-primary/10 text-primary dark:bg-white/10 dark:text-white rounded-lg">
           <Settings className="h-6 w-6" />
         </div>
         <div>
@@ -708,7 +708,7 @@ function StatsCard({ title, value, total, icon }: { title: string, value: number
 function ActivityRow({ type, item, orgId }: { type: string, item: any, orgId: number }) {
   const getIcon = () => {
     switch(type) {
-      case 'election': return <Vote className="h-4 w-4 text-blue-600" />;
+       case 'election': return <Vote className="h-4 w-4 text-primary" />;
       case 'event': return <CalendarDays className="h-4 w-4 text-emerald-600" />;
       case 'campaign': return <Megaphone className="h-4 w-4 text-amber-600" />;
       default: return null;
@@ -922,8 +922,8 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
         <Card className="border-border/50 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 bg-blue-50 rounded-sm flex items-center justify-center shrink-0">
-                <Vote className="h-4 w-4 text-blue-600" />
+               <div className="w-9 h-9 bg-primary/10 rounded-sm flex items-center justify-center shrink-0">
+                 <Vote className="h-4 w-4 text-primary" />
               </div>
             </div>
             <p className="text-3xl font-serif font-bold tabular-nums">{totalVotes.toLocaleString()}</p>
@@ -961,7 +961,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="pb-3 border-b border-border/40">
           <div className="flex items-center gap-2">
-            <Vote className="h-4 w-4 text-blue-600" />
+             <Vote className="h-4 w-4 text-primary" />
             <CardTitle className="text-base font-serif">Elections</CardTitle>
           </div>
           <CardDescription>Participation and voting performance</CardDescription>
@@ -1156,7 +1156,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const getSettlementBadge = (status: string) => {
     switch(status) {
       case 'pending_settlement': return <Badge variant="secondary" className="bg-slate-100 text-slate-800 hover:bg-slate-100">Pending</Badge>;
-      case 'ready': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ready</Badge>;
+       case 'ready': return <Badge variant="secondary" className="bg-primary/15 text-primary border-primary/25 hover:bg-primary/20 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/15">Ready</Badge>;
       case 'released': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Released</Badge>;
       case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
@@ -1227,7 +1227,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg">
+          <div className="p-2 bg-primary/10 text-primary dark:bg-white/10 dark:text-white rounded-lg">
             <Wallet className="h-6 w-6" />
           </div>
           <div>
@@ -1240,7 +1240,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
         </Button>
       </div>
 
-      <Card className="border-primary/20 bg-primary/[0.03]">
+      <Card className="border-primary/20 bg-primary/[0.03] dark:border-white/20 dark:bg-white/[0.03]">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-serif">Withdraw available earnings</CardTitle>
           <CardDescription>
@@ -1292,7 +1292,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-primary/20 shadow-sm bg-primary/5">
+        <Card className="border-primary/20 shadow-sm bg-primary/5 dark:border-white/20 dark:bg-white/5">
           <CardHeader className="pb-2 pt-5">
             <CardTitle className="text-xs font-medium text-primary flex items-center justify-between">
               Amount available <TrendingUp className="h-3.5 w-3.5" />

@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MmFSIZxRXAmxYJkB06rpr"
+uri = "file://screenshots/evenum-dark-audit-final.png"
+type = "image"
+title = "Evenum dark theme audit"
+description = "Controlled dark-mode screenshot after the navy surface and cobalt accent refinement."
+logical_id = "d05d7e3e-bc1d-4ea7-8c56-f5ed2bf4a41e"
+content_hash = "sha256:0c5d6c523bc107809742f81e9c63f05af2eacf23634a54336ec940ad58faad4f"
+size = 589142
+mtime_ms = 1789929239869
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:63e01428-b1b3-4879-afef-dbda5cd80e75/d05d7e3e-bc1d-4ea7-8c56-f5ed2bf4a41e/01527135-6d18-49c5-8181-7481b10112ca"
+storage_version_token = "1789929264026959"
+content_type = "image/png"
+
+[[outputs]]
+id = "WkYFuqZ_YsohLAR3zUpiX"
+uri = "file://screenshots/evenum-dark-white-accent-audit.png"
+type = "image"
+title = "Evenum dark theme — white secondary accents"
+description = "Controlled dark-mode screenshot after replacing pale secondary blue treatments with restrained white-on-navy styling."
+logical_id = "303a73d0-257e-4e20-91dd-08a755646c68"
+content_hash = "sha256:a5f369e75c02a3d71f4715a9b288b0a6a6cd2330a35dcedc4dfed3385dddc346"
+size = 589390
+mtime_ms = 1789929909918
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:63e01428-b1b3-4879-afef-dbda5cd80e75/303a73d0-257e-4e20-91dd-08a755646c68/9e24875d-9999-4343-9a2b-d4636773d07f"
+storage_version_token = "1789929920057545"
+content_type = "image/png"
+
+[[outputs]]
+id = "DoLswko56poRTj4mclmTI"
+uri = "file://screenshots/evenum-dark-sapphire-cta.png"
+type = "image"
+title = "Evenum dark theme — restrained sapphire CTA"
+description = "Final controlled dark-mode screenshot after the focused primary-token refinement."
+logical_id = "8024473d-2d93-48e2-b5bf-0cae99285750"
+content_hash = "sha256:1280005fed6eb482f2b9ee30e40f0e9efd5a1b22b90d75709d2c76335171f3f3"
+size = 589681
+mtime_ms = 1789930767146
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:63e01428-b1b3-4879-afef-dbda5cd80e75/8024473d-2d93-48e2-b5bf-0cae99285750/1bb40b30-3f67-40dc-b069-2e4c08a4cdf5"
+storage_version_token = "1789930783729760"
+content_type = "image/png"

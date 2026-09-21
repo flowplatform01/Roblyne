@@ -30,33 +30,33 @@ export default function Home() {
     <Layout>
       <div className="flex-1">
         {/* Hero Section */}
-        <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-foreground text-background">
+        <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-[#0A1628] text-white">
           <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-foreground/80 via-foreground/90 to-foreground z-10" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628]/80 via-[#0A1628]/90 to-[#0A1628] z-10" />
             <div className="w-full h-full bg-cover bg-center bg-[url('/attached_assets/generated_images/hero-assembly.jpg')] scale-105 animate-in fade-in zoom-in duration-1000" />
             <div className="paper-grain absolute inset-0 z-20 opacity-30" />
           </div>
           
           <div className="relative z-30 container mx-auto px-4 text-center max-w-4xl py-24 animate-in slide-in-from-bottom-8 duration-700 fade-in delay-150 fill-mode-both">
             <div className="inline-flex mb-8">
-              <span className="px-4 py-1.5 border border-primary/40 bg-primary/10 text-primary-foreground/90 text-sm uppercase tracking-widest font-sans font-medium rounded-sm shadow-sm backdrop-blur-md">
+              <span className="px-4 py-1.5 border border-primary/40 bg-primary/10 dark:border-white/30 dark:bg-white/10 text-white/90 text-sm uppercase tracking-widest font-sans font-medium rounded-sm shadow-sm backdrop-blur-md">
                  {t("home.heroBadge")}
               </span>
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tight mb-8 leading-[1.1] text-card">
+             <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tight mb-8 leading-[1.1] text-white">
                <span className="block">{t("home.heroTitle")}</span>
-               <span className="block mt-3 text-3xl md:text-5xl lg:text-6xl font-normal tracking-normal text-card/90">
+               <span className="block mt-3 text-3xl md:text-5xl lg:text-6xl font-normal tracking-normal text-white/90">
                  {t("home.heroSubtitle")}
                </span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted/80 mb-12 max-w-2xl mx-auto font-sans font-light leading-relaxed">
+             <p className="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl mx-auto font-sans font-light leading-relaxed">
                {t("home.heroDescription")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Button size="lg" asChild className="h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300">
                  <Link href="/register">{t("common.getStarted")}</Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="h-14 px-8 text-lg bg-transparent text-card border-card/30 hover:bg-card/10 hover:border-card/50 hover:text-card transition-all duration-300">
+               <Button size="lg" variant="outline" asChild className="h-14 px-8 text-lg bg-transparent text-white border-white/30 hover:bg-white/10 hover:border-white/50 hover:text-white transition-all duration-300">
                  <Link href="/login">{t("common.signIn")}</Link>
               </Button>
             </div>
@@ -188,23 +188,23 @@ export default function Home() {
         
         {/* Engines Showcase */}
         {!debouncedQuery && (
-          <section className="py-32 bg-foreground text-background relative overflow-hidden">
+          <section className="py-32 bg-[#0A1628] text-white relative overflow-hidden">
             <div className="paper-grain absolute inset-0 z-0 opacity-20 invert" />
             <div className="container mx-auto px-4 relative z-10">
               <div className="text-center max-w-3xl mx-auto mb-20">
-                 <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight text-card">{t("home.enginesTitle")}</h2>
-                <p className="text-muted/80 text-xl font-light leading-relaxed">
+                  <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6 tracking-tight text-white">{t("home.enginesTitle")}</h2>
+                 <p className="text-white/70 text-xl font-light leading-relaxed">
                    {t("home.enginesDescription")}
                 </p>
               </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-background/5 p-10 border border-background/10 group hover:bg-background/10 transition-colors duration-500">
+              <div className="bg-white/5 p-10 border border-white/10 group hover:bg-white/10 transition-colors duration-500">
                 <div className="w-16 h-16 bg-primary/20 text-primary rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <Vote className="h-8 w-8 text-primary" />
                 </div>
-                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.votingTitle")}</h3>
-                <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-white">{t("home.votingTitle")}</h3>
+                 <p className="text-white/70 mb-10 leading-relaxed font-light text-lg">
                    {t("home.votingDescription")}
                 </p>
                 <Link href="/register" className="text-primary font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">
@@ -212,12 +212,12 @@ export default function Home() {
                 </Link>
               </div>
               
-              <div className="bg-background/5 p-10 border border-background/10 group hover:bg-background/10 transition-colors duration-500">
+              <div className="bg-white/5 p-10 border border-white/10 group hover:bg-white/10 transition-colors duration-500">
                 <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <CalendarDays className="h-8 w-8" />
                 </div>
-                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.eventsTitle")}</h3>
-                <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-white">{t("home.eventsTitle")}</h3>
+                 <p className="text-white/70 mb-10 leading-relaxed font-light text-lg">
                    {t("home.eventsDescription")}
                 </p>
                 <Link href="/register" className="text-emerald-400 font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">
@@ -225,12 +225,12 @@ export default function Home() {
                 </Link>
               </div>
               
-              <div className="bg-background/5 p-10 border border-background/10 group hover:bg-background/10 transition-colors duration-500">
+              <div className="bg-white/5 p-10 border border-white/10 group hover:bg-white/10 transition-colors duration-500">
                 <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-sm flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
                   <Megaphone className="h-8 w-8" />
                 </div>
-                 <h3 className="text-2xl font-serif font-bold mb-4 text-card">{t("home.campaignsTitle")}</h3>
-                <p className="text-muted/70 mb-10 leading-relaxed font-light text-lg">
+                 <h3 className="text-2xl font-serif font-bold mb-4 text-white">{t("home.campaignsTitle")}</h3>
+                 <p className="text-white/70 mb-10 leading-relaxed font-light text-lg">
                    {t("home.campaignsDescription")}
                 </p>
                 <Link href="/register" className="text-amber-400 font-medium flex items-center gap-2 hover:gap-4 transition-all uppercase tracking-wide text-sm">

@@ -151,8 +151,8 @@ export default function AdminDashboard() {
     return (
       <DashboardLayout>
         <div className="max-w-lg mx-auto mt-24 text-center space-y-6 px-4">
-          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <ShieldCheck className="h-8 w-8 text-primary" />
+          <div className="h-16 w-16 rounded-full bg-primary/10 dark:bg-white/10 flex items-center justify-center mx-auto">
+            <ShieldCheck className="h-8 w-8 text-primary dark:text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-serif font-bold">{t("admin.platformAdmin")}</h1>
@@ -206,8 +206,8 @@ export default function AdminDashboard() {
       value: stats?.total_users,
       sub: t("admin.thisWeek", { count: stats?.new_users_7d ?? 0 }),
       icon: Users,
-      accent: 'text-blue-600',
-      bg: 'bg-blue-50',
+      accent: 'text-primary',
+      bg: 'bg-primary/10 dark:bg-white/10',
       trend: (stats?.new_users_7d ?? 0) > 0,
     },
     {
@@ -225,7 +225,7 @@ export default function AdminDashboard() {
       sub: t("admin.allTime"),
       icon: Vote,
       accent: 'text-primary',
-      bg: 'bg-primary/5',
+      bg: 'bg-primary/5 dark:bg-white/5',
       trend: false,
     },
     {
@@ -255,13 +255,13 @@ export default function AdminDashboard() {
         {/* Command center header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-sm bg-foreground flex items-center justify-center shrink-0 shadow-md">
-              <ShieldCheck className="h-6 w-6 text-background" />
+            <div className="h-12 w-12 rounded-sm bg-[#0A1628] flex items-center justify-center shrink-0 shadow-md">
+              <ShieldCheck className="h-6 w-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <h1 className="text-2xl font-serif font-bold">{t("admin.platformAdmin")}</h1>
-                <Badge variant="outline" className="text-xs font-bold uppercase tracking-widest border-primary/40 text-primary">
+                <Badge variant="outline" className="text-xs font-bold uppercase tracking-widest border-primary/40 text-primary dark:border-white/40 dark:text-white">
                   {t("admin.commandCenter")}
                 </Badge>
               </div>
@@ -384,7 +384,7 @@ export default function AdminDashboard() {
                         <TableRow key={org.id} className="hover:bg-muted/20 transition-colors">
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary flex items-center justify-center shrink-0 font-serif font-bold text-sm border border-primary/20">
+                              <div className="w-8 h-8 rounded-sm bg-primary/10 text-primary dark:bg-white/10 dark:text-white flex items-center justify-center shrink-0 font-serif font-bold text-sm border border-primary/20 dark:border-white/20">
                                 {org.name?.charAt(0) || '?'}
                               </div>
                               <div>
@@ -492,7 +492,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-3">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm border ${
                                 u.is_platform_admin
-                                  ? 'bg-primary/10 text-primary border-primary/20'
+                                   ? 'bg-primary/10 text-primary border-primary/20 dark:bg-white/10 dark:text-white dark:border-white/20'
                                   : 'bg-muted text-muted-foreground border-border/50'
                               }`}>
                                 {(u.name || u.email || '?').charAt(0).toUpperCase()}
@@ -501,7 +501,7 @@ export default function AdminDashboard() {
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium">{u.name}</p>
                                   {u.id === user?.id && (
-                                    <span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">You</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 dark:text-white dark:bg-white/10 px-1.5 py-0.5 rounded-sm">You</span>
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{u.email}</p>
@@ -532,7 +532,7 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground hover:bg-muted' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/10'}`}
+                                   className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground hover:bg-muted' : 'text-muted-foreground/50 hover:text-primary dark:hover:text-white hover:bg-primary/10 dark:hover:bg-white/10'}`}
                                   title={u.is_platform_admin ? 'Remove admin access' : 'Grant admin access'}
                                   onClick={() => toggleAdmin.mutate({ id: u.id, isPlatformAdmin: !u.is_platform_admin })}
                                   disabled={toggleAdmin.isPending}
@@ -631,8 +631,8 @@ function ParticipationGovernance() {
         <CardDescription>Control the payment experience consistently across every paid election. Organizations cannot override this setting.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="rounded-sm border border-primary/20 bg-primary/5 p-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Operational currency</p>
+        <div className="rounded-sm border border-primary/20 bg-primary/5 dark:border-white/20 dark:bg-white/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary dark:text-white mb-1">Operational currency</p>
           <p className="font-serif text-2xl font-bold">XAF</p>
           <p className="text-sm text-muted-foreground mt-1">XAF is the active platform currency for payment screens, summaries, receipts, and financial reporting.</p>
         </div>
@@ -765,7 +765,7 @@ function FinanceAdminSection() {
   const getSettlementBadge = (status: string) => {
     switch(status) {
       case 'pending_settlement': return <Badge variant="secondary" className="bg-slate-100 text-slate-800 hover:bg-slate-100">Pending</Badge>;
-      case 'ready': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ready</Badge>;
+      case 'ready': return <Badge variant="secondary" className="bg-primary/15 text-primary border-primary/25 hover:bg-primary/20 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/15">Ready</Badge>;
       case 'released': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Released</Badge>;
       case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
@@ -831,11 +831,11 @@ function FinanceAdminSection() {
 
   const kpis = [
     { label: 'Platform Revenue', value: stats?.total_platform_revenue || 0, icon: CircleDollarSign, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Commission Collected', value: stats?.total_commission_collected || 0, icon: Receipt, accent: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Commission Collected', value: stats?.total_commission_collected || 0, icon: Receipt, accent: 'text-primary dark:text-white', bg: 'bg-primary/10 dark:bg-white/10' },
     { label: 'Revenue Today', value: stats?.revenue_today || 0, icon: TrendingUp, accent: 'text-violet-600', bg: 'bg-violet-50' },
     { label: 'Revenue This Week', value: stats?.revenue_this_week || 0, icon: Activity, accent: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'Revenue This Month', value: stats?.revenue_this_month || 0, icon: BarChart3, accent: 'text-rose-600', bg: 'bg-rose-50' },
-    { label: 'Total Transactions', value: stats?.total_transactions || 0, icon: BarChart3, accent: 'text-primary', bg: 'bg-primary/5', isCount: true },
+    { label: 'Total Transactions', value: stats?.total_transactions || 0, icon: BarChart3, accent: 'text-primary dark:text-white', bg: 'bg-primary/5 dark:bg-white/5', isCount: true },
   ];
 
   return (
@@ -915,7 +915,7 @@ function FinanceAdminSection() {
               const pData = stats?.byPillar?.find((p: any) => p.pillar === mapping[pillar]) || { revenue: 0, commission: 0, count: 0 };
               const icons = {
                 events: <CalendarDays className="h-5 w-5 text-emerald-600" />,
-                elections: <Vote className="h-5 w-5 text-blue-600" />,
+                elections: <Vote className="h-5 w-5 text-primary" />,
                 campaigns: <Megaphone className="h-5 w-5 text-amber-600" />
               };
               return (
@@ -952,7 +952,7 @@ function FinanceAdminSection() {
 
         {/* Commission Configs & Pending Settlements Summary */}
         <div className="space-y-6">
-          <Card className="border-primary/20 shadow-sm bg-primary/5">
+          <Card className="border-primary/20 shadow-sm bg-primary/5 dark:border-white/20 dark:bg-white/5">
             <CardHeader className="pb-3 pt-5 px-5">
               <CardTitle className="text-base font-serif flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-primary" /> Pending Settlements

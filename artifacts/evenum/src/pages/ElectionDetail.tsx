@@ -274,7 +274,7 @@ export default function ElectionDetail() {
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded bg-blue-100 text-blue-700 flex items-center justify-center">
+               <div className="w-10 h-10 rounded bg-primary/10 text-primary dark:bg-white/10 dark:text-white flex items-center justify-center">
                 <Vote className="h-5 w-5" />
               </div>
               <h1 className="text-3xl font-serif font-bold tracking-tight">{election.title}</h1>
@@ -285,7 +285,7 @@ export default function ElectionDetail() {
             <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><Badge variant="outline">{election.visibility.replace('_', ' ')}</Badge></span>
               {election.eligibilityMode === 'allowlist' && (
-                <span className="flex items-center gap-1.5"><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><Shield className="h-3 w-3 mr-1" />Allowlist</Badge></span>
+                 <span className="flex items-center gap-1.5"><Badge variant="outline" className="bg-primary/10 text-primary border-primary/25 dark:bg-white/10 dark:text-white dark:border-white/20"><Shield className="h-3 w-3 mr-1" />Allowlist</Badge></span>
               )}
               {election.requiresAuth && <span className="flex items-center gap-1.5"><Badge variant="outline">Requires Auth</Badge></span>}
               {election.startsAt && <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {format(new Date(election.startsAt), 'MMM d, yyyy h:mm a')}</span>}
@@ -483,7 +483,7 @@ export default function ElectionDetail() {
                             <div className="divide-y">
                               {posCandidates.map(candidate => (
                                 <div key={candidate.id} className="p-4 flex items-center gap-4 hover:bg-muted/10 transition-colors group">
-                                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 overflow-hidden">
+                                  <div className="w-12 h-12 rounded-full bg-primary/10 dark:bg-white/10 flex items-center justify-center text-primary dark:text-white shrink-0 overflow-hidden">
                                     {candidate.photoUrl ? (
                                       <img src={candidate.photoUrl} alt={candidate.name} className="w-full h-full object-cover" />
                                     ) : (
@@ -876,7 +876,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                     />
                   </div>
                 </div>
-                  <div className="space-y-1.5 rounded-md border border-primary/20 bg-primary/5 p-3">
+                  <div className="space-y-1.5 rounded-md border border-primary/20 bg-primary/5 dark:border-white/20 dark:bg-white/5 p-3">
                     <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estimated amount you receive</Label>
                     <p className="text-lg font-semibold text-primary">
                       XAF {(Math.max(0, Number(paymentAmount) || 0) * 0.95).toLocaleString('en-US', { maximumFractionDigits: 2 })}
