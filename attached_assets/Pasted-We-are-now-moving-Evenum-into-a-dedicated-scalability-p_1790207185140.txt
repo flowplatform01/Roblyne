@@ -1,0 +1,395 @@
+We are now moving Evenum into a dedicated scalability, performance and high-concurrency hardening stage.
+
+Evenum is already functionally production-ready. Do not rebuild the application or change its product behaviour unnecessarily.
+
+Approach this as a world-class senior/staff-level engineering team performing a serious scalability review of an existing production application.
+
+Objective
+
+Make Evenum:
+
+* extremely responsive and fast;
+* capable of handling substantial concurrent traffic;
+* efficient under peak usage;
+* horizontally scalable;
+* vertically scalable;
+* resilient under load;
+* efficient with database and server resources;
+* capable of safely processing asynchronous/background workloads;
+* ready to operate across multiple application instances;
+* architecturally prepared for a much larger production environment.
+
+Do not optimize only for benchmarks. Preserve the existing UX, correctness, security and business logic.
+
+⸻
+
+1. First: Understand the Existing Architecture
+
+Before changing anything, inspect the entire application and understand:
+
+* request/response flow;
+* database access patterns;
+* authentication/session handling;
+* API architecture;
+* event/election/campaign/ticketing workflows;
+* discovery;
+* organization workspaces;
+* public-facing experiences;
+* payment flows;
+* notifications;
+* file/media operations;
+* scheduled operations;
+* heavy computations;
+* real-time functionality;
+* caching opportunities;
+* existing background processes;
+* existing WebSocket usage, if any;
+* existing infrastructure assumptions.
+
+Identify actual bottlenecks rather than applying generic optimization patterns.
+
+Do not introduce infrastructure simply because it is fashionable.
+
+⸻
+
+2. Redis
+
+Introduce a proper Redis-based infrastructure layer where it provides genuine architectural value.
+
+Design Redis as a shared infrastructure component rather than as an arbitrary cache attached to random endpoints.
+
+Evaluate and implement appropriate uses such as:
+
+* application caching;
+* frequently accessed read data;
+* short-lived state;
+* rate limiting;
+* distributed coordination where necessary;
+* temporary workflow state;
+* session-related infrastructure where appropriate;
+* distributed locks where genuinely required;
+* protection against repeated expensive operations;
+* coordination between multiple application instances.
+
+Caching must have deliberate TTLs, invalidation strategies and consistency rules.
+
+Do not cache everything.
+
+Avoid stale-data bugs, cache stampedes, unbounded memory growth and situations where Redis becomes a hidden source of truth for data that belongs in the primary database.
+
+The database must remain authoritative wherever appropriate.
+
+Make the Redis integration replaceable through configuration so the architecture can later use a production Redis-compatible service such as Upstash or Aiven/Valkey without requiring application rewrites.
+
+⸻
+
+3. Background Jobs / BullMQ
+
+Evaluate all operations that should not block the main request-response cycle.
+
+Where appropriate, introduce a proper job-processing architecture using BullMQ backed by Redis.
+
+Potential workloads to evaluate include:
+
+* notification delivery;
+* email;
+* asynchronous processing;
+* large/batched operations;
+* scheduled operations;
+* reconciliation;
+* cleanup;
+* data processing;
+* analytics aggregation;
+* other genuinely asynchronous workloads.
+
+Do not move ordinary lightweight operations into queues unnecessarily.
+
+Jobs must have:
+
+* retries;
+* exponential/backoff behaviour where appropriate;
+* failure handling;
+* idempotency;
+* job visibility;
+* controlled concurrency;
+* appropriate timeouts;
+* dead-letter/failure handling where useful.
+
+The application should remain correct if a job executes more than once.
+
+⸻
+
+4. Worker Architecture
+
+Separate background workers from the main web/API process where the workload justifies it.
+
+Design the architecture so that:
+
+Web/API processes handle user-facing requests
+
+while
+
+Worker processes handle asynchronous workloads.
+
+The implementation must remain compatible with the current Replit environment while also being straightforward to deploy as separate worker services in production.
+
+Do not create unnecessary microservices.
+
+Keep the architecture coherent and operationally simple.
+
+⸻
+
+5. WebSockets / Real-Time Architecture
+
+Audit Evenum’s real-time requirements carefully.
+
+Where real-time communication genuinely improves the product—particularly areas involving:
+
+* live voting states;
+* event states;
+* payment status;
+* organization operations;
+* live results where applicable;
+* notifications;
+* other time-sensitive UI updates—
+
+implement or strengthen a proper WebSocket architecture.
+
+Use the existing technology where appropriate, such as Socket.IO or an equivalent suitable implementation.
+
+If multiple application instances can serve WebSocket connections, ensure the architecture can correctly coordinate events across instances rather than assuming every connection lives on the same server.
+
+Redis may be used as the appropriate pub/sub or adapter layer where required.
+
+Do not introduce WebSockets merely to replace ordinary HTTP requests.
+
+Use the right communication mechanism for each workload.
+
+⸻
+
+6. Database Performance
+
+Perform a serious database performance audit.
+
+Inspect:
+
+* indexes;
+* query patterns;
+* N+1 queries;
+* unnecessary joins;
+* pagination;
+* sorting;
+* filtering;
+* aggregation;
+* connection management;
+* transaction boundaries;
+* frequently accessed records;
+* expensive queries;
+* unnecessary repeated queries.
+
+Add or modify indexes only when justified by actual access patterns.
+
+Use efficient pagination for potentially large datasets.
+
+Do not load entire collections into memory when only a subset is required.
+
+Review database connection pooling and ensure the application remains safe when multiple instances are running simultaneously.
+
+⸻
+
+7. Concurrency & Race Conditions
+
+This is particularly important for Evenum.
+
+Audit concurrent operations involving:
+
+* votes;
+* vote limits;
+* candidate/position state;
+* ticket inventory;
+* registrations;
+* campaign collections;
+* payment state;
+* organization operations;
+* counters;
+* quotas;
+* scheduled transitions;
+* result calculations.
+
+Look specifically for race conditions where two or more users perform the same operation simultaneously.
+
+Use appropriate database constraints, transactions, atomic operations, locks or distributed coordination where genuinely necessary.
+
+Do not rely on application-level checks alone when a database-level guarantee is required.
+
+⸻
+
+8. Application-Level Performance
+
+Audit the frontend and backend for unnecessary work.
+
+Look for:
+
+* duplicate requests;
+* unnecessary refetching;
+* excessive payload sizes;
+* expensive serialization;
+* redundant API calls;
+* inefficient discovery queries;
+* unnecessary rendering;
+* blocking operations;
+* oversized assets;
+* repeated computation;
+* unnecessary loading states;
+* poor cache usage.
+
+Preserve the existing offline-first and PWA behaviour.
+
+The objective is that returning to previously visited content should feel immediate whenever the data can safely be reused.
+
+Do not sacrifice correctness for perceived speed.
+
+⸻
+
+9. Scaling Model
+
+Design the application so that additional application instances can safely run simultaneously.
+
+The application must not depend on:
+
+* local process memory for shared state;
+* local filesystem state for critical application data;
+* a single process holding authoritative state;
+* in-process queues;
+* instance-specific WebSocket state;
+* assumptions that only one server exists.
+
+Shared state should use the appropriate external infrastructure.
+
+The resulting architecture should support a progression such as:
+
+single instance → multiple API instances → independent workers → Redis-backed coordination/cache → load-balanced production deployment
+
+without requiring a fundamental rewrite.
+
+⸻
+
+10. Resilience
+
+Introduce appropriate protections against:
+
+* traffic spikes;
+* repeated requests;
+* abusive clients;
+* queue overload;
+* Redis failure;
+* worker failure;
+* database pressure;
+* slow downstream services;
+* temporary network failures.
+
+Use:
+
+* timeouts;
+* controlled retries;
+* rate limiting;
+* circuit-breaking patterns where appropriate;
+* backpressure;
+* graceful degradation;
+* health checks;
+* readiness/liveness checks where useful.
+
+Do not add complexity that does not provide a real resilience benefit.
+
+⸻
+
+11. Observability
+
+Make scalability problems traceable.
+
+This is critical.
+
+If something becomes slow or fails under production load, the engineering team should be able to determine where the problem originated.
+
+Introduce or strengthen structured logging, request correlation IDs and appropriate metrics around:
+
+* request latency;
+* error rates;
+* database latency;
+* Redis operations;
+* queue depth;
+* job failures;
+* worker processing time;
+* WebSocket connections;
+* external service latency;
+* cache hit/miss behaviour.
+
+Never expose secrets or sensitive payment/user information in logs.
+
+⸻
+
+12. Load & Concurrency Testing
+
+Do not simply implement the architecture and assume it scales.
+
+Create realistic performance tests around the application’s important workloads.
+
+Test scenarios such as:
+
+* many users browsing discovery simultaneously;
+* many users opening the same event;
+* high-concurrency voting;
+* simultaneous ticket/registration activity;
+* campaign activity;
+* payment-status updates;
+* notification workloads;
+* many WebSocket connections where applicable.
+
+Identify bottlenecks from actual test results and address them.
+
+Do not optimize based purely on theoretical assumptions.
+
+⸻
+
+13. Production Parity
+
+Implement the architecture in the current development environment in a way that closely represents the eventual production architecture.
+
+Redis, workers, queues and real-time infrastructure should not be fake placeholders.
+
+Where Replit infrastructure differs from the eventual production environment, keep the implementation configuration-driven so the production deployment can use equivalent services without architectural rewrites.
+
+Do not hardcode development-only infrastructure assumptions into the application.
+
+⸻
+
+14. Final Engineering Standard
+
+After implementation:
+
+* run the complete existing test suite;
+* add tests for newly introduced infrastructure;
+* test failure scenarios;
+* test concurrent operations;
+* test cache invalidation;
+* test queue retries;
+* test duplicate jobs;
+* test worker restarts;
+* test Redis unavailability behaviour;
+* test multiple application instances where practical;
+* test WebSocket behaviour where applicable;
+* run browser regression tests with Playwright where useful.
+
+Inspect the resulting code rather than trusting generated output.
+
+Remove unnecessary complexity.
+
+Do not introduce microservices merely for appearance.
+
+Do not introduce Redis, BullMQ or WebSockets where they provide no meaningful benefit.
+
+The final architecture should feel like it was designed by an experienced infrastructure/performance engineering team for a serious platform expected to grow substantially.
+
+The goal is not simply to make Evenum “faster.”
+
+The goal is to make the existing Evenum architecture efficient, concurrent, observable, resilient and genuinely scalable, while preserving all current functionality and UX.
