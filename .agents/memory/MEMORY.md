@@ -14,3 +14,4 @@
 - [Evenum route middleware scope](evenum-route-middleware-scope.md) — router-level authorization must be path-scoped when routers share an API mount
 - [Evenum sticky header](evenum-sticky-header.md) — avoid overflow-hidden ancestors around the global sticky navbar
 - [API worker build outputs](api-worker-build-outputs.md) — the Pino esbuild plugin adds worker entrypoints, so API and worker builds must use outdir
+- [Workspace dependency overrides](workspace-dependency-overrides.md) — put pnpm security pins in pnpm-workspace.yaml so existing platform overrides are preserved
