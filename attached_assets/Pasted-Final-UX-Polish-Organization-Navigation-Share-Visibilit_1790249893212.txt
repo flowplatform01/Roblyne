@@ -1,0 +1,47 @@
+Final UX Polish — Organization Navigation, Share Visibility & Tab Spacing
+
+The application is already in a very polished, production-ready state. Do not redesign, restructure, or regress anything. Treat this as a focused investigation and final UX polish pass.
+
+Please investigate the following three issues carefully, using the attached screenshots where applicable:
+
+1. Organization public profile — Share action visibility
+
+* On the organization’s public profile, there is a share action/control that is currently too visually subtle or effectively invisible.
+* Inspect the attached screenshot to identify the exact location.
+* Make the share affordance clearly discoverable and tappable while keeping it elegant and consistent with the existing design system.
+* Do not add unnecessary UI or make it visually loud.
+* Preserve the existing layout and hierarchy; the goal is simply to make the existing functionality discoverable.
+
+2. Organization workspace — Horizontal navigation/header tab behavior
+
+* When opening an organization, there is a horizontally scrollable navigation/header containing areas such as Events, Campaigns, Elections, Settings, etc.
+* The navigation technically works, but when tapping or horizontally scrolling it, the bar appears to dance, shake, redraw, jitter, or move inconsistently.
+* Investigate the actual cause rather than masking the symptom.
+* Compare its implementation and scrolling behavior with other stable horizontal navigation bars already used elsewhere in the application.
+* Fix the positioning, scrolling, rendering, sticky behavior, overflow handling, or animation causing the instability.
+* It should feel completely stable and native: smooth horizontal scrolling, predictable active-state movement, no jumping, jittering, layout shifts, or unnecessary re-renders.
+* Preserve the existing functionality and visual design.
+
+3. Another horizontal tab/bar — excessive spacing
+
+* Inspect the attached screenshot and identify the specific horizontal tab bar shown there.
+* The bar contains approximately three tabs, but the spacing between them is unnecessarily large, making the third tab require horizontal scrolling even though there appears to be enough available space.
+* Refine the spacing and sizing so the existing tabs use the available width naturally and feel like one coherent navigation group.
+* Do not simply force all tabs to fit or remove horizontal scrolling.
+* Keep the bar extensible so that if more tabs are added later, horizontal scrolling can still work naturally.
+* The objective is balanced spacing, not maximum compression.
+
+Important engineering constraints
+
+* First inspect the existing implementation and reproduce each issue.
+* Determine the actual root cause before changing code.
+* Reuse the application’s existing design system, interaction patterns, components, and responsive behavior.
+* Do not introduce generic UI patterns or unnecessary dependencies.
+* Do not change unrelated screens or functionality.
+* Pay particular attention to mobile-first behavior, especially iOS Safari/PWA and Android.
+* After implementing the fixes, test the affected flows thoroughly at mobile and desktop breakpoints.
+* Check for regressions in scrolling, sticky positioning, touch interaction, active states, navigation, and responsive layouts.
+* If Playwright or another browser-testing tool is available, use it to reproduce and verify the fixes.
+* Keep the final result subtle, mature, stable, and consistent with the existing EVENUM product experience.
+
+Definition of done: the share action is clearly discoverable, the organization navigation scrolls without any dancing/jittering, and the other tab bar has proportionate spacing without sacrificing future horizontal-scroll behavior. Everything else should remain exactly as stable as it is now.

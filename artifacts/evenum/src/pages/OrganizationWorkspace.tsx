@@ -122,20 +122,20 @@ export default function OrganizationWorkspace() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-         <TabsList className="no-scrollbar mb-6 w-full justify-start gap-1 overflow-x-auto border bg-muted/50 p-1 flex-nowrap">
-           <TabsTrigger value="overview" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-           <TabsTrigger value="elections" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Elections</TabsTrigger>
-           <TabsTrigger value="events" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Events</TabsTrigger>
-           <TabsTrigger value="campaigns" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Campaigns</TabsTrigger>
-           <TabsTrigger value="team" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Team</TabsTrigger>
-           <TabsTrigger value="analytics" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full min-w-0">
+         <TabsList className="no-scrollbar mb-6 w-full min-w-0 max-w-full justify-start gap-1 overflow-x-auto overscroll-x-contain border bg-muted/50 p-1 flex-nowrap [-webkit-overflow-scrolling:touch]">
+           <TabsTrigger value="overview" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+           <TabsTrigger value="elections" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Elections</TabsTrigger>
+           <TabsTrigger value="events" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Events</TabsTrigger>
+           <TabsTrigger value="campaigns" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Campaigns</TabsTrigger>
+           <TabsTrigger value="team" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Team</TabsTrigger>
+           <TabsTrigger value="analytics" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <BarChart3 className="h-3.5 w-3.5 mr-1.5" />Analytics
           </TabsTrigger>
-           <TabsTrigger value="finance" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+           <TabsTrigger value="finance" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Wallet className="h-3.5 w-3.5 mr-1.5" />Finance
           </TabsTrigger>
-           <TabsTrigger value="settings" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+           <TabsTrigger value="settings" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Settings className="h-3.5 w-3.5 mr-1.5" />Settings
           </TabsTrigger>
         </TabsList>

@@ -62,7 +62,7 @@ export default function OrganizationPublic() {
               <Button
                 variant="outline"
                 asChild
-                className="h-12 px-6 rounded-sm bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background"
+                className="h-12 px-6 rounded-sm bg-transparent border-white/40 text-white hover:bg-white/10 hover:border-white/60 hover:text-white focus-visible:ring-white/70"
               >
                 <a href={org.website} target="_blank" rel="noopener noreferrer">
                   <Globe className="mr-2 h-4 w-4" />
@@ -74,7 +74,7 @@ export default function OrganizationPublic() {
               url={shareUrl}
               title={org.name}
               description={org.description || `Visit ${org.name} on Evenum`}
-              className="bg-transparent border-background/30 text-background hover:bg-background/10 hover:border-background/50 hover:text-background rounded-sm"
+              className="bg-white/15 border-white/50 text-white hover:bg-white/25 hover:border-white/70 hover:text-white rounded-sm focus-visible:ring-white/70"
             />
           </>
         }

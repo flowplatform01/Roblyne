@@ -51,6 +51,13 @@ OrganizationWorkspace uses `window.history.pushState` to sync `?tab=X` in URL. A
 
 **Why:** Tab state is URL-driven for shareability and browser back/forward support.
 
+## Horizontal tabs in flex workspaces
+Keep `min-w-0` on flex ancestors of horizontally scrollable tab bars, and keep tab triggers content-sized with `shrink-0`. Use responsive horizontal padding rather than equal-width tabs so short sets fit naturally while longer sets can still scroll.
+
+**Why:** Intrinsic minimum widths from active tab content can resize flex layouts as panels change, making the navigation appear to shift. Fixed large trigger padding can also force short mobile tab sets to scroll unnecessarily.
+
+**How to apply:** When a workspace tab bar jitters or clips, inspect its flex ancestors for missing `min-w-0` before changing scroll behavior. Preserve native overflow scrolling and avoid broad transitions on active tab triggers.
+
 ## Paid participation governance
 Paid voting is governed at the platform level: use election/position-level pricing (never candidate-level pricing), keep the active currency platform-approved, and store purchased quantity on the ballot so displayed entitlements and results remain aligned.
 
