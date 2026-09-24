@@ -10,6 +10,7 @@
     "migrate:election-monetization": "tsx ./migrate-election-monetization.ts",
     "perf:baseline": "tsx ./perf-baseline.ts",
     "test:concurrency": "tsx ./concurrency-integrity.mjs",
+    "integrity": "tsx ./concurrency-integrity.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

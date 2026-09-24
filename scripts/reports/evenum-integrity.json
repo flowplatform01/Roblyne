@@ -1,0 +1,268 @@
+{
+  "startedAt": "2026-09-24T01:10:09.289Z",
+  "finishedAt": "2026-09-24T01:10:10.961Z",
+  "baseUrl": "http://127.0.0.1:43371",
+  "fixturePrefix": "__integrity_test__e8e1e2c3-0cb9-44ed-bb2f-01cb464accc0",
+  "scenarios": [
+    {
+      "name": "concurrent registrations respect ticket-type capacity",
+      "requests": 12,
+      "concurrency": 12,
+      "statusCounts": {
+        "201": 3,
+        "409": 9
+      },
+      "invariantChecks": [
+        {
+          "name": "three registrations return created",
+          "expected": 3,
+          "actual": 3,
+          "passed": true
+        },
+        {
+          "name": "nine registrations return conflict",
+          "expected": 9,
+          "actual": 9,
+          "passed": true
+        },
+        {
+          "name": "event ticket count <= event capacity",
+          "expected": true,
+          "actual": true,
+          "passed": true
+        },
+        {
+          "name": "ticket count <= ticket-type capacity",
+          "expected": true,
+          "actual": true,
+          "passed": true
+        },
+        {
+          "name": "ticket-type sold counter matches tickets",
+          "expected": 3,
+          "actual": 3,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "concurrent registrations respect event capacity",
+      "requests": 12,
+      "concurrency": 12,
+      "statusCounts": {
+        "201": 2,
+        "409": 10
+      },
+      "invariantChecks": [
+        {
+          "name": "two registrations return created",
+          "expected": 2,
+          "actual": 2,
+          "passed": true
+        },
+        {
+          "name": "ten registrations return conflict",
+          "expected": 10,
+          "actual": 10,
+          "passed": true
+        },
+        {
+          "name": "event ticket count <= event capacity",
+          "expected": true,
+          "actual": true,
+          "passed": true
+        },
+        {
+          "name": "ticket count <= ticket-type capacity",
+          "expected": true,
+          "actual": true,
+          "passed": true
+        },
+        {
+          "name": "ticket-type sold counter matches tickets",
+          "expected": 2,
+          "actual": 2,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "concurrent election submissions reject duplicate voter",
+      "requests": 12,
+      "concurrency": 12,
+      "statusCounts": {
+        "200": 1,
+        "403": 11
+      },
+      "invariantChecks": [
+        {
+          "name": "one duplicate submission returns OK",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "eleven duplicate submissions return forbidden",
+          "expected": 11,
+          "actual": 11,
+          "passed": true
+        },
+        {
+          "name": "one ballot persisted",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one ballot selection persisted",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "ended election rejects submissions",
+      "requests": 1,
+      "concurrency": 1,
+      "statusCounts": {
+        "403": 1
+      },
+      "invariantChecks": [
+        {
+          "name": "closed election returns forbidden",
+          "expected": 403,
+          "actual": 403,
+          "passed": true
+        },
+        {
+          "name": "closed election persists no ballot",
+          "expected": 0,
+          "actual": 0,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "replayed FlowPay webhooks are idempotent across all pillars",
+      "requests": 36,
+      "concurrency": 16,
+      "statusCounts": {
+        "200": 36
+      },
+      "invariantChecks": [
+        {
+          "name": "all webhook deliveries return OK",
+          "expected": true,
+          "actual": true,
+          "passed": true
+        },
+        {
+          "name": "one ticket webhook event persisted",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one ticket issued",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "ticket payment intent finalized once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "ticket financial transaction completed once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "ticket webhook fulfillment does not increment sold counter",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one campaign webhook event persisted",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one campaign response created",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "campaign payment intent finalized once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "campaign financial transaction completed once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "campaign amount incremented once",
+          "expected": "25.00",
+          "actual": "25.00",
+          "passed": true
+        },
+        {
+          "name": "one election webhook event persisted",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one paid vote created",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "one paid vote selection created",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "election payment intent finalized once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        },
+        {
+          "name": "election financial transaction completed once",
+          "expected": 1,
+          "actual": 1,
+          "passed": true
+        }
+      ],
+      "passed": true,
+      "errors": []
+    }
+  ],
+  "passed": true,
+  "cleanup": {
+    "attempted": true,
+    "completed": true
+  }
+}

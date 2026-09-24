@@ -32,7 +32,6 @@ function isUniqueViolation(error: unknown): boolean {
   }
   return false;
 }
-
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
   return startsAt.getTime() < endsAt.getTime();
