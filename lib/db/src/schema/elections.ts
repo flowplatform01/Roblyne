@@ -27,6 +27,7 @@ export const electionsTable = pgTable("elections", {
   orgIdIdx: index("elections_org_id_idx").on(table.orgId),
   statusIdx: index("elections_status_idx").on(table.status),
   visibilityIdx: index("elections_visibility_idx").on(table.visibility),
+  publicDiscoveryIdx: index("elections_public_discovery_idx").on(table.visibility, table.status, table.createdAt),
 }));
 
 // Allowlisted voter emails, used when eligibilityMode = "allowlist".

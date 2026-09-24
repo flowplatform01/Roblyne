@@ -13,3 +13,4 @@
 - [Evenum frontend build](evenum-frontend-build.md) — standalone Vite builds require PORT and the configured BASE_PATH
 - [Evenum route middleware scope](evenum-route-middleware-scope.md) — router-level authorization must be path-scoped when routers share an API mount
 - [Evenum sticky header](evenum-sticky-header.md) — avoid overflow-hidden ancestors around the global sticky navbar
+- [API worker build outputs](api-worker-build-outputs.md) — the Pino esbuild plugin adds worker entrypoints, so API and worker builds must use outdir

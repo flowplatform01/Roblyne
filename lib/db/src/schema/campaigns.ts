@@ -28,6 +28,7 @@ export const campaignsTable = pgTable("campaigns", {
   orgIdIdx: index("campaigns_org_id_idx").on(table.orgId),
   statusIdx: index("campaigns_status_idx").on(table.status),
   visibilityIdx: index("campaigns_visibility_idx").on(table.visibility),
+  publicDiscoveryIdx: index("campaigns_public_discovery_idx").on(table.visibility, table.status, table.createdAt),
 }));
 
 export const campaignResponsesTable = pgTable("campaign_responses", {

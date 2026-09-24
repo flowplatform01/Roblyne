@@ -1,6 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
+import { registerMaintenanceSchedule, closeQueues } from "./lib/jobs";
+import { closeRedis } from "./lib/redis";
 
 const rawPort = process.env["PORT"];
 
@@ -16,7 +18,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -25,12 +27,29 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-const lifecycleSweep = setInterval(() => {
+void (async () => {
+  const queued = await registerMaintenanceSchedule();
+  if (queued) return;
+
+  // Safe single-process fallback for local development or environments without Redis.
+  const lifecycleSweep = setInterval(() => {
+    void sweepExpiredLifecycles().catch((err) => {
+      logger.error({ err }, "Lifecycle sweep failed");
+    });
+  }, 30_000);
+  lifecycleSweep.unref();
   void sweepExpiredLifecycles().catch((err) => {
-    logger.error({ err }, "Lifecycle sweep failed");
+    logger.error({ err }, "Initial lifecycle sweep failed");
   });
-}, 30_000);
-lifecycleSweep.unref();
-void sweepExpiredLifecycles().catch((err) => {
-  logger.error({ err }, "Initial lifecycle sweep failed");
-});
+})();
+
+async function shutdown(signal: string): Promise<void> {
+  logger.info({ signal }, "Shutting down API server");
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  await closeQueues();
+  await closeRedis();
+  process.exit(0);
+}
+
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, or, ilike, and } from "drizzle-orm";
 import { db, electionsTable, eventsTable, campaignsTable, organizationsTable } from "@workspace/db";
 import { DiscoverQueryParams, SearchQueryParams } from "@workspace/api-zod";
+import { getJson, setJson } from "../lib/redis";
 
 const router: IRouter = Router();
 
@@ -12,6 +13,13 @@ router.get("/discover", async (req, res): Promise<void> => {
   const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
   const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
   const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
+  const cacheKey = `evenum:discover:v1:${typeFilter}:${limit}:${sort}`;
+  const cached = await getJson<{ items: any[]; featured: any[]; trending: any[] }>(cacheKey);
+  if (cached) {
+    res.setHeader("X-Cache", "HIT");
+    res.json(cached);
+    return;
+  }
 
   // Fetch all three pillars in parallel using a single aggregated query each.
   // Participant counts come from a correlated subquery, avoiding N+1 loops.
@@ -89,7 +97,10 @@ router.get("/discover", async (req, res): Promise<void> => {
   const featured = items.filter(i => i.status === "active" || i.status === "published").slice(0, 4);
   const trending = [...items].sort((a, b) => b.participantsCount - a.participantsCount).slice(0, 4);
 
-  res.json({ items: items.slice(0, limit), featured, trending });
+  const response = { items: items.slice(0, limit), featured, trending };
+  await setJson(cacheKey, response, 10);
+  res.setHeader("X-Cache", "MISS");
+  res.json(response);
 });
 
 // ── SEARCH ─────────────────────────────────────────────────────────────────

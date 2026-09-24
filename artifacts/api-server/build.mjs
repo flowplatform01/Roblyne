@@ -14,8 +14,9 @@ async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
 
+  const workerBuild = process.argv.includes("--worker");
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: [path.resolve(artifactDir, workerBuild ? "src/worker.ts" : "src/index.ts")],
     platform: "node",
     bundle: true,
     format: "esm",

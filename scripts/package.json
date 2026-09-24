@@ -8,6 +8,7 @@
     "seed": "tsx ./seed-demo.ts",
     "seed:branding": "tsx ./seed-branding.ts",
     "migrate:election-monetization": "tsx ./migrate-election-monetization.ts",
+    "perf:baseline": "tsx ./perf-baseline.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

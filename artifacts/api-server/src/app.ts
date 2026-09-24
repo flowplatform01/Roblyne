@@ -7,6 +7,7 @@ import pinoHttp from "pino-http";
 import { apiLimiter, authLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { recordRequest } from "./lib/metrics";
 
 const PgSession = connectPgSimple(session);
 
@@ -41,6 +42,21 @@ app.use(
     },
   }),
 );
+
+app.use((req, res, next) => {
+  const startedAt = process.hrtime.bigint();
+  res.on("finish", () => {
+    const latencyMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    const route = req.route?.path
+      ? `${req.baseUrl}${req.route.path}`
+      : req.path.replace(/\/\d+(?=\/|$)/g, "/:id");
+    recordRequest(req.method, route, res.statusCode, latencyMs);
+    if (latencyMs >= 1_000) {
+      req.log.warn({ latencyMs: Math.round(latencyMs), statusCode: res.statusCode }, "Slow HTTP response");
+    }
+  });
+  next();
+});
 
 app.use((req, res, next) => {
   res.setHeader("X-Request-Id", String(req.id));

@@ -26,6 +26,7 @@ export const eventsTable = pgTable("events", {
   orgIdIdx: index("events_org_id_idx").on(table.orgId),
   statusIdx: index("events_status_idx").on(table.status),
   visibilityIdx: index("events_visibility_idx").on(table.visibility),
+  publicDiscoveryIdx: index("events_public_discovery_idx").on(table.visibility, table.status, table.createdAt),
 }));
 
 export const ticketTypesTable = pgTable("ticket_types", {
