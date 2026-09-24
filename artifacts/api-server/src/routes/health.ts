@@ -13,16 +13,22 @@ router.get("/healthz", (_req, res) => {
 });
 
 router.get("/readyz", async (_req, res): Promise<void> => {
+  const redis = await pingRedis();
   let databaseOk = false;
   try {
     await pool.query("SELECT 1");
     databaseOk = true;
   } catch (error) {
-    res.status(503).json({ status: "not_ready", database: false, redis: { configured: false, ok: false } });
+    res.status(503).json({
+      status: "not_ready",
+      database: false,
+      redis,
+      degraded: redis.configured && !redis.ok,
+      queue: queueInfrastructureStatus(),
+    });
     return;
   }
 
-  const redis = await pingRedis();
   const redisRequired = process.env.REDIS_REQUIRED === "true";
   if (redis.configured && !redis.ok && redisRequired) {
     res.status(503).json({

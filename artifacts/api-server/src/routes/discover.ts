@@ -14,6 +14,9 @@ router.get("/discover", async (req, res): Promise<void> => {
   const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
   const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
   const cacheKey = `evenum:discover:v1:${typeFilter}:${limit}:${sort}`;
+  // Discovery is public and intentionally tolerates a few seconds of staleness.
+  // This also gives the reverse proxy/browser a useful fallback when Redis is absent.
+  res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=15");
   const cached = await getJson<{ items: any[]; featured: any[]; trending: any[] }>(cacheKey);
   if (cached) {
     res.setHeader("X-Cache", "HIT");
