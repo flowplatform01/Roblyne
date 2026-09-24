@@ -15,3 +15,4 @@
 - [Evenum sticky header](evenum-sticky-header.md) — avoid overflow-hidden ancestors around the global sticky navbar
 - [API worker build outputs](api-worker-build-outputs.md) — the Pino esbuild plugin adds worker entrypoints, so API and worker builds must use outdir
 - [Workspace dependency overrides](workspace-dependency-overrides.md) — put pnpm security pins in pnpm-workspace.yaml so existing platform overrides are preserved
+- [Concurrent vote error handling](concurrent-vote-error-handling.md) — Drizzle may wrap PostgreSQL unique violations under cause; classify nested 23505 errors before returning duplicate-safe responses

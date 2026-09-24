@@ -24,6 +24,15 @@ import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from 
 
 const router: IRouter = Router();
 
+function isUniqueViolation(error: unknown): boolean {
+  let current: any = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    if (current.code === "23505") return true;
+    current = current.cause;
+  }
+  return false;
+}
+
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
   return startsAt.getTime() < endsAt.getTime();
@@ -622,7 +631,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
     }
   } catch (err: any) {
     // Unique constraint violation — two concurrent requests raced past the duplicate check
-    if (err?.code === "23505") {
+    if (isUniqueViolation(err)) {
       res.status(403).json({ error: "You have already cast a ballot in this election" });
       return;
     }
