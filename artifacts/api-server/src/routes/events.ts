@@ -15,6 +15,7 @@ import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middl
 import { v4 as uuidv4 } from "uuid";
 import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
+import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
 
@@ -66,10 +67,12 @@ router.get("/events", async (req, res): Promise<void> => {
     .where(filters.length > 0 ? and(...filters) : undefined);
 
   res.json(rows.map(({ event, orgName, orgLogoUrl, attendeesCount, ticketTypesCount }) => ({
-    ...event,
+    ...compactListMedia({
+      ...event,
+      organizationLogoUrl: orgLogoUrl ?? null,
+    }),
     inviteCode: null,
     organizationName: orgName ?? null,
-    organizationLogoUrl: orgLogoUrl ?? null,
     attendeesCount: attendeesCount ?? 0,
     ticketTypesCount: ticketTypesCount ?? 0,
   })));

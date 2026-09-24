@@ -11,6 +11,7 @@ import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
+import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
 
@@ -75,7 +76,7 @@ router.get("/campaigns", async (req, res): Promise<void> => {
     .where(filters.length > 0 ? and(...filters) : undefined);
 
   res.json(rows.map(({ campaign, orgName, orgLogoUrl, submissionsCount }) =>
-    campaignRow(campaign, orgName ?? null, submissionsCount ?? 0, orgLogoUrl)
+    compactListMedia(campaignRow(campaign, orgName ?? null, submissionsCount ?? 0, orgLogoUrl))
   ));
 });
 

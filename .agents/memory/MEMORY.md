@@ -3,6 +3,7 @@
 - [Evenum production hardening](evenum-production-hardening.md) — full N+1 elimination (elections/orgs/financial), concurrency locks, session secret guard, search rate limit, lazy loading, QueryClient tuning, ErrorBoundary
 - [Evenum refinement patterns](evenum-refinement-patterns.md) — OG meta pattern, ShareButton usage, org settings mutation, BrandedHero, AccentColorPicker, tab URL persistence
 - [Evenum sharing & OG](evenum-sharing-og.md) — dev middleware plus production Node serving are required for entity-specific crawler previews
+- [Evenum list payload performance](evenum-performance.md) — list and discovery responses must compact embedded data-URL media
 - [Evenum api-server build constraints](evenum-api-server-build.md) — zod not a direct dep; customFetch not exported from index; ImageUpload accepts base64
 - [Evenum demo seed](evenum-demo-seed.md) — idempotent seed script at scripts/seed-demo.ts; FK deletion order is critical; all accounts use Evenum2025!
 - [Evenum session persistence](evenum-session-persistence.md) — sessions use connect-pg-simple (table: session); in-memory = wipes on restart, causing 403 on org finance endpoints

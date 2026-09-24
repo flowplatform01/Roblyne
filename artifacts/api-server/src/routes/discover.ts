@@ -3,6 +3,7 @@ import { eq, sql, or, ilike, and } from "drizzle-orm";
 import { db, electionsTable, eventsTable, campaignsTable, organizationsTable } from "@workspace/db";
 import { DiscoverQueryParams, SearchQueryParams } from "@workspace/api-zod";
 import { getJson, setJson } from "../lib/redis";
+import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
 
@@ -13,7 +14,7 @@ router.get("/discover", async (req, res): Promise<void> => {
   const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
   const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
   const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
-  const cacheKey = `evenum:discover:v1:${typeFilter}:${limit}:${sort}`;
+  const cacheKey = `evenum:discover:v2:${typeFilter}:${limit}:${sort}`;
   // Discovery is public and intentionally tolerates a few seconds of staleness.
   // This also gives the reverse proxy/browser a useful fallback when Redis is absent.
   res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=15");
@@ -79,9 +80,9 @@ router.get("/discover", async (req, res): Promise<void> => {
   ]);
 
   const items: any[] = [
-    ...elections.rows.map((r: any) => ({ ...r, type: "election" })),
-    ...events.rows.map((r: any) => ({ ...r, type: "event" })),
-    ...campaigns.rows.map((r: any) => ({ ...r, type: "campaign" })),
+    ...elections.rows.map((r: any) => ({ ...compactListMedia(r), type: "election" })),
+    ...events.rows.map((r: any) => ({ ...compactListMedia(r), type: "event" })),
+    ...campaigns.rows.map((r: any) => ({ ...compactListMedia(r), type: "campaign" })),
   ];
 
   if (sort === "trending" || sort === "popular") {
@@ -168,9 +169,9 @@ router.get("/search", async (req, res): Promise<void> => {
   ]);
 
   const items: any[] = [
-    ...elections.rows.map((r: any) => ({ ...r, type: "election" })),
-    ...events.rows.map((r: any) => ({ ...r, type: "event" })),
-    ...campaigns.rows.map((r: any) => ({ ...r, type: "campaign" })),
+    ...elections.rows.map((r: any) => ({ ...compactListMedia(r), type: "election" })),
+    ...events.rows.map((r: any) => ({ ...compactListMedia(r), type: "event" })),
+    ...campaigns.rows.map((r: any) => ({ ...compactListMedia(r), type: "campaign" })),
   ];
 
   res.json({ query: q, total: items.length, items });

@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { requireOrgRole, getOrgRole } from "../middlewares/orgAccess";
+import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
 
@@ -36,7 +37,7 @@ router.get("/organizations", requireAuth, async (req, res): Promise<void> => {
     WHERE o.owner_id = ${userId} OR om.user_id IS NOT NULL
     ORDER BY o.created_at DESC
   `);
-  res.json(orgs.rows);
+  res.json(orgs.rows.map((org: any) => compactListMedia(org)));
 });
 
 // Create organization
@@ -179,24 +180,24 @@ router.get("/organizations/:orgId/public", async (req, res): Promise<void> => {
     upcomingEventsCount: counts?.upcoming_events ?? 0,
     activeCampaignsCount: counts?.active_campaigns ?? 0,
     recentElections: recentElections.rows.map((e: any) => ({
-      ...e,
+      ...compactListMedia(e),
       organizationName: org.name,
-      organizationLogoUrl: org.logoUrl,
+      organizationLogoUrl: compactListMedia({ organizationLogoUrl: org.logoUrl }).organizationLogoUrl,
       positionsCount: e.positionsCount ?? 0,
       candidatesCount: e.candidatesCount ?? 0,
       totalVotes: e.totalVotes ?? 0,
     })),
     recentEvents: recentEvents.rows.map((e: any) => ({
-      ...e,
+      ...compactListMedia(e),
       organizationName: org.name,
-      organizationLogoUrl: org.logoUrl,
+      organizationLogoUrl: compactListMedia({ organizationLogoUrl: org.logoUrl }).organizationLogoUrl,
       attendeesCount: e.attendeesCount ?? 0,
       ticketTypesCount: e.ticketTypesCount ?? 0,
     })),
     recentCampaigns: recentCampaigns.rows.map((c: any) => ({
-      ...c,
+      ...compactListMedia(c),
       organizationName: org.name,
-      organizationLogoUrl: org.logoUrl,
+      organizationLogoUrl: compactListMedia({ organizationLogoUrl: org.logoUrl }).organizationLogoUrl,
       submissionsCount: c.submissionsCount ?? 0,
       currentAmount: c.currentAmount ?? "0",
     })),
