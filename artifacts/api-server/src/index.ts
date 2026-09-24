@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { registerMaintenanceSchedule, closeQueues, queueInfrastructureStatus } from "./lib/jobs";
 import { closeRedis } from "./lib/redis";
+import { isS3ImageStorageConfigured } from "./lib/s3-image-storage";
 
 const rawPort = process.env["PORT"];
 
@@ -16,6 +17,13 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+if (process.env.NODE_ENV === "production" && !isS3ImageStorageConfigured()) {
+  logger.fatal(
+    "S3-compatible image storage is not configured. Set S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and S3_PUBLIC_BASE_URL before starting production.",
+  );
+  process.exit(1);
 }
 
 const server = app.listen(port, (err) => {

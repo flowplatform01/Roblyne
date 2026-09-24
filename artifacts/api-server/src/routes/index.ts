@@ -9,6 +9,7 @@ import discoverRouter from "./discover";
 import adminRouter from "./admin";
 import financialRouter from "./financial";
 import paymentsRouter from "./payments";
+import uploadsRouter from "./uploads";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(discoverRouter);
 router.use(adminRouter);
 router.use(financialRouter);
 router.use(paymentsRouter);
+router.use(uploadsRouter);
 
 export default router;

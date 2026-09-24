@@ -12,6 +12,11 @@ export interface ImageUploadProps {
   className?: string;
 }
 
+type PresignResponse = {
+  uploadUrl: string;
+  publicUrl: string;
+};
+
 export function ImageUpload({
   value,
   onChange,
@@ -22,6 +27,8 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -36,7 +43,7 @@ export function ImageUpload({
     setIsDragging(false);
   }, []);
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     setError(null);
     if (!file.type.startsWith('image/')) {
       setError("Please upload an image file (PNG, JPG, GIF, WebP).");
@@ -48,16 +55,41 @@ export function ImageUpload({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        onChange(event.target.result as string);
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(localPreviewUrl);
+    setIsUploading(true);
+
+    try {
+      const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+      const presignResponse = await fetch(`${basePath}/api/uploads/presign`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ contentType: file.type, size: file.size }),
+      });
+
+      const presignBody = await presignResponse.json().catch(() => null) as PresignResponse | { error?: string } | null;
+      if (!presignResponse.ok || !presignBody || !("uploadUrl" in presignBody) || !("publicUrl" in presignBody)) {
+        throw new Error((presignBody && "error" in presignBody ? presignBody.error : undefined) || "Unable to prepare image upload");
       }
-    };
-    reader.onerror = () => {
-      setError("Failed to read the file.");
-    };
-    reader.readAsDataURL(file);
+
+      const uploadResponse = await fetch(presignBody.uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) {
+        throw new Error("Image upload failed. Please try again.");
+      }
+
+      onChange(presignBody.publicUrl);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
+      setPreviewUrl(null);
+      URL.revokeObjectURL(localPreviewUrl);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -66,19 +98,23 @@ export function ImageUpload({
     setIsDragging(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFile(e.dataTransfer.files[0]);
+      void processFile(e.dataTransfer.files[0]);
     }
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processFile(e.target.files[0]);
+      void processFile(e.target.files[0]);
     }
   };
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange(undefined);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
     if (inputRef.current) {
       inputRef.current.value = '';
     }
@@ -108,9 +144,14 @@ export function ImageUpload({
           onChange={handleChange}
         />
         
-        {value ? (
+        {value || previewUrl ? (
           <>
-            <img src={value} alt="Upload preview" className="w-full h-full object-cover" />
+            <img src={previewUrl || value} alt="Upload preview" className={cn("w-full h-full object-cover", isUploading && "opacity-60")} />
+            {isUploading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-sm font-medium text-white">
+                Uploading…
+              </div>
+            ) : (
             <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
               <Button 
                 type="button" 
@@ -122,6 +163,7 @@ export function ImageUpload({
                 <X className="h-4 w-4 mr-1" /> Remove
               </Button>
             </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center text-center p-4">

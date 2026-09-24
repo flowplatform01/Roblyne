@@ -19,11 +19,11 @@ The api-server (`artifacts/api-server`) does NOT have `zod` in its `package.json
 
 **How to apply:** If adding new utility functions to `custom-fetch.ts`, also update `index.ts` exports.
 
-## Rule 3: ImageUpload produces base64 data URLs, not HTTP URLs
+## Rule 3: Legacy image records may still be base64 data URLs
 
-The `ImageUpload` component converts files to base64 data URLs. Zod schema fields that use `.url()` validation will reject these. Always use `z.string().optional()` (no `.url()`) for fields that accept ImageUpload output.
+Existing databases may contain base64 data URLs from the original uploader. New uploads use S3-compatible presigned URLs and store public HTTP URLs, but schemas and detail rendering must continue accepting legacy strings during migration.
 
-**Fields fixed:** `logoUrl` in CreateOrganization, `photoUrl` in ElectionDetail candidate form, `coverImageUrl` in CreateEvent and CreateCampaign.
+**How to apply:** Keep URL fields as permissive strings unless a migration has removed all legacy records. Compact embedded data URLs from list responses.
 
 ## Rule 4: AuthContext does not expose setUser
 
