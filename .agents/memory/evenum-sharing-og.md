@@ -46,3 +46,12 @@ Use the REST API at `http://localhost:8080/api/...` for any server-side data fet
 
 ## API server port
 Always port 8080 (defined in `artifacts/api-server/.replit-artifact/artifact.toml`).
+
+## Production serving
+The published web artifact must run `artifacts/evenum/server.mjs` rather than static-only hosting. Static hosting can serve the SPA shell but cannot generate entity-specific OG tags for crawler requests.
+
+The production server keeps the SPA fallback and handles known crawler user agents before serving static files. It resolves public entity data through the routed `/api` origin first; `API_BASE_URL` can override that when the web and API services are not exposed on the same origin.
+
+**Why:** `og-prerender.ts` is a Vite dev-server middleware and is not included in a static production build, so crawlers otherwise receive only the generic `index.html`.
+
+**How to apply:** Keep the production web service as a Node process whenever public pages need dynamic share metadata. Verify both a bot request and a normal browser request after changing the server or artifact configuration.

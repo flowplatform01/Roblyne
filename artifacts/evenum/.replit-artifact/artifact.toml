@@ -15,8 +15,14 @@ run = "pnpm --filter @workspace/evenum run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/evenum", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/evenum/dist/public"
+
+[services.production.run]
+args = [ "node", "artifacts/evenum/server.mjs" ]
+
+[services.production.run.env]
+NODE_ENV = "production"
+PORT = "22244"
+BASE_PATH = "/"
 
 [[services.production.rewrites]]
 from = "/*"
