@@ -2,6 +2,8 @@ import Redis from "ioredis";
 import { logger } from "./logger";
 
 const redisUrl = process.env.REDIS_URL?.trim();
+export const MAINTENANCE_WORKER_HEARTBEAT_KEY = "evenum:maintenance:worker:heartbeat";
+export const MAINTENANCE_WORKER_HEARTBEAT_TTL_SECONDS = 45;
 let client: Redis | null = null;
 let connectPromise: Promise<Redis> | null = null;
 let unavailableUntil = 0;
@@ -75,6 +77,37 @@ export async function setJson(key: string, value: unknown, ttlSeconds: number): 
     await redis.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch (error) {
     logger.warn({ err: error, key }, "Redis cache write failed");
+  }
+}
+
+export async function recordMaintenanceWorkerHeartbeat(): Promise<boolean> {
+  const redis = await getRedis();
+  if (!redis) return false;
+  try {
+    await redis.set(
+      MAINTENANCE_WORKER_HEARTBEAT_KEY,
+      String(Date.now()),
+      "EX",
+      MAINTENANCE_WORKER_HEARTBEAT_TTL_SECONDS,
+    );
+    return true;
+  } catch (error) {
+    logger.warn({ err: error }, "Could not record maintenance worker heartbeat");
+    return false;
+  }
+}
+
+export async function hasFreshMaintenanceWorkerHeartbeat(): Promise<boolean> {
+  const redis = await getRedis();
+  if (!redis) return false;
+  try {
+    const rawTimestamp = await redis.get(MAINTENANCE_WORKER_HEARTBEAT_KEY);
+    const timestamp = Number(rawTimestamp);
+    return Number.isFinite(timestamp)
+      && Date.now() - timestamp <= MAINTENANCE_WORKER_HEARTBEAT_TTL_SECONDS * 1_000;
+  } catch (error) {
+    logger.warn({ err: error }, "Could not read maintenance worker heartbeat");
+    return false;
   }
 }
 

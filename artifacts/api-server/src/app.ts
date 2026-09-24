@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import compression from "compression";
 import helmet from "helmet";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -22,6 +23,10 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
+
+// Keep the response contract unchanged while reducing large public discovery
+// payloads over the wire. The threshold avoids spending CPU on tiny responses.
+app.use(compression({ threshold: "1kb" }));
 
 app.use(
   pinoHttp({

@@ -14,6 +14,7 @@ router.get("/healthz", (_req, res) => {
 
 router.get("/readyz", async (_req, res): Promise<void> => {
   const redis = await pingRedis();
+  const queue = await queueInfrastructureStatus();
   let databaseOk = false;
   try {
     await pool.query("SELECT 1");
@@ -24,7 +25,7 @@ router.get("/readyz", async (_req, res): Promise<void> => {
       database: false,
       redis,
       degraded: redis.configured && !redis.ok,
-      queue: queueInfrastructureStatus(),
+      queue,
     });
     return;
   }
@@ -35,7 +36,19 @@ router.get("/readyz", async (_req, res): Promise<void> => {
       status: "not_ready",
       database: databaseOk,
       redis,
-      queue: queueInfrastructureStatus(),
+      queue,
+    });
+    return;
+  }
+
+  const queueRequired = process.env.QUEUE_REQUIRED === "true";
+  if (queueRequired && queue.enabled && queue.workerHealthy === false) {
+    res.status(503).json({
+      status: "not_ready",
+      database: databaseOk,
+      redis,
+      degraded: true,
+      queue,
     });
     return;
   }
@@ -44,8 +57,8 @@ router.get("/readyz", async (_req, res): Promise<void> => {
     status: "ready",
     database: databaseOk,
     redis,
-    degraded: redis.configured && !redis.ok,
-    queue: queueInfrastructureStatus(),
+    degraded: (redis.configured && !redis.ok) || (queue.enabled && queue.workerHealthy === false),
+    queue,
   });
 });
 

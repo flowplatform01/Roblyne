@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
-import { registerMaintenanceSchedule, closeQueues } from "./lib/jobs";
+import { registerMaintenanceSchedule, closeQueues, queueInfrastructureStatus } from "./lib/jobs";
 import { closeRedis } from "./lib/redis";
 
 const rawPort = process.env["PORT"];
@@ -29,18 +29,22 @@ const server = app.listen(port, (err) => {
 
 void (async () => {
   const queued = await registerMaintenanceSchedule();
-  if (queued) return;
+  const queueStatus = queued ? await queueInfrastructureStatus() : null;
+  if (queued && queueStatus?.workerHealthy) return;
 
   // Safe single-process fallback for local development or environments without Redis.
-  const lifecycleSweep = setInterval(() => {
-    void sweepExpiredLifecycles().catch((err) => {
+  const runFallbackSweep = async () => {
+    const currentQueueStatus = await queueInfrastructureStatus();
+    if (currentQueueStatus.workerHealthy) return;
+    await sweepExpiredLifecycles().catch((err) => {
       logger.error({ err }, "Lifecycle sweep failed");
     });
+  };
+  const lifecycleSweep = setInterval(() => {
+    void runFallbackSweep();
   }, 30_000);
   lifecycleSweep.unref();
-  void sweepExpiredLifecycles().catch((err) => {
-    logger.error({ err }, "Initial lifecycle sweep failed");
-  });
+  void runFallbackSweep();
 })();
 
 async function shutdown(signal: string): Promise<void> {

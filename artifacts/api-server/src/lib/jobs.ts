@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import { logger } from "./logger";
-import { redisConfigured } from "./redis";
+import { hasFreshMaintenanceWorkerHeartbeat, redisConfigured } from "./redis";
 
 const queueConnection = process.env.REDIS_URL
   ? { url: process.env.REDIS_URL, maxRetriesPerRequest: null as null }
@@ -40,9 +40,14 @@ export async function closeQueues(): Promise<void> {
   }
 }
 
-export function queueInfrastructureStatus(): {
+export async function queueInfrastructureStatus(): Promise<{
   configured: boolean;
   enabled: boolean;
-} {
-  return { configured: redisConfigured, enabled: Boolean(maintenanceQueue) };
+  workerHealthy: boolean | null;
+}> {
+  return {
+    configured: redisConfigured,
+    enabled: Boolean(maintenanceQueue),
+    workerHealthy: maintenanceQueue ? await hasFreshMaintenanceWorkerHeartbeat() : null,
+  };
 }
