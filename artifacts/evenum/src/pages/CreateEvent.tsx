@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, ArrowLeft, CalendarDays } from "lucide-react";
 import { Link } from "wouter";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { MobileActionBar } from "@/components/layout/MobileActionBar";
 
 const eventSchema = z.object({
   orgId: z.string().min(1, "Please select an organization"),
@@ -132,7 +133,7 @@ export default function CreateEvent() {
         <Card>
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-0">
                 
                 <FormField
                   control={form.control}
@@ -345,12 +346,13 @@ export default function CreateEvent() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-6 mt-8">
+                <div className="hidden md:flex justify-end pt-6 mt-8">
                   <Button type="submit" size="lg" disabled={createEvent.isPending} className="min-w-[150px]">
                     {createEvent.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     Create Event
                   </Button>
                 </div>
+                <MobileActionBar label="Create Event" pending={createEvent.isPending} pendingLabel="Creating event…" />
               </form>
             </Form>
           </CardContent>

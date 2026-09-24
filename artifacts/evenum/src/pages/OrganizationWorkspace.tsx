@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useRoute, Link } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { 
   useGetOrganization, 
@@ -49,6 +49,7 @@ import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
 export default function OrganizationWorkspace() {
   const [match, params] = useRoute("/organizations/:id");
   const orgId = params?.id ? parseInt(params.id, 10) : 0;
+  const [location, setLocation] = useLocation();
   
   const [activeTab, setActiveTab] = useState("overview");
   
@@ -57,14 +58,14 @@ export default function OrganizationWorkspace() {
     const tab = searchParams.get('tab');
     if (tab && ['overview', 'elections', 'events', 'campaigns', 'team', 'analytics', 'finance', 'settings'].includes(tab)) {
       setActiveTab(tab);
+    } else {
+      setActiveTab("overview");
     }
-  }, []);
+  }, [location]);
 
   const handleTabChange = (val: string) => {
     setActiveTab(val);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', val);
-    window.history.pushState({}, '', url.toString());
+    setLocation(`/organizations/${orgId}?tab=${val}`);
   };
 
   const { data: org, isLoading: isOrgLoading } = useGetOrganization(orgId);
@@ -122,19 +123,19 @@ export default function OrganizationWorkspace() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-8 bg-muted/50 p-1 w-full justify-start h-auto border flex-wrap">
-          <TabsTrigger value="overview" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Overview</TabsTrigger>
-          <TabsTrigger value="elections" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Elections</TabsTrigger>
-          <TabsTrigger value="events" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Events</TabsTrigger>
-          <TabsTrigger value="campaigns" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Campaigns</TabsTrigger>
-                    <TabsTrigger value="team" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">Team</TabsTrigger>
-          <TabsTrigger value="analytics" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+         <TabsList className="no-scrollbar mb-6 w-full justify-start gap-1 overflow-x-auto border bg-muted/50 p-1 flex-nowrap">
+           <TabsTrigger value="overview" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
+           <TabsTrigger value="elections" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Elections</TabsTrigger>
+           <TabsTrigger value="events" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Events</TabsTrigger>
+           <TabsTrigger value="campaigns" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Campaigns</TabsTrigger>
+           <TabsTrigger value="team" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Team</TabsTrigger>
+           <TabsTrigger value="analytics" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <BarChart3 className="h-3.5 w-3.5 mr-1.5" />Analytics
           </TabsTrigger>
-          <TabsTrigger value="finance" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+           <TabsTrigger value="finance" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Wallet className="h-3.5 w-3.5 mr-1.5" />Finance
           </TabsTrigger>
-          <TabsTrigger value="settings" className="px-4 md:px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1 md:flex-none">
+           <TabsTrigger value="settings" className="shrink-0 px-3 py-2.5 md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <Settings className="h-3.5 w-3.5 mr-1.5" />Settings
           </TabsTrigger>
         </TabsList>

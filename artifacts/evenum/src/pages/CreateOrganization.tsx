@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Building2 } from "lucide-react";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { MobileActionBar } from "@/components/layout/MobileActionBar";
 
 const orgSchema = z.object({
   name: z.string().min(2, "Organization name must be at least 2 characters"),
@@ -103,7 +104,7 @@ export default function CreateOrganization() {
           <div className="h-1.5 w-full bg-gradient-to-r from-primary to-primary/40" />
           <CardContent className="p-8 sm:p-10">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-24 md:pb-0">
                 <FormField
                   control={form.control}
                   name="name"
@@ -181,12 +182,13 @@ export default function CreateOrganization() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-8 border-t border-border/50 mt-10">
+                <div className="hidden md:flex justify-end pt-8 border-t border-border/50 mt-10">
                   <Button type="submit" size="lg" disabled={createOrg.isPending} className="h-14 px-10 text-lg shadow-md hover:shadow-lg transition-all">
                     {createOrg.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     Create Workspace
                   </Button>
                 </div>
+                <MobileActionBar label="Create Workspace" pending={createOrg.isPending} pendingLabel="Creating workspace…" />
               </form>
             </Form>
           </CardContent>

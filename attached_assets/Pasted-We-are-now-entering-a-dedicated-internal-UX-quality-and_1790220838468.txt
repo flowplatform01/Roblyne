@@ -1,0 +1,477 @@
+We are now entering a dedicated internal UX quality and experience refinement stage for Evenum.
+
+The public-facing experience is already in a good state. Do not unnecessarily redesign or disturb it.
+
+The concern is primarily the authenticated/internal experience: user workspaces, organization operations, creation flows, management interfaces, lists, forms, navigation, platform administration and other operational areas.
+
+Evenum was designed to be mobile-first, but parts of the internal product currently feel like desktop interfaces compressed into a mobile viewport. The result is excessive scrolling, fragmented layouts, awkward information density, unnecessary vertical length and inconsistent interaction patterns.
+
+This requires a serious investigation—not a superficial visual refresh.
+
+⸻
+
+1. Investigate Before Changing
+
+First inspect the entire authenticated/internal experience as an actual user.
+
+Walk through:
+
+* account creation and onboarding;
+* sign-in and account setup;
+* personal/user areas;
+* organization creation;
+* organization workspace;
+* event management;
+* election management;
+* campaign management;
+* collection/payment-related workflows;
+* ticketing/registration workflows;
+* candidates;
+* positions;
+* participants;
+* lists and tables;
+* creation/editing forms;
+* settings;
+* navigation;
+* notifications;
+* search/filter experiences;
+* modals and sheets;
+* platform administration;
+* operational interfaces;
+* empty states;
+* loading states;
+* error states.
+
+Do not assume the existing structure is correct.
+
+Identify where the experience feels:
+
+* too long;
+* too dense;
+* unnecessarily fragmented;
+* overly desktop-oriented;
+* excessively scroll-heavy;
+* visually chopped up;
+* repetitive;
+* generic;
+* difficult to scan;
+* difficult to understand;
+* unnecessarily modal-heavy;
+* unnecessarily form-heavy;
+* inconsistent with other parts of Evenum.
+
+⸻
+
+2. Mobile-First Means Mobile-First
+
+Re-evaluate the internal experience from the perspective of someone using a phone as their primary device, not someone using a desktop application that happens to respond to a smaller screen.
+
+For each important workflow ask:
+
+“If this were designed specifically for a phone first, would we structure it this way?”
+
+Pay attention to:
+
+* vertical space;
+* thumb reach;
+* action placement;
+* navigation;
+* content hierarchy;
+* card density;
+* form grouping;
+* scrolling;
+* fixed/sticky controls;
+* bottom sheets;
+* contextual actions;
+* keyboard interaction;
+* touch targets;
+* back navigation;
+* progressive disclosure.
+
+Do not interpret mobile-first as “make everything smaller.”
+
+It means design the information architecture and interaction model around mobile usage first, then allow the experience to expand naturally on larger screens.
+
+Desktop should feel like an expanded version of the same intelligent experience—not the source design squeezed into mobile.
+
+⸻
+
+3. Reduce Unnecessary Scrolling
+
+This is one of the major issues to investigate.
+
+Where a page currently requires excessive scrolling, determine why.
+
+Possible causes may include:
+
+* unnecessary vertical spacing;
+* too many independent cards;
+* poor grouping;
+* redundant headings;
+* oversized controls;
+* unnecessary descriptions;
+* actions placed too far from their context;
+* information that could be progressively disclosed;
+* content that belongs in tabs/segments;
+* controls that could be contextual;
+* forms that could be intelligently grouped;
+* desktop-oriented layouts being stacked vertically on mobile.
+
+Fix the underlying information architecture rather than simply shrinking elements.
+
+Do not compress the interface to the point where it becomes uncomfortable or difficult to use.
+
+The objective is less unnecessary movement while preserving clarity.
+
+⸻
+
+4. Review Lists and Operational Screens
+
+Pay particular attention to internal lists.
+
+Examples include:
+
+* candidates;
+* positions;
+* events;
+* elections;
+* campaigns;
+* tickets;
+* participants;
+* organizations;
+* transactions;
+* members;
+* records;
+* administrative resources.
+
+Investigate whether every item needs to occupy a large vertical card.
+
+Where appropriate, use more efficient patterns such as:
+
+* compact list rows;
+* grouped sections;
+* contextual actions;
+* expandable details;
+* segmented views;
+* bottom sheets;
+* inline actions;
+* meaningful metadata hierarchy.
+
+Do not blindly turn everything into tables.
+
+Choose the interaction pattern that best fits the information and the device.
+
+⸻
+
+5. Review Creation & Editing Flows
+
+Audit every major creation/editing experience.
+
+Forms should feel like a coherent process rather than a long collection of unrelated fields.
+
+Investigate:
+
+* field grouping;
+* progressive disclosure;
+* conditional fields;
+* unnecessary repetition;
+* section hierarchy;
+* action placement;
+* validation;
+* autosave where appropriate;
+* mobile keyboard behaviour;
+* navigation between sections;
+* confirmation patterns.
+
+If enabling one option reveals additional configuration, the interface should intelligently reveal only what is relevant.
+
+Avoid making users scroll through configuration that does not apply to them.
+
+⸻
+
+6. Internal Navigation
+
+Review the navigation architecture.
+
+Determine whether users can quickly understand:
+
+* where they are;
+* what they are managing;
+* what the current context is;
+* how to move back;
+* where important actions live;
+* where settings belong.
+
+Organization context should remain obvious.
+
+Avoid making users repeatedly traverse long pages simply to reach common actions.
+
+Use contextual navigation where appropriate.
+
+Do not add navigation merely to solve poor information architecture.
+
+⸻
+
+7. Platform Administration & Operational Experience
+
+Give the platform-admin and operational interfaces special attention.
+
+These areas currently feel particularly long and fragmented.
+
+Do not treat the admin interface as a generic dashboard.
+
+Review it as a serious operational product.
+
+An administrator should be able to:
+
+* understand the current state quickly;
+* find important information quickly;
+* perform common actions efficiently;
+* identify problems;
+* navigate between related records;
+* avoid unnecessary scrolling;
+* understand destructive actions;
+* recover from mistakes.
+
+Use appropriate density for an operational environment without making the interface visually chaotic.
+
+⸻
+
+8. Consistency Without Genericity
+
+Establish stronger internal interaction patterns across Evenum.
+
+For example, similar concepts should behave similarly:
+
+* creation;
+* editing;
+* deletion;
+* confirmation;
+* filtering;
+* searching;
+* status changes;
+* contextual actions;
+* navigation;
+* empty states;
+* loading;
+* errors.
+
+However, do not turn the application into a generic component-library-looking SaaS dashboard.
+
+Evenum should retain its own visual and interaction language.
+
+Avoid:
+
+* generic dashboard layouts;
+* unnecessary rounded-card grids everywhere;
+* excessive pills;
+* excessive shadows;
+* arbitrary gradients;
+* decorative UI without purpose;
+* repetitive cards;
+* generic AI-generated layouts.
+
+The goal is a coherent product system, not uniformity for its own sake.
+
+⸻
+
+9. Preserve Existing Product Logic
+
+This is an experience refinement, not a functional rewrite.
+
+Do not remove or simplify important functionality merely because a screen is currently complex.
+
+If something is complex because the underlying workflow genuinely requires complexity, improve how that complexity is presented.
+
+Do not break:
+
+* voting;
+* elections;
+* events;
+* campaigns;
+* collections;
+* ticketing;
+* payment;
+* organizations;
+* permissions;
+* authentication;
+* localization;
+* PWA functionality;
+* caching;
+* Redis/background infrastructure;
+* existing responsive behaviour.
+
+Preserve the application’s existing business rules.
+
+⸻
+
+10. Think in User Journeys, Not Individual Screens
+
+Do not optimize screens in isolation.
+
+Trace complete journeys.
+
+For example:
+
+Sign up → create organization → enter workspace → create event → configure it → publish → manage it
+
+and:
+
+Enter organization → create election → add positions → add candidates → configure voting → publish → monitor
+
+and:
+
+Discover → open event/campaign → interact → register/pay/vote where applicable → receive confirmation → return later
+
+Identify friction between screens as well as inside screens.
+
+A screen can look beautiful and still create a poor experience if the transition into or out of it is awkward.
+
+⸻
+
+11. Responsive Behaviour
+
+Test important workflows at realistic:
+
+* small mobile widths;
+* larger phones;
+* tablets;
+* laptop;
+* desktop.
+
+Do not merely verify that nothing overflows.
+
+Verify that the interaction model itself adapts appropriately.
+
+Something that works as a horizontal arrangement on desktop may need a different interaction pattern on mobile—not simply a vertical stack.
+
+⸻
+
+12. Use Real Product Context
+
+Use the actual Evenum content, records and workflows when evaluating the experience.
+
+Do not judge the interface only with empty states or artificial placeholder content.
+
+Test with:
+
+* short names;
+* long names;
+* many candidates;
+* many events;
+* long campaign descriptions;
+* multiple positions;
+* multiple statuses;
+* populated organizations;
+* real-looking transaction/payment states;
+* different account types.
+
+A layout that looks good with three records but becomes unusable with fifty records is not finished.
+
+⸻
+
+13. Visual Hierarchy & Density
+
+The objective is not “less UI.”
+
+The objective is better information density.
+
+Users should immediately distinguish:
+
+1. what this page is;
+2. what requires attention;
+3. what they can do;
+4. what information is important;
+5. what is secondary;
+6. what can be opened if needed.
+
+Reduce visual noise while improving information availability.
+
+Important information should not be buried merely because the page is trying to look minimal.
+
+⸻
+
+14. Interaction Quality
+
+Audit the small details that make an application feel mature:
+
+* touch feedback;
+* button states;
+* loading behaviour;
+* optimistic updates where safe;
+* disabled states;
+* validation;
+* confirmation;
+* undo/recovery where appropriate;
+* keyboard behaviour;
+* focus management;
+* bottom-sheet behaviour;
+* modal sizing;
+* back behaviour;
+* transitions;
+* preserving scroll position;
+* retaining user context after actions.
+
+These details matter heavily on mobile.
+
+⸻
+
+15. Final Standard
+
+After the investigation, make targeted improvements across the internal experience.
+
+Do not perform a “big redesign” just to make visible changes.
+
+Every change should answer a real UX problem discovered during the audit.
+
+The resulting Evenum experience should feel:
+
+* intentional;
+* mobile-first;
+* fast to navigate;
+* information-dense without being crowded;
+* calm;
+* mature;
+* coherent;
+* professional;
+* distinctly Evenum;
+* efficient for repeated operational use.
+
+The desired reaction should be:
+
+“This is a serious product that was designed properly.”
+
+Not:
+
+“This is a desktop dashboard that was squeezed into a phone.”
+
+And not:
+
+“This looks like another AI-generated SaaS application.”
+
+⸻
+
+Execution Requirements
+
+Before modifying anything:
+
+1. Inspect the existing implementation.
+2. Map the major internal user journeys.
+3. Identify the highest-impact UX problems.
+4. Group related problems instead of patching individual symptoms.
+5. Implement the improvements systematically.
+6. Test the workflows on mobile and desktop.
+7. Use Playwright/browser testing where useful.
+8. Test populated and edge-case states.
+9. Verify that existing functionality has not regressed.
+10. Review the final experience as a real mobile user would—not only as a developer looking at individual components.
+
+Do not rebuild Evenum from scratch.
+
+Do not replace working architecture.
+
+Do not introduce unnecessary dependencies.
+
+Do not make changes simply to make the application look different.
+
+Investigate deeply, understand the existing product, then make the smallest set of high-quality architectural UX improvements that produce a substantially better internal experience.

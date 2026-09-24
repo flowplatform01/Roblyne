@@ -27,6 +27,7 @@ import { Loader2, ArrowLeft, Vote, CreditCard } from "lucide-react";
 import { Link } from "wouter";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { MobileActionBar } from "@/components/layout/MobileActionBar";
 
 const CURRENCIES = [{ value: "XAF", label: "XAF — Central African CFA franc" }];
 
@@ -138,7 +139,7 @@ export default function CreateElection() {
         <Card>
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24 md:pb-0">
                 
                 <FormField
                   control={form.control}
@@ -381,12 +382,13 @@ export default function CreateElection() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-6 mt-8">
+                <div className="hidden md:flex justify-end pt-6 mt-8">
                   <Button type="submit" size="lg" disabled={createElection.isPending} className="min-w-[150px]">
                     {createElection.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     Create Election
                   </Button>
                 </div>
+                <MobileActionBar label="Create Election" pending={createElection.isPending} pendingLabel="Creating election…" />
               </form>
             </Form>
           </CardContent>

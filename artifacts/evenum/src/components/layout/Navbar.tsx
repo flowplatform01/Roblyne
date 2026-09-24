@@ -141,36 +141,33 @@ export function Navbar() {
             </DropdownMenu>
           )}
 
-          {/* Mobile Menu */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-              <SheetHeader>
-                <SheetTitle className="font-serif text-2xl font-bold flex items-center gap-2">
-                  <EvenumLogo size="lg" showWordmark />
-                </SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-col gap-6 mt-8">
-                <nav className="flex flex-col gap-4 text-base font-medium">
-                  <Link href="/" className="transition-colors hover:text-primary">{t('nav.discovery')}</Link>
-                  {isAuthenticated && (
-                    <Link href="/dashboard" className="transition-colors hover:text-primary">{t('nav.dashboard')}</Link>
-                  )}
-                </nav>
-                <div className="flex flex-col gap-4 pt-6 border-t">
-                  <div className="sm:hidden flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{t('theme.label')}</span>
-                    <div className="flex items-center gap-1">
-                      <LanguageSwitcher />
-                      <ThemeToggle />
+          {/* Public mobile menu. Authenticated workspace navigation is provided by DashboardLayout. */}
+          {!isAuthenticated && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                <SheetHeader>
+                  <SheetTitle className="font-serif text-2xl font-bold flex items-center gap-2">
+                    <EvenumLogo size="lg" showWordmark />
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-6 mt-8">
+                  <nav className="flex flex-col gap-4 text-base font-medium">
+                    <Link href="/" className="transition-colors hover:text-primary">{t('nav.discovery')}</Link>
+                  </nav>
+                  <div className="flex flex-col gap-4 pt-6 border-t">
+                    <div className="sm:hidden flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{t('theme.label')}</span>
+                      <div className="flex items-center gap-1">
+                        <LanguageSwitcher />
+                        <ThemeToggle />
+                      </div>
                     </div>
-                  </div>
-                  {!isAuthenticated ? (
                     <div className="flex flex-col gap-2">
                       <Button variant="outline" asChild className="w-full justify-start">
                         <Link href="/login">{t('common.signIn')}</Link>
@@ -179,11 +176,11 @@ export function Navbar() {
                         <Link href="/register">{t('common.getStarted')}</Link>
                       </Button>
                     </div>
-                  ) : null}
+                  </div>
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </header>

@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from './Layout';
 import { AppSidebar } from './AppSidebar';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 
 export function DashboardLayout({ children, orgId }: { children: React.ReactNode, orgId?: string }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -23,7 +23,17 @@ export function DashboardLayout({ children, orgId }: { children: React.ReactNode
         <div className="flex flex-1 w-full min-h-[calc(100vh-4rem)]">
           <AppSidebar orgId={orgId} />
           <SidebarInset className="flex-1 bg-muted/20">
-            <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
+            <div className="sticky top-16 z-30 flex items-center gap-3 border-b bg-background/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+              <SidebarTrigger
+                className="h-10 w-10 shrink-0"
+                aria-label="Open workspace navigation"
+                title="Open workspace navigation"
+              />
+              <span className="text-sm font-medium text-muted-foreground">
+                {orgId ? "Organization workspace" : "Workspace"}
+              </span>
+            </div>
+            <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
               {children}
             </main>
           </SidebarInset>

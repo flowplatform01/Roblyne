@@ -111,6 +111,8 @@ export default function Login() {
                         <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.emailAddress")}</FormLabel>
                         <FormControl>
                           <Input 
+                            type="email"
+                            autoComplete="email"
                             placeholder="name@example.com" 
                             {...field} 
                             className="h-12 bg-background border-border/60 focus:border-primary rounded-sm text-base px-4" 
@@ -134,6 +136,7 @@ export default function Login() {
                         <FormControl>
                           <Input 
                             type="password" 
+                            autoComplete="current-password"
                             placeholder="••••••••" 
                             {...field} 
                             className="h-12 bg-background border-border/60 focus:border-primary rounded-sm text-base px-4" 
