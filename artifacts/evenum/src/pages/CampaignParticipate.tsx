@@ -17,6 +17,7 @@ import {
   Building2, ExternalLink,
 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { hexToHsl } from "@/lib/branding";
 import { useToast } from '@/hooks/use-toast';
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
@@ -348,17 +349,7 @@ export default function CampaignParticipate() {
     <Layout>
       {/* Campaign hero */}
       <div className="relative bg-[#0A1628] text-white overflow-hidden">
-        {((campaign as any).heroImageUrl || campaign.coverImageUrl) && (
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: `url(${(campaign as any).heroImageUrl || campaign.coverImageUrl})` }}
-          />
-        )}
-         <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628]/60 to-[#0A1628]/95" />
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'repeating-linear-gradient(45deg, currentColor, currentColor 1px, transparent 0, transparent 50%)',
-          backgroundSize: '24px 24px',
-        }} />
+        <PublicHeroBackdrop imageUrl={(campaign as any).heroImageUrl || campaign.coverImageUrl} />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-3xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           {campaign.organizationName && (
             (campaign as any).orgId ? (

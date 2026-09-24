@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { hexToHsl } from "@/lib/branding";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
@@ -363,13 +364,7 @@ export default function EventRegister() {
     <Layout>
       {/* Hero */}
       <div className="relative bg-[#0A1628] text-white overflow-hidden">
-        {((event as any).heroImageUrl || event.coverImageUrl) && (
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-30"
-            style={{ backgroundImage: `url(${(event as any).heroImageUrl || event.coverImageUrl})` }}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A1628]/50 to-[#0A1628]/95" />
+        <PublicHeroBackdrop imageUrl={(event as any).heroImageUrl || event.coverImageUrl} />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
             <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 font-bold uppercase tracking-widest text-xs">

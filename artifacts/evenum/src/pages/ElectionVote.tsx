@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
+import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { hexToHsl } from "@/lib/branding";
 import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 import { formatCurrency } from "@/lib/currency";
@@ -499,17 +500,7 @@ export default function ElectionVote() {
     return (
       <Layout>
         <div className="relative bg-[#0A1628] text-white overflow-hidden" style={primaryStyle}>
-          {heroImageUrl ? (
-            <>
-              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/75 to-black/90" />
-            </>
-          ) : (
-            <>
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628]/95 to-[#0A1628]/90" />
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 39px,currentColor 39px,currentColor 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,currentColor 39px,currentColor 40px)' }} />
-            </>
-          )}
+          <PublicHeroBackdrop imageUrl={heroImageUrl} />
           <div className="relative z-10 container mx-auto px-4 pt-16 pb-12 max-w-xl text-center animate-in fade-in duration-500">
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-3">{t("voting.participationSummary")}</p>
             <div className="text-6xl md:text-7xl font-serif font-bold text-white mb-2 tracking-tight">
@@ -627,19 +618,7 @@ export default function ElectionVote() {
       <Layout>
         {/* Election hero */}
         <div className="relative bg-[#0A1628] text-white overflow-hidden" style={primaryStyle}>
-          {heroImageUrl ? (
-            <>
-              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${heroImageUrl})` }} />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-black/85" />
-            </>
-          ) : (
-            <>
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628]/95 to-[#0A1628]/90" />
-              <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, currentColor 39px, currentColor 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, currentColor 39px, currentColor 40px)',
-              }} />
-            </>
-          )}
+          <PublicHeroBackdrop imageUrl={heroImageUrl} />
           <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
 
             {/* Organization identity — clickable to org public profile */}

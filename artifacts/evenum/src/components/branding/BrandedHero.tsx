@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useOrgBranding } from '@/lib/branding';
+import { PublicHeroBackdrop } from '@/components/branding/PublicHeroBackdrop';
 
 interface BrandedHeroProps {
   title: string;
@@ -23,28 +24,12 @@ export function BrandedHero({ title, subtitle, org, badge, actions, className, i
       className={cn(
         "relative w-full overflow-hidden flex flex-col justify-end transition-all",
         size === 'small' ? 'min-h-[25vh] pt-16 pb-8' : size === 'large' ? 'min-h-[60vh] pt-32 pb-16' : 'min-h-[40vh] pt-24 pb-12',
-        !hasImage && 'bg-[#0A1628]',
+        'bg-[#0A1628]',
         className
       )}
       style={brandingStyle}
     >
-      {hasImage ? (
-        <>
-          <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${imageUrl})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-        </>
-      ) : (
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 opacity-[0.15]" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary)) 1px, transparent 0)`,
-            backgroundSize: '32px 32px'
-          }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628] via-transparent to-transparent" />
-        </div>
-      )}
+      <PublicHeroBackdrop imageUrl={imageUrl} />
 
       <div className={cn("container mx-auto px-4 relative z-10", hasImage ? "text-white" : "")}>
         <div className="max-w-4xl">
