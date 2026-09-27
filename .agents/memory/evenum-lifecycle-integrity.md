@@ -23,6 +23,10 @@ description: Lifecycle enforcement architecture across all three public pillars 
 - `EventRegister` countdown now tracks `event.endsAt` (registration deadline), not `event.startsAt` (event start). Label changed to "Registration closes in".
 - Ticket tier cards show "Sales Not Open" / "Sales Closed" badges when their own sale window is inactive; tiers become unselectable and the submit button is disabled if the selected tier's window closes.
 
+### Election structure locking
+- Candidate removal and ballot writes must serialize on the election row with `FOR UPDATE`. The ballot structure must be re-read after the lock; pre-lock candidate validation can become stale if an admin deletes a candidate concurrently.
+- Paid election finalization must acquire the same election-row lock before inserting vote selections, because payment creation and ballot recording happen in separate requests.
+
 **Why:** Without the `startsAt` check an election that hasn't opened accepts votes if status was set to `active` early. Without the atomic capacity lock, events could oversell when concurrent registrations pass the pre-transaction count. Without expiry guards in delayed flows a voter who lingers on the payment screen past `endsAt` could still cast a ballot.
 
 **How to apply:** Any new public submission endpoint must perform (1) status gate, (2) `startsAt > now` gate, (3) `endsAt <= now` gate, all with `<=` on the expiry boundary. Transactional atomic checks must be re-evaluated inside `FOR UPDATE` locks for any quantity-limited resource.

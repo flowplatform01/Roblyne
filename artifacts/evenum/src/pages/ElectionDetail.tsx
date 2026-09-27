@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
 import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
+import { useLifecycleClock } from "@/hooks/useLifecycle";
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -54,6 +55,26 @@ const positionSchema = z.object({
   maxSelections: z.coerce.number().min(1).default(1),
   sortOrder: z.coerce.number().default(0),
 });
+
+function isCandidateRemovalLocked(
+  election: { status: string; startsAt?: string | Date | null; endsAt?: string | Date | null } | undefined,
+  now: number,
+): boolean {
+  if (!election) return false;
+  if (election.status === "draft") return false;
+  if (election.status !== "active") return true;
+
+  const startsAt = election.startsAt
+    ? election.startsAt instanceof Date ? election.startsAt.getTime() : Date.parse(election.startsAt)
+    : Number.NaN;
+  const endsAt = election.endsAt
+    ? election.endsAt instanceof Date ? election.endsAt.getTime() : Date.parse(election.endsAt)
+    : null;
+
+  return !Number.isFinite(startsAt)
+    || startsAt <= now
+    || (election.endsAt != null && (endsAt === null || !Number.isFinite(endsAt) || endsAt <= now));
+}
 
 
 export default function ElectionDetail() {
@@ -77,6 +98,9 @@ export default function ElectionDetail() {
     electionId,
     { query: { enabled: !!election && election.eligibilityMode === 'allowlist', queryKey: getListEligibleVotersQueryKey(electionId) } }
   );
+  const lifecycleNow = useLifecycleClock();
+  const candidateRemovalLocked = isCandidateRemovalLocked(election, lifecycleNow)
+    || Boolean(candidates?.some(candidate => (candidate.voteCount ?? 0) > 0));
   
   const updateElection = useUpdateElection();
   const createPosition = useCreatePosition();
@@ -387,6 +411,16 @@ export default function ElectionDetail() {
             </TabsList>
 
             <TabsContent value="positions" className="mt-0 space-y-6">
+              {candidateRemovalLocked && (
+                <div
+                  role="status"
+                  data-testid="status-candidate-removal-locked"
+                  className="flex items-start gap-3 rounded-sm border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground"
+                >
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <p>Candidate removal is disabled after voting starts, ballots have been cast, or the election has ended.</p>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-serif font-bold">Positions</h2>
                 <Dialog open={isPositionDialogOpen} onOpenChange={setIsPositionDialogOpen}>
@@ -501,7 +535,10 @@ export default function ElectionDetail() {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                                        title="Remove candidate"
+                                        title={candidateRemovalLocked ? "Candidate removal is locked for this election" : "Remove candidate"}
+                                        aria-label={candidateRemovalLocked ? "Candidate removal is locked" : `Remove ${candidate.name}`}
+                                        data-testid={`button-remove-candidate-${candidate.id}`}
+                                        disabled={candidateRemovalLocked || deleteCandidate.isPending}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>

@@ -2475,7 +2475,7 @@ export const deleteCandidate = async (electionId: number,
 
 
 
-export const getDeleteCandidateMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteCandidateMutationOptions = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{electionId: number;candidateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{electionId: number;candidateId: number}, TContext> => {
 
@@ -2504,12 +2504,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCandidate>>>
 
-    export type DeleteCandidateMutationError = ErrorType<unknown>
+    export type DeleteCandidateMutationError = ErrorType<ErrorResponse>
 
     /**
  * @summary Delete a candidate
  */
-export const useDeleteCandidate = <TError = ErrorType<unknown>,
+export const useDeleteCandidate = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{electionId: number;candidateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteCandidate>>,

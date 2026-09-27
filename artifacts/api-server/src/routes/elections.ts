@@ -38,6 +38,16 @@ function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | nu
   return startsAt.getTime() < endsAt.getTime();
 }
 
+function isCandidateRemovalLocked(
+  election: { status: string; startsAt: Date | null; endsAt: Date | null },
+  now = new Date(),
+): boolean {
+  if (election.status === "draft") return false;
+  if (election.status !== "active") return true;
+  if (!election.startsAt || election.startsAt <= now) return true;
+  return Boolean(election.endsAt && election.endsAt <= now);
+}
+
 function toCsvValue(value: unknown): string {
   const s = String(value ?? "");
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -416,7 +426,51 @@ router.delete("/elections/:electionId/candidates/:candidateId", requireAuth, req
   const rawElId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = DeleteCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(candidatesTable).where(and(eq(candidatesTable.id, parsed.data.candidateId), eq(candidatesTable.electionId, parsed.data.electionId)));
+
+  const outcome = await db.transaction(async (tx) => {
+    const [election] = await tx.select({
+      status: electionsTable.status,
+      startsAt: electionsTable.startsAt,
+      endsAt: electionsTable.endsAt,
+    })
+      .from(electionsTable)
+      .where(eq(electionsTable.id, parsed.data.electionId))
+      .for("update");
+
+    if (!election) return "election_not_found" as const;
+    if (isCandidateRemovalLocked(election)) return "locked" as const;
+
+    const [existingVote] = await tx.select({ id: votesTable.id })
+      .from(votesTable)
+      .where(eq(votesTable.electionId, parsed.data.electionId))
+      .limit(1);
+    if (existingVote) return "locked" as const;
+
+    const [deleted] = await tx.delete(candidatesTable)
+      .where(and(
+        eq(candidatesTable.id, parsed.data.candidateId),
+        eq(candidatesTable.electionId, parsed.data.electionId),
+      ))
+      .returning({ id: candidatesTable.id });
+
+    return deleted ? "deleted" as const : "candidate_not_found" as const;
+  });
+
+  if (outcome === "election_not_found") {
+    res.status(404).json({ error: "Election not found" });
+    return;
+  }
+  if (outcome === "candidate_not_found") {
+    res.status(404).json({ error: "Candidate not found" });
+    return;
+  }
+  if (outcome === "locked") {
+    res.status(409).json({
+      error: "Candidates cannot be removed after voting starts, ballots have been cast, or the election has ended",
+    });
+    return;
+  }
+
   res.json({ message: "Deleted" });
 });
 
@@ -565,15 +619,54 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
 
   try {
     const voteOrPayment = await db.transaction(async (tx) => {
+      const [lockedElection] = await tx.select().from(electionsTable)
+        .where(eq(electionsTable.id, electionId))
+        .for("update");
+      if (!lockedElection) return { error: "election_not_found" as const };
+      if (lockedElection.status !== "active") return { error: "election_closed" as const };
+
+      const lockedNow = new Date();
+      if (lockedElection.startsAt && lockedElection.startsAt > lockedNow) {
+        return { error: "election_not_open" as const };
+      }
+      if (lockedElection.endsAt && lockedElection.endsAt <= lockedNow) {
+        return { error: "election_closed" as const };
+      }
+
+      // Candidate deletion uses the same election-row lock. Re-read the ballot
+      // structure after acquiring it so a delete that committed first cannot
+      // leave a vote referencing a candidate that no longer exists.
+      const [lockedPositions, lockedCandidates] = await Promise.all([
+        tx.select({
+          id: positionsTable.id,
+          maxSelections: positionsTable.maxSelections,
+        }).from(positionsTable).where(eq(positionsTable.electionId, electionId)),
+        tx.select({
+          id: candidatesTable.id,
+          positionId: candidatesTable.positionId,
+        }).from(candidatesTable).where(eq(candidatesTable.electionId, electionId)),
+      ]);
+      const lockedPositionsById = new Map(lockedPositions.map(position => [position.id, position]));
+      const lockedCandidatesById = new Map(lockedCandidates.map(candidate => [candidate.id, candidate]));
+      for (const selection of bodyParsed.data.selections) {
+        const position = lockedPositionsById.get(selection.positionId);
+        if (!position || selection.candidateIds.length > position.maxSelections) {
+          return { error: "ballot_structure_changed" as const };
+        }
+        if (selection.candidateIds.some(candidateId => lockedCandidatesById.get(candidateId)?.positionId !== selection.positionId)) {
+          return { error: "ballot_structure_changed" as const };
+        }
+      }
+
       if (isPaid) {
         const { intent } = await createPaymentIntent({
-          orgId: election.orgId,
+          orgId: lockedElection.orgId,
           pillar: "election",
-          entityId: election.id,
-          entityTitle: election.title,
+          entityId: lockedElection.id,
+          entityTitle: lockedElection.title,
           transactionType: "vote",
           amount: paymentAmount * selectedCandidateCount * voteQuantity,
-          currency: election.currency || "XAF",
+          currency: lockedElection.currency || "XAF",
           customerName: bodyParsed.data.customerName!,
           customerEmail: bodyParsed.data.customerEmail!,
           customerPhone: bodyParsed.data.customerPhone!,
@@ -590,7 +683,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
         return { paymentIntent: intent };
       }
 
-      const [vote] = await tx.insert(votesTable).values({ electionId, voterIdentifier, quantity: voteQuantity }).returning();
+      const [vote] = await tx.insert(votesTable).values({ electionId: lockedElection.id, voterIdentifier, quantity: voteQuantity }).returning();
       // Bulk insert all selections in one statement
       const selectionValues = bodyParsed.data.selections.flatMap(selection =>
         selection.candidateIds.map(candidateId => ({
@@ -603,18 +696,31 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
 
       if (isPaid) {
         await recordTransaction({
-          orgId: election.orgId,
+          orgId: lockedElection.orgId,
           pillar: "election",
-          entityId: election.id,
-          entityTitle: election.title,
+          entityId: lockedElection.id,
+          entityTitle: lockedElection.title,
           transactionType: "vote",
-          grossAmount: Number(election.paymentAmount) * selectedCandidateCount * voteQuantity,
-          currency: election.currency || "XAF",
+          grossAmount: Number(lockedElection.paymentAmount) * selectedCandidateCount * voteQuantity,
+          currency: lockedElection.currency || "XAF",
           payerEmail: bodyParsed.data.voterEmail,
         }, tx);
       }
       return { vote };
     });
+
+    if ("error" in voteOrPayment) {
+      if (voteOrPayment.error === "election_not_found") {
+        res.status(404).json({ error: "Election not found" });
+      } else if (voteOrPayment.error === "election_not_open") {
+        res.status(403).json({ error: "This election has not opened for voting yet" });
+      } else if (voteOrPayment.error === "ballot_structure_changed") {
+        res.status(409).json({ error: "The ballot changed while you were submitting. Please review your selections and try again." });
+      } else {
+        res.status(403).json({ error: "This election is not currently open for voting" });
+      }
+      return;
+    }
 
     if (voteOrPayment.paymentIntent) {
       try {

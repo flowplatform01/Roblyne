@@ -777,6 +777,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Election or candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Candidate removal is locked after voting starts, ballots exist, or the election ends
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /elections/{electionId}/vote:
     post:

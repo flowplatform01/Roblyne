@@ -8,6 +8,7 @@ import {
   ticketTypesTable,
   campaignResponsesTable,
   campaignsTable,
+  electionsTable,
   votesTable,
   voteSelectionsTable,
 } from "@workspace/db";
@@ -265,6 +266,15 @@ export async function processFlowPayWebhook(input: {
         sql`UPDATE campaigns SET current_amount = current_amount + ${Number(intent.amount)} WHERE id = ${intent.entityId}`,
       );
     } else if (intent.pillar === "election") {
+      // Candidate deletion locks the same election row. Acquiring this lock
+      // before inserting paid ballot selections prevents a deletion from
+      // racing with payment finalization.
+      const [election] = await tx.select({ id: electionsTable.id })
+        .from(electionsTable)
+        .where(eq(electionsTable.id, intent.entityId))
+        .for("update");
+      if (!election) throw new Error("Election not found while finalizing paid vote");
+
       const electionPayload = asRecord(payload.election);
       const [vote] = await tx.insert(votesTable).values({
         electionId: intent.entityId,

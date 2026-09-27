@@ -1,0 +1,577 @@
+EVENUM — MODERN LOADING & SKELETON UX HARDENING
+
+I want you to deeply review and improve EVENUM's loading experience across the entire application.
+
+IMPORTANT CONTEXT
+
+EVENUM is already a mature, production-ready application. Do NOT treat this as an MVP redesign and do NOT rebuild working architecture unnecessarily.
+
+The current concern is that parts of the application feel slower than they actually are because the UI frequently relies on generic circular spinners / indefinite loading states.
+
+For the quality level we're targeting, I want EVENUM to feel like a modern, highly polished product where loading is communicated through the structure of the interface itself rather than constantly showing a spinning circle.
+
+The goal is NOT simply "replace spinners with skeletons."
+
+The goal is:
+
+FAST FEELING
+PREDICTABLE
+CALM
+PREMIUM
+MOBILE-FIRST
+RESPONSIVE
+NATIVE-APP-LIKE
+PRODUCTION-GRADE
+
+Think about the loading experience of mature products from Apple/Google-level ecosystems: the interface should remain understandable and stable while data is arriving.
+
+--------------------------------------------------
+1. FIRST: AUDIT THE CURRENT LOADING SYSTEM
+--------------------------------------------------
+
+Before changing anything, inspect the existing implementation thoroughly.
+
+Identify:
+
+- every major route/screen
+- page-level loading states
+- component-level loading states
+- data-fetching states
+- API request states
+- authentication/session initialization
+- organization/workspace loading
+- event loading
+- election/voting loading
+- campaign loading
+- ticketing/collection loading
+- candidate/participant lists
+- dashboards
+- settings
+- profile/public organization pages
+- discovery pages
+- administrative/operational areas
+- forms and mutations
+- modal/drawer/bottom-sheet loading
+- PWA startup/loading behavior
+- cached-data restoration
+- network reconnect behavior
+
+Determine where the application currently uses:
+
+- circular spinners
+- blank screens
+- delayed content appearance
+- full-page blocking loaders
+- button spinners
+- skeletons
+- unnecessary repeated loading
+- loading states that cause layout shifts
+- loading states that make a fast request feel slow
+
+Do not assume every spinner is wrong.
+
+Classify each loading situation according to what the user is actually waiting for.
+
+--------------------------------------------------
+2. INTRODUCE A CONSISTENT SKELETON LOADING SYSTEM
+--------------------------------------------------
+
+Where the final content has a predictable visual structure, use skeleton loading.
+
+Examples:
+
+- event cards → event-card skeleton
+- organization cards → organization-card skeleton
+- candidate cards → candidate-card skeleton
+- campaign cards → campaign-card skeleton
+- ticket/event lists → matching list skeleton
+- profile → profile skeleton
+- dashboard statistics → stat-card skeleton
+- tables/lists → row skeletons
+- settings sections → appropriate section skeleton
+- discovery feeds → feed skeleton
+- public organization pages → page-specific skeleton
+- event detail → event-detail skeleton
+- election detail → election-detail skeleton
+
+Skeletons should preserve approximately the same geometry as the final content.
+
+Do NOT create generic gray rectangles everywhere.
+
+The skeleton should communicate:
+
+"the content is arriving"
+
+rather than:
+
+"the application is stuck."
+
+--------------------------------------------------
+3. PREVENT LAYOUT SHIFT
+--------------------------------------------------
+
+A major goal is perceived performance.
+
+Loading placeholders should reserve the approximate space required by the eventual content.
+
+Avoid:
+
+loading state:
+small spinner → content suddenly appears → entire page jumps
+
+Prefer:
+
+skeleton with stable geometry → content progressively resolves into the same location.
+
+Pay particular attention to:
+
+- cards
+- images
+- avatars
+- headers
+- navigation
+- lists
+- dashboards
+- bottom sheets
+- modals
+- tabs
+- public pages
+
+Avoid cumulative layout shifts wherever reasonably possible.
+
+--------------------------------------------------
+4. DO NOT OVERUSE SKELETONS
+--------------------------------------------------
+
+Use engineering judgment.
+
+Skeleton loading is appropriate when:
+
+- content takes noticeable time to arrive
+- the structure is predictable
+- the user is waiting for a screen/list/page
+- cached content is unavailable
+
+A skeleton is NOT necessarily appropriate for:
+
+- a tiny operation that normally completes almost immediately
+- a button action where a compact inline progress state is clearer
+- an indeterminate background process
+- file uploads
+- payment processing
+- long-running operations
+- navigation that resolves almost instantly
+- destructive operations awaiting confirmation
+
+For those cases, use an appropriate lightweight progress treatment.
+
+The goal is not "skeleton everywhere."
+
+The goal is the correct loading treatment for each interaction.
+
+--------------------------------------------------
+5. ELIMINATE UNNECESSARY LOADING
+--------------------------------------------------
+
+This is extremely important.
+
+While auditing, determine whether some of the perceived slowness is caused by the frontend unnecessarily waiting for data.
+
+Investigate:
+
+- duplicate API requests
+- sequential requests that could safely run in parallel
+- unnecessary refetching
+- cache misses
+- remount-triggered fetching
+- state changes causing unnecessary reloads
+- loading states triggered by unrelated components
+- requests that could use already-available cached data
+- unnecessary authentication/session checks
+- repeated organization/user lookups
+- unnecessary page-level blocking
+- data that could be prefetched
+- requests that could be stale-while-revalidate
+
+Do NOT blindly optimize or introduce additional infrastructure.
+
+Fix actual causes.
+
+--------------------------------------------------
+6. USE CACHED DATA INTELLIGENTLY
+--------------------------------------------------
+
+Where the application already has valid cached data, do not unnecessarily replace the entire interface with a loading screen.
+
+Prefer:
+
+existing content → background refresh → subtle update
+
+over:
+
+existing content disappears → spinner → content returns.
+
+This is particularly important for:
+
+- dashboards
+- organization workspaces
+- event lists
+- campaign lists
+- election lists
+- discovery
+- settings
+- user profiles
+
+The application should feel responsive even when refreshing data.
+
+Respect data freshness requirements and do not display stale information where doing so could create a correctness or financial/security problem.
+
+For sensitive or transactional information, correctness takes priority over perceived speed.
+
+--------------------------------------------------
+7. USE OPTIMISTIC UI WHERE SAFE
+--------------------------------------------------
+
+Where an action is safe to represent immediately, consider optimistic updates.
+
+Examples may include:
+
+- toggles
+- preferences
+- non-critical UI settings
+- lightweight interactions
+- local state changes
+
+Do NOT use optimistic UI blindly for:
+
+- payments
+- financial balances
+- voting submission
+- ticket inventory
+- irreversible/destructive actions
+- security-sensitive operations
+- server-authoritative state where failure could create misleading information
+
+For those operations, use explicit progress and confirmation states.
+
+--------------------------------------------------
+8. IMAGE LOADING
+--------------------------------------------------
+
+Review image loading as part of the perceived-performance problem.
+
+Use appropriate:
+
+- image placeholders
+- aspect-ratio reservation
+- lazy loading
+- responsive image sizing
+- cached images
+- progressive image rendering where appropriate
+
+Images should not cause the surrounding UI to jump when they finally load.
+
+Pay particular attention to:
+
+- organization logos
+- profile photos
+- event artwork
+- campaign imagery
+- candidate photos
+- ticket/event imagery
+- discovery content
+
+--------------------------------------------------
+9. NAVIGATION SHOULD FEEL INSTANT
+--------------------------------------------------
+
+Review route transitions.
+
+Avoid situations where tapping a navigation item produces:
+
+tap → blank screen → spinner → content.
+
+Where possible:
+
+tap → immediate structural transition → skeleton/content placeholder → real content.
+
+If data is already cached, render it immediately.
+
+Do not introduce artificial delays just to make animations look smoother.
+
+--------------------------------------------------
+10. MOBILE-FIRST BEHAVIOR
+--------------------------------------------------
+
+EVENUM is heavily mobile-oriented.
+
+Test loading behavior specifically on:
+
+- iPhone-sized screens
+- Android-sized screens
+- slower mobile connections
+- intermittent connections
+- cold start
+- warm start
+- returning to a previously visited screen
+- PWA launch
+- installed PWA
+- desktop
+
+The experience should not assume a fast desktop connection.
+
+However, do not make the application feel slow simply because we're designing for slower networks.
+
+Use caching, prefetching, progressive rendering and appropriate loading states intelligently.
+
+--------------------------------------------------
+11. PWA STARTUP EXPERIENCE
+--------------------------------------------------
+
+Review the distinction between:
+
+A. application startup/bootstrap
+B. page data loading
+C. component data loading
+
+Do not use a generic spinner for all three.
+
+The initial application bootstrap may require an appropriate branded startup/loading treatment.
+
+Once the application shell is available, transition into structural skeleton loading rather than keeping the user behind a generic indefinite loader.
+
+Avoid unnecessary splash-screen delays.
+
+--------------------------------------------------
+12. ACCESSIBILITY
+--------------------------------------------------
+
+Skeletons must remain accessible.
+
+Ensure:
+
+- appropriate aria/loading semantics
+- screen readers do not interpret skeleton placeholders as real content
+- motion is reduced when the user has reduced-motion preferences
+- animations are subtle
+- no distracting flashing/shimmering
+- sufficient contrast where applicable
+
+Do not create aggressive animated skeletons.
+
+The loading experience should feel calm and premium.
+
+--------------------------------------------------
+13. DESIGN LANGUAGE
+--------------------------------------------------
+
+The skeleton system should visually belong to EVENUM.
+
+Do NOT introduce:
+
+- generic SaaS dashboard styling
+- childish shimmer effects
+- excessive animation
+- bright distracting colors
+- unnecessary gradients
+- random skeleton shapes
+- inconsistent loading patterns
+
+Use the existing EVENUM design system, spacing, typography, radius and theme system.
+
+Skeletons must work properly in:
+
+- light mode
+- dark mode
+- system theme
+
+The dark theme in particular should remain refined rather than turning the skeleton into a collection of glowing blocks.
+
+--------------------------------------------------
+14. CREATE REUSABLE PRIMITIVES
+--------------------------------------------------
+
+If the current architecture supports it, establish reusable loading primitives/components so the application does not end up with dozens of inconsistent implementations.
+
+For example, conceptually:
+
+- Skeleton
+- SkeletonText
+- SkeletonAvatar
+- SkeletonCard
+- SkeletonList
+- PageSkeleton
+- SectionSkeleton
+
+But do not create abstractions merely for the sake of abstraction.
+
+Reuse existing components if suitable.
+
+Keep the implementation maintainable and consistent with the application's current architecture.
+
+--------------------------------------------------
+15. ERROR / EMPTY / LOADING MUST BE DISTINCT
+--------------------------------------------------
+
+Audit cases where the application currently makes these states visually ambiguous.
+
+They are different:
+
+LOADING
+→ data has not arrived yet.
+
+EMPTY
+→ request succeeded but there is nothing to show.
+
+ERROR
+→ request failed.
+
+Do not show an endless skeleton when an API request has actually failed.
+
+Do not show an empty-state design while data is still loading.
+
+Do not leave users trapped behind an indefinite spinner.
+
+Where appropriate, provide a useful retry path.
+
+--------------------------------------------------
+16. REAL PERFORMANCE INVESTIGATION
+--------------------------------------------------
+
+Do not assume every perceived performance issue is a loading-component problem.
+
+Measure and investigate where practical:
+
+- request timing
+- rendering delays
+- JavaScript execution
+- unnecessary rerenders
+- image loading
+- API latency
+- database/API bottlenecks visible from the frontend
+- hydration/startup behavior
+- cache behavior
+- route transitions
+
+If a particular screen feels slow because the backend takes 2 seconds, changing the spinner into a skeleton does not solve the underlying problem.
+
+Fix the root cause where it is reasonably within the current application scope.
+
+If the actual bottleneck is backend/network infrastructure, document the finding rather than masking it.
+
+--------------------------------------------------
+17. DO NOT BREAK EXISTING FUNCTIONALITY
+--------------------------------------------------
+
+This is a UX/performance hardening task.
+
+Do NOT:
+
+- rewrite the application
+- replace the existing architecture unnecessarily
+- remove functionality
+- change business logic
+- alter payment behavior
+- alter voting correctness
+- alter ticket inventory rules
+- alter campaign rules
+- introduce unnecessary libraries
+- add infrastructure simply because it sounds modern
+
+Preserve existing behavior unless a change is directly required to solve a verified loading/performance issue.
+
+--------------------------------------------------
+18. TEST REAL USER FLOWS
+--------------------------------------------------
+
+After implementation, test representative journeys using realistic populated data.
+
+At minimum inspect:
+
+- sign-in/session restoration
+- organization workspace
+- event discovery
+- event detail
+- event creation/editing
+- election discovery
+- election detail
+- candidate/participant lists
+- voting-related screens
+- campaigns
+- ticketing/collections
+- organization public profile
+- dashboards
+- settings
+- mobile navigation
+- PWA startup
+
+Use Playwright/browser testing where appropriate.
+
+Test both:
+
+- cold/no-cache states
+- warm/cached states
+
+Also test with throttled network conditions where practical.
+
+Look specifically for:
+
+- blank screens
+- spinner flashes
+- excessive loading
+- layout jumps
+- flickering
+- duplicate loading
+- skeletons that remain indefinitely
+- content flashing between states
+- broken transitions
+- stale data
+- runtime errors
+
+--------------------------------------------------
+19. FINAL UX STANDARD
+--------------------------------------------------
+
+When finished, EVENUM should not feel like:
+
+"the app is waiting for the server."
+
+It should feel like:
+
+"the interface is already here; the content is arriving."
+
+The distinction is important.
+
+The objective is not to hide poor performance behind skeletons.
+
+The objective is to combine:
+
+- real performance improvements
+- intelligent caching
+- appropriate prefetching
+- progressive rendering
+- stable layouts
+- skeleton loading
+- lightweight interaction feedback
+- correct error/empty states
+- polished transitions
+
+into one coherent loading experience.
+
+Before making broad changes, inspect the existing implementation and identify the highest-impact problems.
+
+Implement the improvements incrementally.
+
+Afterward, provide a concise engineering summary containing:
+
+1. What loading problems were found
+2. What was changed
+3. Which screens now use skeleton loading
+4. Which places intentionally retain other loading indicators and why
+5. Any actual performance bottlenecks discovered
+6. Any remaining issues that require backend/infrastructure work
+7. What was tested
+
+Do not give me a generic checklist saying everything is fine.
+
+I want actual inspection, implementation, and verification of EVENUM's existing application.
