@@ -45,6 +45,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
+import { WorkspaceLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function OrganizationWorkspace() {
   const [match, params] = useRoute("/organizations/:id");
@@ -78,9 +80,7 @@ export default function OrganizationWorkspace() {
   if (isOrgLoading || isStatsLoading) {
     return (
       <DashboardLayout orgId={orgId.toString()}>
-        <div className="flex items-center justify-center h-full min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
-        </div>
+        <WorkspaceLoadingSkeleton />
       </DashboardLayout>
     );
   }
@@ -439,9 +439,7 @@ function TeamSection({ orgId }: { orgId: number }) {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
-          <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-        </div>
+        <InlineListLoadingSkeleton rows={4} label="Loading team members" />
       ) : !members || members.length === 0 ? (
         <div className="border border-dashed rounded-xl p-12 text-center bg-card">
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -791,9 +789,7 @@ function EngineList({
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
-          <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-        </div>
+        <InlineListLoadingSkeleton rows={4} label="Loading activities" />
       ) : !items || items.length === 0 ? (
         <div className="border border-dashed rounded-xl p-12 text-center bg-card">
           <div className="w-12 h-12 bg-muted text-muted-foreground rounded-full flex items-center justify-center mx-auto mb-4">
@@ -890,9 +886,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-      </div>
+      <InlineListLoadingSkeleton rows={3} label="Loading analytics" />
     );
   }
 
@@ -1218,9 +1212,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
 
   if (isLoadingSummary) {
     return (
-      <div className="flex items-center justify-center h-48 border rounded-xl bg-card">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-      </div>
+      <InlineListLoadingSkeleton rows={3} label="Loading financial summary" />
     );
   }
 
@@ -1350,7 +1342,17 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </CardHeader>
             <CardContent className="p-0">
               {isLoadingTransactions ? (
-                <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                <Table>
+                  <TableBody>
+                    {[0, 1, 2, 3].map((row) => (
+                      <TableRow key={row}>
+                        {[0, 1, 2, 3].map((cell) => (
+                          <TableCell key={cell}><Skeleton className="h-4 w-full max-w-32" /></TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : !transactionsData?.transactions?.length ? (
                 <div className="p-12 text-center text-muted-foreground">
                   <Receipt className="h-8 w-8 mx-auto mb-3 opacity-20" />
@@ -1402,7 +1404,17 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </CardHeader>
             <CardContent className="p-0">
               {isLoadingSettlements ? (
-                <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                <Table>
+                  <TableBody>
+                    {[0, 1, 2].map((row) => (
+                      <TableRow key={row}>
+                        {[0, 1, 2].map((cell) => (
+                          <TableCell key={cell}><Skeleton className="h-4 w-full max-w-24" /></TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : !settlements?.length ? (
                 <div className="p-8 text-center text-muted-foreground text-sm">
                   No settlements yet

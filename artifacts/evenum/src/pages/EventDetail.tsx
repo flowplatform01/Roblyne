@@ -35,6 +35,7 @@ import { format } from "date-fns";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 const ticketTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -157,9 +158,7 @@ export default function EventDetail() {
   if (isEventLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
-        </div>
+        <ManagementDetailLoadingSkeleton label="Loading event" />
       </DashboardLayout>
     );
   }
@@ -454,7 +453,7 @@ export default function EventDetail() {
               </div>
 
               {isTicketTypesLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                <InlineListLoadingSkeleton rows={3} label="Loading ticket types" />
               ) : !ticketTypes || ticketTypes.length === 0 ? (
                 <Card className="border-dashed bg-muted/20">
                   <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -590,7 +589,7 @@ export default function EventDetail() {
               </div>
 
               {isAttendeesLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                <InlineListLoadingSkeleton rows={5} label="Loading attendees" />
               ) : !attendees || attendees.length === 0 ? (
                 <Card className="border-dashed bg-muted/20">
                   <CardContent className="flex flex-col items-center justify-center p-12 text-center">

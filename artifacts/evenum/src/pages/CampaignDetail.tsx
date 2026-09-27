@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 export default function CampaignDetail() {
   const [match, params] = useRoute("/campaigns/:id");
@@ -47,9 +48,7 @@ export default function CampaignDetail() {
   if (isCampaignLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
-        </div>
+        <ManagementDetailLoadingSkeleton label="Loading campaign" />
       </DashboardLayout>
     );
   }
@@ -214,7 +213,7 @@ export default function CampaignDetail() {
 
             <TabsContent value="submissions" className="mt-0 space-y-6">
               {isSubmissionsLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                <InlineListLoadingSkeleton rows={5} label="Loading submissions" />
               ) : !submissions || submissions.length === 0 ? (
                 <Card className="border-dashed bg-muted/20">
                   <CardContent className="flex flex-col items-center justify-center p-12 text-center">

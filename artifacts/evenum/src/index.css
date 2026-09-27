@@ -234,6 +234,12 @@
 }
 
 @layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    .loading-pulse {
+      animation: none !important;
+    }
+  }
+
   input[type='search']::-webkit-search-cancel-button {
     @apply hidden;
   }

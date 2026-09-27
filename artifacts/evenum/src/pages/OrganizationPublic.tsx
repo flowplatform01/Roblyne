@@ -10,6 +10,7 @@ import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Vote, CalendarDays, Megaphone, ExternalLink, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PublicPageLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 export default function OrganizationPublic() {
   const [, params] = useRoute("/organizations/:id/public");
@@ -29,10 +30,7 @@ export default function OrganizationPublic() {
   if (isLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-           <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">{t("common.loading")}</p>
-        </div>
+        <PublicPageLoadingSkeleton label={t("common.loading")} />
       </Layout>
     );
   }

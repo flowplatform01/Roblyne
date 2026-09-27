@@ -1,11 +1,12 @@
-import { useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DiscoveryLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { useDiscover, useSearch, DiscoveryItemType } from "@workspace/api-client-react";
-import { Loader2, ArrowRight, Vote, CalendarDays, Megaphone, Search, X } from "lucide-react";
+import { ArrowRight, Vote, CalendarDays, Megaphone, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
@@ -14,11 +15,14 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  const handleSearchChange = useCallback((value: string) => {
+  const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    const timer = setTimeout(() => setDebouncedQuery(value), 350);
-    return () => clearTimeout(timer);
-  }, []);
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(searchQuery), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
   const { data: discoverData, isLoading } = useDiscover();
   const { data: searchData, isLoading: isSearchLoading } = useSearch(
@@ -98,9 +102,7 @@ export default function Home() {
             {debouncedQuery.length >= 2 ? (
               /* Search Results Mode */
               isSearchLoading ? (
-                <div className="flex items-center justify-center py-32">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                </div>
+                <DiscoveryLoadingSkeleton search />
               ) : !searchData || searchData.items.length === 0 ? (
                 <div className="text-center py-32 bg-card border border-border/50 rounded-sm shadow-sm">
                   <Search className="h-12 w-12 text-muted-foreground/30 mx-auto mb-6" />
@@ -122,9 +124,7 @@ export default function Home() {
                 </div>
               )
             ) : isLoading ? (
-              <div className="flex items-center justify-center py-32">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              </div>
+              <DiscoveryLoadingSkeleton />
             ) : !discoverData ? (
               <div className="text-center py-32 bg-card border border-border/50 rounded-sm shadow-sm">
                  <h3 className="text-2xl font-serif font-bold text-muted-foreground">{t("home.unableToLoad")}</h3>

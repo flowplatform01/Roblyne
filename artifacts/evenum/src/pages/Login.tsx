@@ -24,6 +24,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 import { useTranslation } from "react-i18next";
+import { AuthLoadingShell } from "@/components/loading/LoadingStates";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -75,13 +76,7 @@ export default function Login() {
   }
 
   if (isAuthLoading) {
-    return (
-      <Layout>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </Layout>
-    );
+    return <AuthLoadingShell />;
   }
 
   return (

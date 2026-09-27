@@ -4,7 +4,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useListOrganizations } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Building2, Plus, ArrowRight, Loader2, CalendarDays, Vote, Megaphone } from "lucide-react";
+import { DashboardLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { Building2, Plus, ArrowRight, CalendarDays, Vote, Megaphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
@@ -28,9 +29,7 @@ export default function Dashboard() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
+          <DashboardLoadingSkeleton />
         ) : isError ? (
           <div className="bg-card border border-border/60 rounded-sm p-12 text-center max-w-2xl mx-auto w-full shadow-sm mt-8">
             <h2 className="text-2xl font-serif font-bold mb-3">{t("common.somethingWentWrong")}</h2>

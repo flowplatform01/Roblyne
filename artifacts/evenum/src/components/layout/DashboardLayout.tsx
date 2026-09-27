@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from './Layout';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { AuthLoadingShell } from '@/components/loading/LoadingStates';
 
 export function DashboardLayout({ children, orgId }: { children: React.ReactNode, orgId?: string }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -15,7 +16,8 @@ export function DashboardLayout({ children, orgId }: { children: React.ReactNode
     }
   }, [isLoading, isAuthenticated, setLocation]);
 
-  if (isLoading || !isAuthenticated) return null;
+  if (isLoading) return <AuthLoadingShell />;
+  if (!isAuthenticated) return null;
 
   return (
     <Layout>

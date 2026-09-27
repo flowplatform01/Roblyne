@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { Spinner } from '@/components/ui/spinner';
+import { RouteLoadingShell } from '@/components/loading/LoadingStates';
 import { ThemeProvider } from 'next-themes';
 
 /**
@@ -91,11 +91,7 @@ const queryClient = new QueryClient({
 });
 
 function PageFallback() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Spinner className="h-8 w-8 text-primary" />
-    </div>
-  );
+  return <RouteLoadingShell />;
 }
 
 function Router() {

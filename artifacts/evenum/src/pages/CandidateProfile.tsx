@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Loader2, Vote, Building2, ArrowLeft, User } from "lucide-react";
+import { PublicPageLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 export default function CandidateProfile() {
   const [, params] = useRoute("/candidates/:electionId/:candidateId");
@@ -34,10 +35,7 @@ export default function CandidateProfile() {
   if (isCandidateLoading || isElectionLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Profile</p>
-        </div>
+        <PublicPageLoadingSkeleton label="Loading candidate profile" />
       </Layout>
     );
   }

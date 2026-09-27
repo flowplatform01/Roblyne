@@ -41,6 +41,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLifecycleClock } from "@/hooks/useLifecycle";
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 const candidateSchema = z.object({
   name: z.string().min(1, "Candidate name is required"),
@@ -132,9 +133,7 @@ export default function ElectionDetail() {
   if (isElectionLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
-        </div>
+        <ManagementDetailLoadingSkeleton label="Loading election" />
       </DashboardLayout>
     );
   }
@@ -481,7 +480,7 @@ export default function ElectionDetail() {
               </div>
 
               {isPositionsLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                <InlineListLoadingSkeleton rows={3} label="Loading positions and candidates" />
               ) : !positions || positions.length === 0 ? (
                 <Card className="border-dashed bg-muted/20">
                   <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -610,7 +609,7 @@ export default function ElectionDetail() {
                 </Card>
 
                 {isEligibleVotersLoading ? (
-                  <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                  <InlineListLoadingSkeleton rows={4} label="Loading eligible voters" />
                 ) : !eligibleVoters || eligibleVoters.length === 0 ? (
                   <Card className="border-dashed bg-muted/20">
                     <CardContent className="flex flex-col items-center justify-center p-12 text-center">

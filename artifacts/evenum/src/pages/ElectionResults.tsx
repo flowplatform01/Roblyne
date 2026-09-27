@@ -10,6 +10,7 @@ import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { hexToHsl } from "@/lib/branding";
 import { format } from 'date-fns';
+import { ResultsLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 export default function ElectionResults() {
   const [, params] = useRoute("/elections/:id/results");
@@ -38,10 +39,7 @@ export default function ElectionResults() {
   if (isElectionLoading || isResultsLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Results</p>
-        </div>
+        <ResultsLoadingSkeleton />
       </Layout>
     );
   }

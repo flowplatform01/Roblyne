@@ -40,6 +40,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency as formatCurrencyValue } from '@/lib/currency';
+import { AdminLoadingSkeleton } from '@/components/loading/LoadingStates';
+import { Skeleton } from '@/components/ui/skeleton';
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function useAdminStats() {
@@ -140,9 +142,7 @@ export default function AdminDashboard() {
   if (authLoading) {
     return (
       <DashboardLayout>
-        <div className="flex-1 flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-        </div>
+        <AdminLoadingSkeleton />
       </DashboardLayout>
     );
   }
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                 </div>
                 <p className="text-3xl font-serif font-bold tabular-nums">
                   {statsLoading
-                    ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40 inline-block" />
+                    ? <Skeleton className="h-9 w-20" />
                     : (value ?? '—')}
                 </p>
                 <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">{label}</p>
@@ -360,7 +360,17 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {orgsLoading ? (
-                  <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                  <Table>
+                    <TableBody>
+                      {[0, 1, 2, 3, 4].map((row) => (
+                        <TableRow key={row}>
+                          {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
+                            <TableCell key={cell}><Skeleton className="h-4 w-full max-w-28" /></TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : filteredOrgs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-14 text-center text-muted-foreground">
                     <Building2 className="h-10 w-10 mb-3 opacity-20" />
@@ -468,7 +478,17 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {usersLoading ? (
-                  <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin text-primary/50" /></div>
+                  <Table>
+                    <TableBody>
+                      {[0, 1, 2, 3, 4].map((row) => (
+                        <TableRow key={row}>
+                          {[0, 1, 2, 3, 4].map((cell) => (
+                            <TableCell key={cell}><Skeleton className="h-4 w-full max-w-28" /></TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 ) : filteredUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-14 text-center text-muted-foreground">
                     <Users className="h-10 w-10 mb-3 opacity-20" />
@@ -703,8 +723,13 @@ function PlatformSupportSection() {
       </CardHeader>
       <CardContent className="space-y-5">
         {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> {t("common.loading")}
+          <div className="grid gap-5 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((field) => (
+              <div key={field} className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
           </div>
         ) : (
           <>
@@ -857,7 +882,7 @@ function FinanceAdminSection() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-serif font-bold tabular-nums">
-                {isLoadingStats ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" /> : kpi.isCount ? kpi.value : formatCurrency(kpi.value as number)}
+                {isLoadingStats ? <Skeleton className="h-8 w-20" /> : kpi.isCount ? kpi.value : formatCurrency(kpi.value as number)}
               </div>
             </CardContent>
           </Card>
@@ -874,7 +899,11 @@ function FinanceAdminSection() {
             <CardContent className="pt-2 pb-6 pl-0">
               <div className="h-64 w-full px-4">
                 {isLoadingStats ? (
-                  <div className="h-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary/50" /></div>
+                  <div className="h-full flex items-end gap-3 px-6 pb-4">
+                    {['h-20', 'h-32', 'h-24', 'h-40', 'h-28', 'h-36', 'h-18', 'h-30'].map((height, bar) => (
+                      <Skeleton key={bar} className={`${height} flex-1`} />
+                    ))}
+                  </div>
                 ) : !stats?.revenueByDay?.length ? (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No recent revenue data</div>
                 ) : (
@@ -985,7 +1014,13 @@ function FinanceAdminSection() {
                 </TableHeader>
                 <TableBody>
                   {isLoadingConfigs ? (
-                    <TableRow><TableCell colSpan={3} className="text-center py-4"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground/50" /></TableCell></TableRow>
+                    [0, 1, 2].map((row) => (
+                      <TableRow key={row}>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                        <TableCell><Skeleton className="ml-auto h-7 w-7" /></TableCell>
+                      </TableRow>
+                    ))
                   ) : commissionConfigs?.map((conf: any) => (
                     <TableRow key={conf.pillar}>
                       <TableCell className="pl-5 font-medium capitalize text-sm">{conf.pillar}</TableCell>
@@ -1106,7 +1141,13 @@ function FinanceAdminSection() {
             </TableHeader>
             <TableBody>
               {isLoadingSettlements ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary/50" /></TableCell></TableRow>
+                [0, 1, 2, 3].map((row) => (
+                  <TableRow key={row}>
+                    {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
+                      <TableCell key={cell}><Skeleton className="h-4 w-full max-w-24" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
               ) : !settlements?.length ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements found</TableCell></TableRow>
               ) : settlements.map((s: any) => (
@@ -1154,7 +1195,13 @@ function FinanceAdminSection() {
               </TableHeader>
               <TableBody>
                 {isLoadingBalances ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-6"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary/50" /></TableCell></TableRow>
+                  [0, 1, 2, 3].map((row) => (
+                    <TableRow key={row}>
+                      {[0, 1, 2, 3].map((cell) => (
+                        <TableCell key={cell}><Skeleton className="h-4 w-full max-w-28" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 ) : orgBalances?.slice(0, 15).map((ob: any) => (
                   <TableRow key={ob.org_id} className="hover:bg-muted/20">
                     <TableCell className="font-medium text-sm">{ob.org_name}</TableCell>
@@ -1197,7 +1244,13 @@ function FinanceAdminSection() {
               </TableHeader>
               <TableBody>
                 {isLoadingTransactions ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-6"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary/50" /></TableCell></TableRow>
+                  [0, 1, 2, 3].map((row) => (
+                    <TableRow key={row}>
+                      {[0, 1, 2, 3, 4].map((cell) => (
+                        <TableCell key={cell}><Skeleton className="h-4 w-full max-w-24" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 ) : !transactionsData?.transactions?.length ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No transactions</TableCell></TableRow>
                 ) : transactionsData.transactions.slice(0, 15).map((tx: any) => (

@@ -18,6 +18,7 @@ import { useCountdown } from "@/hooks/useLifecycle";
 import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 const FAQS = [
   {
@@ -162,9 +163,7 @@ export default function EventRegister() {
   if (isEventLoading || isTicketTypesLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-emerald-600/50" />
-        </div>
+        <ParticipationLoadingSkeleton label="Loading event registration" />
       </Layout>
     );
   }

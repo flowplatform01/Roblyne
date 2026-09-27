@@ -24,6 +24,7 @@ import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
 
 export default function CampaignParticipate() {
   const [, params] = useRoute("/campaigns/:id/participate");
@@ -128,10 +129,7 @@ export default function CampaignParticipate() {
   if (isCampaignLoading) {
     return (
       <Layout>
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-amber-600/40" />
-          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">Loading Campaign</p>
-        </div>
+        <ParticipationLoadingSkeleton label="Loading campaign participation" />
       </Layout>
     );
   }
