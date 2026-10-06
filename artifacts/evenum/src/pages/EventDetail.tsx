@@ -10,6 +10,7 @@ import {
   useGetEventAnalytics,
   getListTicketTypesQueryKey,
   getGetEventQueryKey,
+  getGetEventAnalyticsQueryKey,
   useCheckInAttendee,
   getListAttendeesQueryKey,
   exportEventAttendees
@@ -36,6 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "react-i18next";
 
 const ticketTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -137,8 +140,22 @@ export default function EventDetail() {
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
-  const { data: attendees, isLoading: isAttendeesLoading } = useListAttendees(eventId);
-  const { data: analytics, isLoading: isAnalyticsLoading } = useGetEventAnalytics(eventId);
+  const { data: attendees, isLoading: isAttendeesLoading } = useListAttendees(eventId, {
+    query: { queryKey: getListAttendeesQueryKey(eventId), enabled: activeTab === "attendees" },
+  });
+  const { data: analytics, isLoading: isAnalyticsLoading } = useGetEventAnalytics(eventId, {
+    query: { queryKey: getGetEventAnalyticsQueryKey(eventId), enabled: activeTab === "analytics" },
+  });
+  const { i18n } = useTranslation();
+  const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
+  const revenueByCurrency = new Map<string, number>();
+  for (const row of analytics?.ticketsByType ?? []) {
+    const currency = ticketTypes?.find(ticket => ticket.id === row.ticketTypeId)?.currency || "XAF";
+    revenueByCurrency.set(currency, (revenueByCurrency.get(currency) || 0) + Number(row.revenue || 0));
+  }
+  const revenueLabel = revenueByCurrency.size > 0
+    ? Array.from(revenueByCurrency, ([currency, amount]) => formatCurrency(amount, currency, locale)).join(" · ")
+    : formatCurrency(analytics?.revenue || 0, ticketTypes?.[0]?.currency || "XAF", locale);
   
   const updateEvent = useUpdateEvent();
   const createTicketType = useCreateTicketType();
@@ -471,7 +488,7 @@ export default function EventDetail() {
                         <div className="flex justify-between items-start">
                           <CardTitle className="font-serif text-lg">{ticket.name}</CardTitle>
                           <span className="font-bold text-lg text-emerald-600">
-                            {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
+                            {ticket.price === 0 ? 'Free' : formatCurrency(ticket.price, ticket.currency || "XAF", locale)}
                           </span>
                         </div>
                         {ticket.description && <CardDescription className="line-clamp-2">{ticket.description}</CardDescription>}
@@ -669,7 +686,7 @@ export default function EventDetail() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-4xl font-serif font-bold text-emerald-600">
-                      ${analytics?.revenue?.toFixed(2) || '0.00'}
+                      {revenueLabel}
                     </div>
                   </CardContent>
                 </Card>

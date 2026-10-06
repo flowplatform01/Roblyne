@@ -423,7 +423,7 @@
     "paymentGoalsDescription": "Configure if this campaign requires a fee or has a target goal.",
     "requirePayment": "Require Payment",
     "requirePaymentHint": "Participants must pay a fee to submit",
-    "requiredAmount": "Required Amount (USD)",
+    "requiredAmount": "Required Amount (XAF)",
     "campaignGoal": "Campaign Goal (Optional)",
     "campaignGoalPlaceholder": "Target amount e.g. 10000",
     "campaignGoalHint": "Set a financial goal to display progress on the campaign page.",

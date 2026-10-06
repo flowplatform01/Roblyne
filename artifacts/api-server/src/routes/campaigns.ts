@@ -37,6 +37,73 @@ function campaignRow(campaign: any, orgName: string | null, submissionsCount: nu
   };
 }
 
+type CampaignFieldConfig = {
+  id: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+};
+
+function validateCampaignResponseFields(
+  configuredFields: unknown,
+  data: Record<string, unknown>,
+): string | null {
+  if (!Array.isArray(configuredFields)) return null;
+
+  for (const field of configuredFields as CampaignFieldConfig[]) {
+    if (!field || typeof field.id !== "string" || !field.id || typeof field.label !== "string") {
+      return "This campaign form is not configured correctly";
+    }
+
+    const value = data[field.id];
+    const empty = value === undefined || value === null
+      || (typeof value === "string" && value.trim() === "");
+    if (field.required && (field.type === "checkbox" ? value !== true : empty)) {
+      return field.type === "checkbox"
+        ? `${field.label} must be checked`
+        : `${field.label} is required`;
+    }
+    if (empty) continue;
+
+    switch (field.type) {
+      case "text":
+      case "textarea":
+      case "phone":
+        if (typeof value !== "string") return `${field.label} must be text`;
+        break;
+      case "email":
+        if (typeof value !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          return `${field.label} must be a valid email address`;
+        }
+        break;
+      case "number":
+        if (!(typeof value === "number" && Number.isFinite(value))
+          && !(typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value)))) {
+          return `${field.label} must be a valid number`;
+        }
+        break;
+      case "date":
+        if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+          return `${field.label} must be a valid date`;
+        }
+        break;
+      case "select":
+        if (typeof value !== "string" || !Array.isArray(field.options) || !field.options.includes(value)) {
+          return `${field.label} has an invalid selection`;
+        }
+        break;
+      case "checkbox":
+        if (typeof value !== "boolean") return `${field.label} must be checked or unchecked`;
+        break;
+      default:
+        return "This campaign form contains an unsupported field";
+    }
+  }
+
+  return null;
+}
+
 // List campaigns — uses a single aggregated query to avoid N+1 count lookups
 router.get("/campaigns", async (req, res): Promise<void> => {
   const queryParsed = ListCampaignsQueryParams.safeParse(req.query);
@@ -210,6 +277,12 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
   }
   if (campaign.startsAt && new Date(campaign.startsAt) > now) {
     res.status(403).json({ error: "This campaign has not opened for submissions yet" });
+    return;
+  }
+
+  const fieldError = validateCampaignResponseFields(campaign.fields, data);
+  if (fieldError) {
+    res.status(400).json({ error: fieldError });
     return;
   }
 

@@ -2775,7 +2775,7 @@ components:
           description: 0 for free tickets
         currency:
           type: string
-          default: USD
+          default: XAF
         quantity:
           type: ["integer", "null"]
           description: null means unlimited
@@ -2802,7 +2802,7 @@ components:
           minimum: 0
         currency:
           type: string
-          default: USD
+          default: XAF
         quantity:
           type: integer
         saleStartsAt:
@@ -3094,7 +3094,7 @@ components:
           type: number
         currency:
           type: string
-          default: USD
+          default: XAF
         fields:
           type: array
           items:
@@ -3384,6 +3384,10 @@ components:
       type: object
       required: [payoutMethod, payoutAccount]
       properties:
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: Optional for older clients; required when withdrawing from an organization with multiple available currencies.
         payoutMethod:
           type: string
           enum: [bank_transfer, mobile_money]
@@ -3428,29 +3432,56 @@ components:
 
     OrgFinanceSummary:
       type: object
-      required: [orgId, totalRevenue, totalCommissionPaid, totalOrgEarnings, pendingBalance, releasedBalance, transactionCount, byPillar, recentSettlements]
+      required: [orgId, transactionCount, balancesByCurrency, byPillar, recentSettlements]
       properties:
         orgId:
           type: integer
+        currency:
+          type: ["string", "null"]
+          description: Set only when all summary amounts have one unambiguous currency.
         totalRevenue:
-          type: number
+          type: ["number", "null"]
         totalCommissionPaid:
-          type: number
+          type: ["number", "null"]
         totalOrgEarnings:
-          type: number
+          type: ["number", "null"]
         pendingBalance:
-          type: number
+          type: ["number", "null"]
         releasedBalance:
-          type: number
+          type: ["number", "null"]
         transactionCount:
           type: integer
+        balancesByCurrency:
+          type: array
+          items:
+            type: object
+            required: [currency, totalRevenue, totalCommissionPaid, totalOrgEarnings, availableBalance, pendingSettlementBalance, releasedBalance, transactionCount]
+            properties:
+              currency:
+                type: string
+              totalRevenue:
+                type: number
+              totalCommissionPaid:
+                type: number
+              totalOrgEarnings:
+                type: number
+              availableBalance:
+                type: number
+              pendingSettlementBalance:
+                type: number
+              releasedBalance:
+                type: number
+              transactionCount:
+                type: integer
         byPillar:
           type: array
           items:
             type: object
-            required: [pillar, revenue, earnings, count]
+            required: [pillar, currency, revenue, earnings, count]
             properties:
               pillar:
+                type: string
+              currency:
                 type: string
               revenue:
                 type: number
@@ -3477,35 +3508,87 @@ components:
     AdminFinanceStats:
       type: object
       properties:
+        currency:
+          type: ["string", "null"]
+          description: Set only when all platform amounts have one unambiguous currency.
         total_platform_revenue:
-          type: number
+          type: ["number", "null"]
         total_commission_collected:
-          type: number
+          type: ["number", "null"]
         total_org_earnings:
-          type: number
+          type: ["number", "null"]
         revenue_today:
-          type: number
+          type: ["number", "null"]
         revenue_this_week:
-          type: number
+          type: ["number", "null"]
         revenue_this_month:
-          type: number
+          type: ["number", "null"]
         total_transactions:
           type: integer
         orgs_with_revenue:
           type: integer
+        byCurrency:
+          type: array
+          items:
+            type: object
+            required: [currency, total_platform_revenue, total_commission_collected, total_org_earnings, revenue_today, revenue_this_week, revenue_this_month]
+            properties:
+              currency:
+                type: string
+              total_platform_revenue:
+                type: number
+              total_commission_collected:
+                type: number
+              total_org_earnings:
+                type: number
+              revenue_today:
+                type: number
+              revenue_this_week:
+                type: number
+              revenue_this_month:
+                type: number
         byPillar:
           type: array
           items:
             type: object
-            additionalProperties: true
+            required: [pillar, currency, revenue, commission, count]
+            properties:
+              pillar:
+                type: string
+              currency:
+                type: string
+              revenue:
+                type: number
+              commission:
+                type: number
+              count:
+                type: integer
         pendingSettlements:
-          type: object
-          additionalProperties: true
+          type: array
+          items:
+            type: object
+            required: [currency, count, total_amount]
+            properties:
+              currency:
+                type: string
+              count:
+                type: integer
+              total_amount:
+                type: number
         revenueByDay:
           type: array
           items:
             type: object
-            additionalProperties: true
+            required: [date, currency, revenue, count]
+            properties:
+              date:
+                type: string
+              currency:
+                type: string
+              revenue:
+                type: number
+              count:
+                type: integer
 
     OrgBalance:
       type: object
@@ -3514,13 +3597,17 @@ components:
           type: integer
         org_name:
           type: string
+        currency:
+          type: string
         total_revenue:
           type: number
         total_commission:
           type: number
         total_earnings:
           type: number
-        pending_balance:
+        available_balance:
+          type: number
+        pending_settlement_balance:
           type: number
         released_balance:
           type: number
@@ -3552,6 +3639,10 @@ components:
       properties:
         orgId:
           type: integer
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: Optional for older clients; required when the organization has multiple available currencies.
 
     UpdateSettlementInput:
       type: object

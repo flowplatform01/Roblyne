@@ -1248,7 +1248,7 @@ export const ListTicketTypesParams = zod.object({
   "eventId": zod.coerce.number()
 })
 
-export const listTicketTypesResponseCurrencyDefault = `USD`;
+export const listTicketTypesResponseCurrencyDefault = `XAF`;
 
 export const ListTicketTypesResponseItem = zod.object({
   "id": zod.number(),
@@ -1275,7 +1275,7 @@ export const CreateTicketTypeParams = zod.object({
 
 export const createTicketTypeBodyPriceMin = 0;
 
-export const createTicketTypeBodyCurrencyDefault = `USD`;
+export const createTicketTypeBodyCurrencyDefault = `XAF`;
 
 export const CreateTicketTypeBody = zod.object({
   "name": zod.string().min(1),
@@ -1287,7 +1287,7 @@ export const CreateTicketTypeBody = zod.object({
   "saleEndsAt": zod.coerce.date().optional()
 })
 
-export const createTicketTypeResponseCurrencyDefault = `USD`;
+export const createTicketTypeResponseCurrencyDefault = `XAF`;
 
 export const CreateTicketTypeResponse = zod.object({
   "id": zod.number(),
@@ -1326,7 +1326,7 @@ export const UpdateTicketTypeBody = zod.object({
   "saleEndsAt": zod.coerce.date().optional()
 })
 
-export const updateTicketTypeResponseCurrencyDefault = `USD`;
+export const updateTicketTypeResponseCurrencyDefault = `XAF`;
 
 export const UpdateTicketTypeResponse = zod.object({
   "id": zod.number(),
@@ -1533,7 +1533,7 @@ export const ListCampaignsResponse = zod.array(ListCampaignsResponseItem)
 
 export const createCampaignBodyVisibilityDefault = `public`;
 export const createCampaignBodyRequiresPaymentDefault = false;
-export const createCampaignBodyCurrencyDefault = `USD`;
+export const createCampaignBodyCurrencyDefault = `XAF`;
 
 export const CreateCampaignBody = zod.object({
   "orgId": zod.number(),
@@ -1815,14 +1815,26 @@ export const GetOrgFinanceSummaryParams = zod.object({
 
 export const GetOrgFinanceSummaryResponse = zod.object({
   "orgId": zod.number(),
+  "currency": zod.string().nullish().describe('Set only when all summary amounts have one unambiguous currency.'),
+  "totalRevenue": zod.number().nullish(),
+  "totalCommissionPaid": zod.number().nullish(),
+  "totalOrgEarnings": zod.number().nullish(),
+  "pendingBalance": zod.number().nullish(),
+  "releasedBalance": zod.number().nullish(),
+  "transactionCount": zod.number(),
+  "balancesByCurrency": zod.array(zod.object({
+  "currency": zod.string(),
   "totalRevenue": zod.number(),
   "totalCommissionPaid": zod.number(),
   "totalOrgEarnings": zod.number(),
-  "pendingBalance": zod.number(),
+  "availableBalance": zod.number(),
+  "pendingSettlementBalance": zod.number(),
   "releasedBalance": zod.number(),
-  "transactionCount": zod.number(),
+  "transactionCount": zod.number()
+})),
   "byPillar": zod.array(zod.object({
   "pillar": zod.string(),
+  "currency": zod.string(),
   "revenue": zod.number(),
   "earnings": zod.number(),
   "count": zod.number()
@@ -1897,6 +1909,7 @@ export const RequestOrgWithdrawalParams = zod.object({
   "orgId": zod.coerce.number()
 })
 
+export const requestOrgWithdrawalBodyCurrencyRegExp = new RegExp('^[A-Z]{3}$');
 export const requestOrgWithdrawalBodyPayoutAccountMin = 3;
 export const requestOrgWithdrawalBodyPayoutAccountMax = 160;
 
@@ -1905,6 +1918,7 @@ export const requestOrgWithdrawalBodyNotesMax = 500;
 
 
 export const RequestOrgWithdrawalBody = zod.object({
+  "currency": zod.string().regex(requestOrgWithdrawalBodyCurrencyRegExp).optional().describe('Optional for older clients; required when withdrawing from an organization with multiple available currencies.'),
   "payoutMethod": zod.enum(['bank_transfer', 'mobile_money']),
   "payoutAccount": zod.string().min(requestOrgWithdrawalBodyPayoutAccountMin).max(requestOrgWithdrawalBodyPayoutAccountMax),
   "notes": zod.string().max(requestOrgWithdrawalBodyNotesMax).nullish()

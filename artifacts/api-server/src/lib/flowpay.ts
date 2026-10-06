@@ -33,13 +33,24 @@ function requiredEnv(name: string, fallbackName?: string): string {
   return value;
 }
 
-function getConfig(): FlowPayConfig {
+function getEnvironment(): FlowPayEnvironment {
   const configuredEnvironment = process.env.FLOWPAY_ENVIRONMENT?.trim().toLowerCase();
-  const environment = configuredEnvironment === "production"
+  return configuredEnvironment === "production"
     ? "production"
     : configuredEnvironment === "sandbox"
       ? "sandbox"
       : process.env.NODE_ENV === "production" ? "production" : "sandbox";
+}
+
+function getWebhookSecret(environment = getEnvironment()): string {
+  return requiredEnv(
+    `FLOWPAY_${environment.toUpperCase()}_WEBHOOK_SECRET`,
+    "FLOWPAY_WEBHOOK_SECRET",
+  );
+}
+
+function getConfig(): FlowPayConfig {
+  const environment = getEnvironment();
   const configuredTimeout = Number(process.env.FLOWPAY_TIMEOUT_MS);
   const environmentPrefix = `FLOWPAY_${environment.toUpperCase()}`;
   const env = (suffix: string) => `${environmentPrefix}_${suffix}`;
@@ -49,7 +60,7 @@ function getConfig(): FlowPayConfig {
     clientId: requiredEnv(env("CLIENT_ID"), "FLOWPAY_CLIENT_ID"),
     publicKey: requiredEnv(env("PUBLIC_KEY"), "FLOWPAY_PUBLIC_KEY"),
     secretKey: requiredEnv(env("SECRET_KEY"), "FLOWPAY_SECRET_KEY"),
-    webhookSecret: requiredEnv(env("WEBHOOK_SECRET"), "FLOWPAY_WEBHOOK_SECRET"),
+    webhookSecret: getWebhookSecret(environment),
     provider: process.env[env("PROVIDER")]?.trim() || process.env.FLOWPAY_PROVIDER?.trim() || "FAPSHI",
     environment,
     timeoutMs: Number.isFinite(configuredTimeout) && configuredTimeout >= 1_000
@@ -203,8 +214,9 @@ export function verifyFlowPaySignature(rawBody: Buffer, signature: string | unde
   if (!signature) return false;
   let received = signature.trim();
   if (received.startsWith("sha256=")) received = received.slice("sha256=".length);
-  const expectedHex = createHmac("sha256", requiredEnv("FLOWPAY_WEBHOOK_SECRET")).update(rawBody).digest("hex");
-  const expectedBase64 = createHmac("sha256", requiredEnv("FLOWPAY_WEBHOOK_SECRET")).update(rawBody).digest("base64");
+  const secret = getWebhookSecret();
+  const expectedHex = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const expectedBase64 = createHmac("sha256", secret).update(rawBody).digest("base64");
   const candidates = [expectedHex, expectedBase64];
   return candidates.some(candidate => {
     const receivedBuffer = Buffer.from(received, candidate === expectedHex ? "hex" : "base64");

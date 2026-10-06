@@ -1372,6 +1372,11 @@ export const RequestWithdrawalInputPayoutMethod = {
 } as const;
 
 export interface RequestWithdrawalInput {
+  /**
+     * Optional for older clients; required when withdrawing from an organization with multiple available currencies.
+     * @pattern ^[A-Z]{3}$
+     */
+  currency?: string;
   payoutMethod: RequestWithdrawalInputPayoutMethod;
   /**
      * @minLength 3
@@ -1415,8 +1420,20 @@ export interface CommissionConfigUpdate {
   isActive?: boolean;
 }
 
+export type OrgFinanceSummaryBalancesByCurrencyItem = {
+  currency: string;
+  totalRevenue: number;
+  totalCommissionPaid: number;
+  totalOrgEarnings: number;
+  availableBalance: number;
+  pendingSettlementBalance: number;
+  releasedBalance: number;
+  transactionCount: number;
+};
+
 export type OrgFinanceSummaryByPillarItem = {
   pillar: string;
+  currency: string;
   revenue: number;
   earnings: number;
   count: number;
@@ -1424,12 +1441,23 @@ export type OrgFinanceSummaryByPillarItem = {
 
 export interface OrgFinanceSummary {
   orgId: number;
-  totalRevenue: number;
-  totalCommissionPaid: number;
-  totalOrgEarnings: number;
-  pendingBalance: number;
-  releasedBalance: number;
+  /**
+     * Set only when all summary amounts have one unambiguous currency.
+     * @nullable
+     */
+  currency?: string | null;
+  /** @nullable */
+  totalRevenue?: number | null;
+  /** @nullable */
+  totalCommissionPaid?: number | null;
+  /** @nullable */
+  totalOrgEarnings?: number | null;
+  /** @nullable */
+  pendingBalance?: number | null;
+  /** @nullable */
+  releasedBalance?: number | null;
   transactionCount: number;
+  balancesByCurrency: OrgFinanceSummaryBalancesByCurrencyItem[];
   byPillar: OrgFinanceSummaryByPillarItem[];
   recentSettlements: Settlement[];
 }

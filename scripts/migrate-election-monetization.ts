@@ -18,7 +18,7 @@ async function main() {
     ALTER TABLE elections
       ADD COLUMN IF NOT EXISTS requires_payment boolean NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS payment_amount   decimal(10,2),
-      ADD COLUMN IF NOT EXISTS currency         text NOT NULL DEFAULT 'USD'
+      ADD COLUMN IF NOT EXISTS currency         text NOT NULL DEFAULT 'XAF'
   `);
 
   console.log("  ✓ Added requires_payment, payment_amount, currency to elections\n");

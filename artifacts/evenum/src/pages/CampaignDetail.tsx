@@ -7,6 +7,8 @@ import {
   useListCampaignSubmissions,
   useGetCampaignAnalytics,
   getGetCampaignQueryKey,
+  getListCampaignSubmissionsQueryKey,
+  getGetCampaignAnalyticsQueryKey,
   exportCampaignSubmissions
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,8 +42,12 @@ export default function CampaignDetail() {
   const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
-  const { data: submissions, isLoading: isSubmissionsLoading } = useListCampaignSubmissions(campaignId);
-  const { data: analytics, isLoading: isAnalyticsLoading } = useGetCampaignAnalytics(campaignId);
+  const { data: submissions, isLoading: isSubmissionsLoading } = useListCampaignSubmissions(campaignId, {
+    query: { queryKey: getListCampaignSubmissionsQueryKey(campaignId), enabled: activeTab === "submissions" },
+  });
+  const { data: analytics, isLoading: isAnalyticsLoading } = useGetCampaignAnalytics(campaignId, {
+    query: { queryKey: getGetCampaignAnalyticsQueryKey(campaignId), enabled: activeTab === "analytics" },
+  });
   
   const updateCampaign = useUpdateCampaign();
 
@@ -136,7 +142,7 @@ export default function CampaignDetail() {
             <div className="flex gap-4 mt-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><Badge variant="outline" className="capitalize">{campaign.type}</Badge></span>
               <span className="flex items-center gap-1.5"><Badge variant="outline">{campaign.visibility}</Badge></span>
-              {campaign.requiresPayment && <span className="flex items-center gap-1.5 font-medium text-emerald-600">Requires ${campaign.paymentAmount} fee</span>}
+              {campaign.requiresPayment && <span className="flex items-center gap-1.5 font-medium text-emerald-600">Requires {formatCurrency(campaign.paymentAmount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")} fee</span>}
             </div>
           </div>
 
@@ -316,7 +322,7 @@ export default function CampaignDetail() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-4xl font-serif font-bold text-emerald-600">
-                        ${analytics?.totalRevenue?.toFixed(2) || '0.00'}
+                        {formatCurrency(analytics?.totalRevenue || 0, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
                       </div>
                     </CardContent>
                   </Card>
@@ -330,7 +336,7 @@ export default function CampaignDetail() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-end mb-2">
-                      <div className="text-3xl font-bold text-primary">${campaign.currentAmount || 0}</div>
+                      <div className="text-3xl font-bold text-primary">{formatCurrency(campaign.currentAmount || 0, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}</div>
                       <div className="text-muted-foreground font-medium">
                         Goal: {formatCurrency(campaign.goalAmount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
                       </div>
@@ -372,7 +378,7 @@ export default function CampaignDetail() {
               {campaign.requiresPayment && (
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="text-muted-foreground text-sm">Total Raised</span>
-                  <span className="font-medium text-emerald-600">${campaign.currentAmount || 0}</span>
+                  <span className="font-medium text-emerald-600">{formatCurrency(campaign.currentAmount || 0, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}</span>
                 </div>
               )}
             </CardContent>

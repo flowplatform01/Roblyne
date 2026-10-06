@@ -13,7 +13,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
-import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 
@@ -279,12 +279,6 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const isPaid = Number(tt.price) > 0;
-  if (isPaid && !bodyParsed.data.customerPhone?.trim()) {
-    res.status(400).json({ error: "A customer phone number is required for paid event registration" });
-    return;
-  }
-
   // ── Atomic sold-count check and ticket issuance/reservation ───────────
   // Paid tickets reserve inventory now and are issued only after FlowPay
   // confirms payment through the webhook.
@@ -340,6 +334,10 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       if (lockedTt.sale_ends_at && new Date(lockedTt.sale_ends_at) <= lockedNow) {
         throw Object.assign(new Error("Ticket sales have ended"), { code: "TICKET_SALE_ENDED" });
       }
+      const isPaid = Number(lockedTt.price) > 0;
+      if (isPaid && !bodyParsed.data.customerPhone?.trim()) {
+        throw Object.assign(new Error("A customer phone number is required"), { code: "CUSTOMER_PHONE_REQUIRED" });
+      }
       if (lockedTt.quantity !== null && lockedTt.sold >= lockedTt.quantity) {
         throw Object.assign(new Error("Sold out"), { code: "SOLD_OUT" });
       }
@@ -368,19 +366,6 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
         eventId: paramParsed.data.eventId, ticketTypeId, attendeeName, attendeeEmail,
         ticketCode, status: "valid", paymentStatus: "not_required",
       }).returning();
-      if (Number(lockedTt.price) > 0) {
-        await recordTransaction({
-          orgId: event.orgId,
-          pillar: "event",
-          entityId: event.id,
-          entityTitle: event.title,
-          transactionType: "ticket",
-          grossAmount: Number(lockedTt.price),
-          currency: lockedTt.currency || "USD",
-          payerName: attendeeName,
-          payerEmail: attendeeEmail,
-        }, tx);
-      }
       return { ticket: inserted };
     });
 
@@ -422,6 +407,10 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     }
     if (err?.code === "TICKET_TYPE_NOT_FOUND") {
       res.status(404).json({ error: "Ticket type not found for this event" });
+      return;
+    }
+    if (err?.code === "CUSTOMER_PHONE_REQUIRED") {
+      res.status(400).json({ error: "A customer phone number is required for paid event registration" });
       return;
     }
     if (err?.code === "EVENT_UNAVAILABLE" || err?.code === "REGISTRATION_CLOSED") {

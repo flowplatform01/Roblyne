@@ -537,10 +537,13 @@ export default function EventRegister() {
                         const unavailable = isSoldOut || Boolean(saleNotStarted || saleEnded);
 
                         return (
-                          <div
+                          <button
                             key={ticket.id}
+                            type="button"
+                            disabled={Boolean(unavailable)}
+                            aria-pressed={isSelected}
                             onClick={() => !unavailable && setSelectedTicketId(ticket.id)}
-                            className={`flex items-center justify-between px-5 py-4 rounded-sm border-2 transition-all
+                            className={`w-full text-left flex items-center justify-between px-5 py-4 rounded-sm border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600
                               ${unavailable ? 'opacity-50 cursor-not-allowed border-border/30 bg-muted/40' :
                                 isSelected ? 'border-emerald-600 bg-emerald-50/50 cursor-pointer' :
                                 'border-border/60 bg-background hover:border-emerald-600/40 cursor-pointer'}`}
@@ -553,7 +556,7 @@ export default function EventRegister() {
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <span className={`font-bold font-serif text-base ${isSelected ? 'text-emerald-700' : 'text-foreground'}`}>
-                                {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
+                                {ticket.price === 0 ? t("eventRegister.free") : formatCurrency(ticket.price, ticket.currency || (event as any).currency || "XAF", locale)}
                               </span>
                               {isSoldOut ? (
                                 <Badge variant="secondary" className="text-xs">{t("eventRegister.soldOut")}</Badge>
@@ -569,7 +572,7 @@ export default function EventRegister() {
                                 </div>
                               )}
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
-import { useGetCampaign, useSubmitCampaignResponse, useGetCampaignAnalytics } from "@workspace/api-client-react";
+import { useGetCampaign, useSubmitCampaignResponse } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,6 @@ export default function CampaignParticipate() {
   const [paymentPending, setPaymentPending] = useState(false);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
-  const { data: analytics } = useGetCampaignAnalytics(campaignId);
   const submitMutation = useSubmitCampaignResponse();
   const { data: paymentStatus } = usePaymentStatus(paymentId);
   const { toast } = useToast();
@@ -87,7 +86,10 @@ export default function CampaignParticipate() {
 
     let isValid = true;
     campaign?.fields?.forEach(field => {
-      if (field.required && (formData[field.id] === undefined || formData[field.id] === '')) {
+      const value = formData[field.id];
+      const isEmpty = value === undefined || value === null
+        || (typeof value === "string" && value.trim() === "");
+      if (field.required && (field.type === "checkbox" ? value !== true : isEmpty)) {
         isValid = false;
       }
     });
@@ -278,11 +280,12 @@ export default function CampaignParticipate() {
   }
 
   // ── Analytics-derived stats ───────────────────────────────────────────────
-  const participantCount = analytics?.submissionsCount ?? null;
-  const goalProgress = analytics?.goalProgress ?? null;
-  const totalRevenue = analytics?.totalRevenue ?? null;
-  const hasGoal = !!campaign.goalAmount;
-  const goalProgressPct = goalProgress != null ? Math.min(Math.round(goalProgress * 100), 100) : null;
+  const participantCount = campaign.submissionsCount ?? null;
+  const totalRevenue = campaign.currentAmount ?? null;
+  const hasGoal = Number(campaign.goalAmount) > 0;
+  const goalProgressPct = hasGoal
+    ? Math.min(Math.round((Number(campaign.currentAmount || 0) / Number(campaign.goalAmount)) * 100), 100)
+    : null;
 
   // ── Field renderer ────────────────────────────────────────────────────────
   const renderField = (field: any) => {
@@ -319,6 +322,7 @@ export default function CampaignParticipate() {
               id={field.id}
               checked={!!value}
               onCheckedChange={checked => handleFieldChange(field.id, checked)}
+              aria-required={field.required}
               className="mt-1 w-5 h-5"
             />
             <Label htmlFor={field.id} className="font-normal cursor-pointer text-base leading-relaxed">
@@ -559,7 +563,7 @@ export default function CampaignParticipate() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/60 mb-1">Amount</p>
-                  <span className="font-bold font-serif text-3xl text-amber-900">${campaign.paymentAmount.toFixed(2)}</span>
+                  <span className="font-bold font-serif text-3xl text-amber-900">{formatMoney(campaign.paymentAmount)}</span>
                 </div>
               </div>
             )}

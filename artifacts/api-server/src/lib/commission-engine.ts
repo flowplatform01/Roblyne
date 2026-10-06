@@ -146,30 +146,36 @@ export async function recordTransaction(input: RecordTransactionInput, database:
  * Get aggregated financial summary for an organization.
  */
 export async function getOrgFinanceSummary(orgId: number) {
-  const { rows: [summary] } = await db.execute(sql`
+  const { rows: balancesByCurrency } = await db.execute(sql`
     SELECT
+      currency,
       COALESCE(SUM(gross_amount), 0)::float            AS total_revenue,
       COALESCE(SUM(commission_amount), 0)::float       AS total_commission_paid,
       COALESCE(SUM(org_earnings), 0)::float            AS total_org_earnings,
-      COALESCE(SUM(CASE WHEN settlement_status IN ('pending', 'ready') THEN org_earnings ELSE 0 END), 0)::float  AS pending_balance,
+      COALESCE(SUM(CASE WHEN settlement_status = 'pending' THEN org_earnings ELSE 0 END), 0)::float AS available_balance,
+      COALESCE(SUM(CASE WHEN settlement_status = 'ready' THEN org_earnings ELSE 0 END), 0)::float AS pending_settlement_balance,
       COALESCE(SUM(CASE WHEN settlement_status = 'completed' THEN org_earnings ELSE 0 END), 0)::float AS released_balance,
       COUNT(*)::int                                    AS transaction_count
     FROM financial_transactions
     WHERE org_id = ${orgId} AND status = 'completed'
+    GROUP BY currency
+    ORDER BY currency
   `);
 
   const { rows: byPillar } = await db.execute(sql`
     SELECT
       pillar,
+      currency,
       COALESCE(SUM(gross_amount), 0)::float        AS revenue,
       COALESCE(SUM(org_earnings), 0)::float        AS earnings,
       COUNT(*)::int                                 AS count
     FROM financial_transactions
     WHERE org_id = ${orgId} AND status = 'completed'
-    GROUP BY pillar
+    GROUP BY pillar, currency
+    ORDER BY pillar, currency
   `);
 
-  return { summary, byPillar };
+  return { balancesByCurrency, byPillar };
 }
 
 /**

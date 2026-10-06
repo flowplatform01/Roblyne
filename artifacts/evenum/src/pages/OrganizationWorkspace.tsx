@@ -1134,6 +1134,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const [payoutMethod, setPayoutMethod] = useState<"bank_transfer" | "mobile_money">("mobile_money");
   const [payoutAccount, setPayoutAccount] = useState("");
   const [withdrawalNotes, setWithdrawalNotes] = useState("");
+  const [withdrawalCurrency, setWithdrawalCurrency] = useState("");
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
   const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
@@ -1147,6 +1148,19 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const formatCurrency = (amount: number, currency: string = "XAF") => {
     return formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
   };
+  const currencyBalances = summary?.balancesByCurrency ?? [];
+  const availableBalances = currencyBalances.filter((balance) => balance.availableBalance > 0);
+  const selectedCurrency = availableBalances.some((balance) => balance.currency === withdrawalCurrency)
+    ? withdrawalCurrency
+    : availableBalances[0]?.currency ?? "";
+  const selectedBalance = availableBalances.find((balance) => balance.currency === selectedCurrency);
+  const renderCurrencyBalances = (field: "availableBalance" | "pendingSettlementBalance" | "releasedBalance") => (
+    currencyBalances.length > 0
+      ? currencyBalances.map((balance) => (
+          <div key={balance.currency}>{formatCurrency(balance[field], balance.currency)}</div>
+        ))
+      : <div>{formatCurrency(0)}</div>
+  );
 
   const getSettlementBadge = (status: string) => {
     switch(status) {
@@ -1174,7 +1188,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
 
   const handleWithdrawal = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!summary?.pendingBalance || summary.pendingBalance <= 0) {
+    if (!selectedBalance || selectedBalance.availableBalance <= 0) {
       toast({ title: "No balance available", description: "There are no earnings ready for withdrawal.", variant: "destructive" });
       return;
     }
@@ -1182,6 +1196,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
       {
         orgId,
         data: {
+          currency: selectedCurrency,
           payoutMethod,
           payoutAccount: payoutAccount.trim(),
           notes: withdrawalNotes.trim() || null,
@@ -1237,11 +1252,35 @@ function FinanceSection({ orgId }: { orgId: number }) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-serif">Withdraw available earnings</CardTitle>
           <CardDescription>
-            Request a payout of your available balance. Your request will appear in settlement history for processing.
+            A payout request transfers the full available balance in one currency. Partial withdrawals are not supported.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-[1fr_1.5fr_1.5fr_auto] items-end">
+          <div className="mb-4 rounded-lg border border-border/60 bg-background/70 px-4 py-3">
+            <div className="text-xs text-muted-foreground">Amount for this payout request</div>
+            <div className="mt-1 font-serif text-xl font-bold">
+              {selectedBalance ? formatCurrency(selectedBalance.availableBalance, selectedCurrency) : "No available balance"}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              The final amount is recalculated from eligible transactions when you submit.
+            </div>
+          </div>
+          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto] items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="withdrawal-currency">Currency</Label>
+              <Select
+                value={selectedCurrency}
+                onValueChange={setWithdrawalCurrency}
+                disabled={availableBalances.length === 0 || requestWithdrawal.isPending}
+              >
+                <SelectTrigger id="withdrawal-currency"><SelectValue placeholder="No available balance" /></SelectTrigger>
+                <SelectContent>
+                  {availableBalances.map((balance) => (
+                    <SelectItem key={balance.currency} value={balance.currency}>{balance.currency}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="payout-method">Payout method</Label>
               <Select value={payoutMethod} onValueChange={(value) => setPayoutMethod(value as typeof payoutMethod)}>
@@ -1276,7 +1315,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
                 disabled={requestWithdrawal.isPending}
               />
             </div>
-            <Button type="submit" disabled={requestWithdrawal.isPending || !summary?.pendingBalance || !payoutAccount.trim()}>
+            <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || !payoutAccount.trim()}>
               {requestWithdrawal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
               Request payout
             </Button>
@@ -1292,19 +1331,19 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold text-primary">{formatCurrency(summary?.pendingBalance || 0)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Available to withdraw</p>
+            <div className="space-y-1 text-xl font-serif font-bold text-primary">{renderCurrencyBalances("availableBalance")}</div>
+            <p className="text-xs text-muted-foreground mt-1">Available to withdraw, shown by currency</p>
           </CardContent>
         </Card>
 
         <Card className="border-border/50 shadow-sm">
           <CardHeader className="pb-2 pt-5">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-              Pending Balance
+              Pending settlement
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.pendingBalance || 0)}</div>
+            <div className="space-y-1 text-xl font-serif font-bold">{renderCurrencyBalances("pendingSettlementBalance")}</div>
           </CardContent>
         </Card>
 
@@ -1315,7 +1354,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-serif font-bold">{formatCurrency(summary?.releasedBalance || 0)}</div>
+            <div className="space-y-1 text-xl font-serif font-bold">{renderCurrencyBalances("releasedBalance")}</div>
           </CardContent>
         </Card>
       </div>

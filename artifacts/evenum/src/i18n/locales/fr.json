@@ -423,7 +423,7 @@
     "paymentGoalsDescription": "Configurez si cette campagne exige des frais ou possède un objectif financier.",
     "requirePayment": "Paiement requis",
     "requirePaymentHint": "Les participants doivent payer des frais pour soumettre",
-    "requiredAmount": "Montant requis (USD)",
+    "requiredAmount": "Montant requis (XAF)",
     "campaignGoal": "Objectif de la campagne (facultatif)",
     "campaignGoalPlaceholder": "Montant cible ex. 10000",
     "campaignGoalHint": "Définissez un objectif financier pour afficher la progression sur la page de la campagne.",

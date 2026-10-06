@@ -713,7 +713,7 @@ async function main() {
     name: "General Admission",
     description: "Open to all District 7 residents. Free entry.",
     price: "0.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 150,
     sold: 0,
   }).returning();
@@ -722,7 +722,7 @@ async function main() {
     name: "VIP Front Row",
     description: "Reserved front-row seating and priority question time. Includes pre-event meet & greet with board members.",
     price: "0.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 20,
     sold: 0,
   }).returning();
@@ -778,7 +778,7 @@ async function main() {
     name: "General Pass",
     description: "Access to all keynotes, exhibition floor, and evening networking reception.",
     price: "299.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 600,
     sold: 0,
   }).returning();
@@ -787,7 +787,7 @@ async function main() {
     name: "VIP All-Access",
     description: "Priority seating, all workshop tracks, private investor lunch, and a signed copy of the GreenTech State of the Industry Report.",
     price: "799.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 100,
     sold: 0,
   }).returning();
@@ -796,7 +796,7 @@ async function main() {
     name: "Student / Nonprofit",
     description: "Discounted admission for full-time students and nonprofit staff. Valid ID required at check-in.",
     price: "49.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 100,
     sold: 0,
   }).returning();
@@ -853,7 +853,7 @@ async function main() {
     name: "Individual Seat",
     description: "One seat at the gala dinner, including the awards ceremony and networking reception.",
     price: "185.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 250,
     sold: 0,
   }).returning();
@@ -862,7 +862,7 @@ async function main() {
     name: "Table of 8",
     description: "Reserved table for 8 guests with premium seating. Ideal for corporate sponsors or class reunion groups.",
     price: "1200.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 30,
     sold: 0,
   }).returning();
@@ -871,7 +871,7 @@ async function main() {
     name: "Recent Graduate (Class of 2020–2025)",
     description: "Discounted ticket for alumni who graduated in the last 5 years.",
     price: "85.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 50,
     sold: 0,
   }).returning();
@@ -926,7 +926,7 @@ async function main() {
     name: "Workshop Seat",
     description: "Includes printed materials, refreshments, and the $50 partner voucher.",
     price: "75.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 30,
     sold: 0,
   }).returning();
@@ -973,7 +973,7 @@ async function main() {
     name: "General Admission",
     description: "Entry to the gala, live performances, and networking reception.",
     price: "125.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 180,
     sold: 0,
   }).returning();
@@ -982,7 +982,7 @@ async function main() {
     name: "Patron Circle",
     description: "Premium seating, invitation to the private artist studio tour at 6pm, and name recognition in the program.",
     price: "450.00",
-    currency: "USD",
+    currency: "XAF",
     quantity: 40,
     sold: 0,
   }).returning();
@@ -1068,7 +1068,7 @@ async function main() {
     currentAmount: "31250.00",
     requiresPayment: true,
     paymentAmount: "0",
-    currency: "USD",
+    currency: "XAF",
     fields: JSON.stringify([
       { id: "dedication", label: "Dedicate this gift (optional)", type: "text", required: false },
       { id: "message", label: "Message to scholars", type: "textarea", required: false },
@@ -1113,7 +1113,7 @@ async function main() {
     paymentAmount: "75.00",
     goalAmount: "15000.00",
     currentAmount: "8550.00",
-    currency: "USD",
+    currency: "XAF",
     fields: JSON.stringify([
       { id: "graduation_year", label: "Year of Graduation", type: "text", required: true },
       { id: "degree", label: "Degree & Major", type: "text", required: true },
@@ -1163,7 +1163,7 @@ async function main() {
     goalAmount: "180000.00",
     currentAmount: "0.00",
     requiresPayment: false,
-    currency: "USD",
+    currency: "XAF",
     fields: JSON.stringify([
       { id: "discipline", label: "Artistic Discipline", type: "select", required: true,
         options: ["Visual Arts", "Music", "Theater / Performance", "Literature / Poetry", "Dance", "Film / Video", "Interdisciplinary"] },
@@ -1206,7 +1206,7 @@ async function main() {
     paymentAmount: "250.00",
     goalAmount: "75000.00",
     currentAmount: "14750.00",
-    currency: "USD",
+    currency: "XAF",
     fields: JSON.stringify([
       { id: "package", label: "Package Type", type: "select", required: true,
         options: ["Individual Season Pass ($250)", "Couple Season Pass ($450)", "Family Season Pass ($600)", "Student Season Pass ($99)"] },

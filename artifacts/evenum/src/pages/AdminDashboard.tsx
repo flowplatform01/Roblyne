@@ -770,6 +770,7 @@ function FinanceAdminSection() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminFinanceStats({ query: { queryKey: getGetAdminFinanceStatsQueryKey() } });
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
+  const [trendCurrency, setTrendCurrency] = useState("");
   const { data: transactionsData, isLoading: isLoadingTransactions } = useListAdminTransactions(
     { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined },
     { query: { queryKey: getListAdminTransactionsQueryKey({ limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) } }
@@ -786,6 +787,15 @@ function FinanceAdminSection() {
 
   const formatCurrency = (amount: number, currency: string = "XAF") =>
     formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
+  const adminCurrencyStats = (stats?.byCurrency ?? []) as any[];
+  const effectiveTrendCurrency = adminCurrencyStats.some((item) => item.currency === trendCurrency)
+    ? trendCurrency
+    : adminCurrencyStats[0]?.currency ?? "";
+  const revenueTrend = ((stats?.revenueByDay ?? []) as any[])
+    .filter((row) => row.currency === effectiveTrendCurrency);
+  const pendingSettlementRows = (stats?.pendingSettlements ?? []) as any[];
+  const availableOrgBalances = ((orgBalances ?? []) as any[])
+    .filter((balance) => Number(balance.available_balance) > 0);
 
   const getSettlementBadge = (status: string) => {
     switch(status) {
@@ -811,14 +821,14 @@ function FinanceAdminSection() {
     onError: (e: any) => toast({ variant: 'destructive', title: 'Error', description: e?.data?.error || 'Failed to update settlement' }),
   });
 
-  const [createSettlementOrgId, setCreateSettlementOrgId] = useState<string>("");
+  const [createSettlementSelection, setCreateSettlementSelection] = useState<string>("");
   const [createSettlementOpen, setCreateSettlementOpen] = useState(false);
   
   const createSettlement = useMutation({
-    mutationFn: (orgId: number) =>
+    mutationFn: ({ orgId, currency }: { orgId: number; currency: string }) =>
       customFetch(`${API_BASE}/api/admin/finance/settlements`, {
         method: 'POST',
-        body: JSON.stringify({ orgId }),
+        body: JSON.stringify({ orgId, currency }),
         headers: { 'Content-Type': 'application/json' },
       }),
     onSuccess: () => {
@@ -826,7 +836,7 @@ function FinanceAdminSection() {
       queryClient.invalidateQueries({ queryKey: getListOrgBalancesQueryKey() });
       toast({ title: 'Settlement created' });
       setCreateSettlementOpen(false);
-      setCreateSettlementOrgId("");
+      setCreateSettlementSelection("");
     },
     onError: (e: any) => toast({ variant: 'destructive', title: 'Error', description: e?.data?.error || 'Failed to create settlement' }),
   });
@@ -855,11 +865,11 @@ function FinanceAdminSection() {
   };
 
   const kpis = [
-    { label: 'Platform Revenue', value: stats?.total_platform_revenue || 0, icon: CircleDollarSign, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Commission Collected', value: stats?.total_commission_collected || 0, icon: Receipt, accent: 'text-primary dark:text-white', bg: 'bg-primary/10 dark:bg-white/10' },
-    { label: 'Revenue Today', value: stats?.revenue_today || 0, icon: TrendingUp, accent: 'text-violet-600', bg: 'bg-violet-50' },
-    { label: 'Revenue This Week', value: stats?.revenue_this_week || 0, icon: Activity, accent: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Revenue This Month', value: stats?.revenue_this_month || 0, icon: BarChart3, accent: 'text-rose-600', bg: 'bg-rose-50' },
+    { label: 'Platform Revenue', field: 'total_platform_revenue', icon: CircleDollarSign, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Commission Collected', field: 'total_commission_collected', icon: Receipt, accent: 'text-primary dark:text-white', bg: 'bg-primary/10 dark:bg-white/10' },
+    { label: 'Revenue Today', field: 'revenue_today', icon: TrendingUp, accent: 'text-violet-600', bg: 'bg-violet-50' },
+    { label: 'Revenue This Week', field: 'revenue_this_week', icon: Activity, accent: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Revenue This Month', field: 'revenue_this_month', icon: BarChart3, accent: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Total Transactions', value: stats?.total_transactions || 0, icon: BarChart3, accent: 'text-primary dark:text-white', bg: 'bg-primary/5 dark:bg-white/5', isCount: true },
   ];
 
@@ -881,8 +891,14 @@ function FinanceAdminSection() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-serif font-bold tabular-nums">
-                {isLoadingStats ? <Skeleton className="h-8 w-20" /> : kpi.isCount ? kpi.value : formatCurrency(kpi.value as number)}
+              <div className="space-y-1 text-lg font-serif font-bold tabular-nums">
+                {isLoadingStats ? <Skeleton className="h-8 w-20" /> : kpi.isCount ? kpi.value : (
+                  adminCurrencyStats.length > 0
+                    ? adminCurrencyStats.map((item) => (
+                        <div key={item.currency}>{formatCurrency(Number(item[kpi.field!] ?? 0), item.currency)}</div>
+                      ))
+                    : formatCurrency(0)
+                )}
               </div>
             </CardContent>
           </Card>

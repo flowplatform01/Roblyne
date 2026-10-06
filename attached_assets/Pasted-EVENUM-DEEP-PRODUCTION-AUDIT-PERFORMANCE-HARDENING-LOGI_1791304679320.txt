@@ -1,0 +1,1154 @@
+EVENUM — DEEP PRODUCTION AUDIT, PERFORMANCE HARDENING & LOGICAL/UX GAP REMEDIATION
+
+IMPORTANT: This is a serious production audit and remediation pass.
+
+I have personally gone through the application as a real human user and identified multiple concrete gaps. I do NOT want another generic UX-polish pass, generic checklist, or superficial “everything looks good” implementation.
+
+EVENUM is already a mature application with substantial functionality. Do not rebuild it, do not downgrade it to an MVP, and do not introduce unnecessary architectural changes.
+
+The objective is:
+
+1. Investigate the concrete issues below.
+2. Fix the verified issues properly.
+3. Audit the rest of the application for other issues belonging to the same categories.
+4. Preserve existing functionality and architecture wherever it is already sound.
+5. Avoid regressions.
+6. Use engineering judgment instead of blindly implementing every sentence literally.
+7. Test the actual application after changes.
+
+This should feel like a senior engineering + product + UX production-readiness audit.
+
+==================================================
+0. FIRST RULE: INVESTIGATE BEFORE CHANGING
+==================================================
+
+Before modifying anything, inspect the existing implementation and understand how it currently works.
+
+For every issue:
+
+- reproduce it
+- identify the actual root cause
+- determine whether it is frontend, backend, data, API, state, caching, configuration, payment integration, or UX logic
+- determine the correct fix
+- implement the smallest robust solution that solves the underlying problem
+
+Do NOT simply hide symptoms.
+
+Do NOT add another loader to hide a slow request.
+
+Do NOT create duplicate systems if one already exists.
+
+Do NOT redesign unrelated areas.
+
+Do NOT remove working functionality.
+
+Do NOT make assumptions about business rules where the existing implementation already establishes a rule.
+
+Where the correct behavior is ambiguous, inspect related flows and existing architecture and choose the safest mature behavior.
+
+==================================================
+1. CRITICAL PERFORMANCE ISSUE — EVENUM FEELS EXTREMELY SLOW
+==================================================
+
+This is currently one of the biggest concerns.
+
+The application feels noticeably slow in real human use.
+
+This is NOT just a missing loading state.
+
+Even with skeleton loading already implemented, the application can feel slow when:
+
+- opening the application
+- navigating between areas
+- opening pages
+- opening modals
+- performing interactions
+- loading data
+- returning to previously visited areas
+
+In particular, if a simple modal takes a noticeable amount of time to become usable, investigate why.
+
+Do not assume the solution is “more skeletons.”
+
+Perform a serious performance investigation.
+
+Inspect:
+
+- initial application boot
+- JavaScript bundle loading
+- code splitting
+- lazy loading
+- route loading
+- component mounting
+- unnecessary component remounts
+- expensive React renders
+- unnecessary rerenders
+- state subscriptions
+- context updates
+- data fetching
+- duplicate requests
+- sequential requests that could safely run in parallel
+- unnecessary authentication/session calls
+- unnecessary organization/workspace calls
+- API latency
+- database/API bottlenecks visible from the application
+- cache behavior
+- stale-while-revalidate opportunities
+- local persistence
+- service worker/PWA behavior
+- image loading
+- font loading
+- modal rendering
+- dialogs/sheets that unnecessarily wait for unrelated data
+- large components loaded before they are needed
+- blocking initialization
+- expensive calculations during interaction
+- unnecessary effects
+- request waterfalls
+- repeated data fetching after navigation
+- unnecessary full-page refresh behavior
+
+IMPORTANT:
+
+A modal that only needs local UI state should NOT wait for a network request unless there is a legitimate reason.
+
+Likewise, navigating to a page should not unnecessarily block the entire interface while unrelated data loads.
+
+Where safe, make the application feel immediate:
+
+USER ACTION
+→ IMMEDIATE UI RESPONSE
+→ LOCAL/CACHED CONTENT WHERE AVAILABLE
+→ DATA RESOLUTION IN BACKGROUND
+→ FINAL STATE
+
+rather than:
+
+USER ACTION
+→ WAIT
+→ WAIT
+→ SPINNER/SKELETON
+→ EVENTUAL UI
+
+Use caching, prefetching, parallelization, memoization, code splitting, progressive rendering, and other techniques ONLY where justified by the actual architecture.
+
+Do not introduce unnecessary complexity.
+
+==================================================
+2. PERFORMANCE TARGET: NATIVE-APP-LIKE FEEL
+==================================================
+
+Use mature applications such as WhatsApp as a mental reference for perceived responsiveness.
+
+When a user opens an already-used application or revisits an already-known area, it should feel extremely fast.
+
+Where valid cached state exists:
+
+- show it immediately
+- refresh it intelligently
+- avoid replacing usable content with a blank/loading state
+
+Where a screen is genuinely cold:
+
+- render the application shell immediately
+- render structural skeletons where appropriate
+- progressively resolve content
+- avoid blocking unrelated UI
+
+The goal is NOT to fake speed.
+
+The goal is to make EVENUM genuinely fast and architecturally responsive.
+
+Measure before and after where practical.
+
+Identify the largest sources of latency rather than merely optimizing random components.
+
+==================================================
+3. SKELETON LOADING — KEEP IT, BUT DO NOT USE IT AS A BANDAGE
+==================================================
+
+Skeleton loading has already been introduced.
+
+Keep and refine it where appropriate.
+
+However, do not use skeleton loading to disguise underlying performance problems.
+
+For every major loading state, distinguish:
+
+- application initialization
+- route loading
+- data loading
+- component loading
+- mutation/action processing
+- background refresh
+
+Use the appropriate behavior for each.
+
+If something is genuinely slow because of a backend/API bottleneck, identify and report the bottleneck instead of simply adding a prettier loader.
+
+==================================================
+4. CURRENCY AUDIT — REMOVE INCORRECT USD/DOLLAR REPRESENTATION
+==================================================
+
+This is a concrete production issue.
+
+EVENUM's relevant financial/cost UI is intended to use **Franc CFA / XAF**, not USD.
+
+I have found multiple places where the UI still displays dollar/USD assumptions.
+
+This is a red flag.
+
+Perform a FULL currency audit across the entire application.
+
+Inspect:
+
+- events
+- ticket creation
+- ticket pricing
+- ticket purchase flows
+- event public pages
+- campaigns
+- campaign contribution/payment flows
+- elections/voting fees where applicable
+- checkout
+- payment screens
+- financial dashboards
+- balances
+- transaction history
+- withdrawal interfaces
+- fees
+- receipts
+- summaries
+- confirmation screens
+- public pages
+- forms
+- validation messages
+- empty states
+- success/error messages
+- notifications
+- generated/preview content
+- admin interfaces
+- organization interfaces
+- mobile and desktop variants
+
+Do not merely replace "$" visually.
+
+Determine where currency is coming from.
+
+Audit:
+
+- formatting functions
+- currency configuration
+- default values
+- database values
+- API responses
+- frontend assumptions
+- placeholders
+- examples
+- validation
+- internationalization/localization
+- public rendering
+
+EVENUM should consistently represent the intended currency as **XAF / FCFA** wherever financial amounts are being represented.
+
+Use one consistent formatting convention throughout the application.
+
+Do not create a situation where some screens say USD, others XAF, and others FCFA inconsistently.
+
+IMPORTANT:
+
+Do not blindly change legitimate third-party/payment-provider currency behavior if the provider requires a specific representation internally.
+
+Separate internal/provider requirements from what the EVENUM user sees.
+
+The user-facing experience must be correct.
+
+Search the codebase for hardcoded "$", "USD", dollar assumptions, sample financial values, and default currency configuration.
+
+Also inspect areas I did not explicitly mention.
+
+==================================================
+5. EDITABILITY / UPDATEABILITY GAP
+==================================================
+
+This is a major product maturity issue.
+
+Humans make mistakes.
+
+The current application appears to have multiple objects that, once created, cannot be edited properly.
+
+This is not acceptable for a mature production platform unless there is a deliberate business/security reason.
+
+Audit editability across the ENTIRE PLATFORM.
+
+At minimum inspect:
+
+EVENTS
+- event name
+- description
+- branding
+- imagery
+- dates/times where logically allowed
+- location
+- ticket configuration where safely editable
+- public information
+- settings
+
+CAMPAIGNS
+- campaign name
+- description
+- branding
+- imagery
+- goals
+- public information
+- configuration where safely editable
+
+ELECTIONS / VOTING
+- election title
+- description
+- branding
+- candidate information
+- candidate names
+- candidate descriptions
+- candidate imagery
+- positions
+- non-critical configuration
+- other metadata
+
+ORGANIZATIONS
+- profile information
+- branding
+- descriptions
+- images
+- contact/public information where applicable
+
+TICKETS / COLLECTIONS
+- editable metadata/configuration where safe
+- pricing/configuration where business rules permit
+
+OTHER USER/ORGANIZATION-CREATED CONTENT
+- inspect the whole platform rather than limiting this to the examples above.
+
+For every entity, determine:
+
+A. Should it be editable?
+B. If yes, what fields should be editable?
+C. Under what lifecycle/status conditions?
+D. What should happen if editing affects already-published/public information?
+E. Does the system need an audit/history trail?
+F. Are there fields that must become immutable after a certain point for integrity?
+
+DO NOT make everything blindly editable.
+
+For example, a vote, completed transaction, payment record, or immutable financial record must not simply become editable.
+
+The correct principle is:
+
+USER-CREATED CONFIGURATION
+→ EDITABLE WHERE SAFE
+
+SERVER-AUTHORITATIVE / FINANCIAL / HISTORICAL RECORD
+→ PROTECTED
+
+LIVE/PUBLISHED CONTENT
+→ EDITABLE WITH APPROPRIATE RULES
+
+If editing a live election/campaign/event could materially affect participants, determine whether the change should:
+
+- be allowed
+- require confirmation
+- be restricted
+- create an audit record
+- require a new version
+- require a status transition
+
+Use mature platform logic.
+
+==================================================
+6. DELETION / ARCHIVING GAP
+==================================================
+
+Audit deletion across the platform.
+
+There are currently areas where users create things but have no sensible way to delete them.
+
+Investigate deletion for:
+
+- campaigns
+- events
+- elections
+- candidates
+- positions
+- ticket configurations
+- organization content
+- other user-created objects
+
+Do NOT simply add a Delete button everywhere.
+
+Determine whether each entity should support:
+
+- delete
+- archive
+- deactivate
+- cancel
+- end
+- soft delete
+- permanent delete
+
+based on lifecycle and business integrity.
+
+For example:
+
+A completed financial transaction should not be deletable simply because a user wants it gone.
+
+A live election with votes should not necessarily be permanently deletable.
+
+A draft campaign may reasonably be deleted.
+
+A draft event may reasonably be deleted.
+
+A published item may require archive/cancel instead.
+
+Use proper confirmation UX for destructive actions.
+
+Where relevant:
+
+- explain consequences
+- require explicit confirmation
+- prevent accidental deletion
+- preserve references/audit history
+- handle dependent records safely
+
+Do not cause data integrity problems.
+
+==================================================
+7. EVENT BRANDING — VERIFY THAT IT ACTUALLY AFFECTS THE PUBLIC EXPERIENCE
+==================================================
+
+There is a specific concern around event branding.
+
+When an organization updates event branding, determine exactly what should change on the public event experience.
+
+Audit:
+
+- logo
+- cover/banner
+- colors
+- typography where supported
+- visual identity
+- public event header
+- event landing page
+- event details
+- ticketing views
+- checkout
+- public sharing/preview
+- related public components
+
+Do not assume the current implementation is broken.
+
+Actually modify branding in the workspace and inspect the resulting public event experience.
+
+Determine:
+
+- what currently changes
+- what should change
+- what is cached
+- whether stale data is being served
+- whether the public page uses the wrong branding source
+- whether branding changes are being persisted correctly
+- whether the UI is simply not exposing the changes sufficiently
+
+If there is a real gap, fix it.
+
+Do not redesign event branding unnecessarily.
+
+==================================================
+8. EVENT HEADER — MOBILE VS DESKTOP CONSISTENCY
+==================================================
+
+There is an observed difference:
+
+Desktop displays the event name in the header.
+
+Mobile appears not to display the event name.
+
+Audit whether this is intentional.
+
+Compare:
+
+- desktop
+- tablet
+- mobile
+- public event view
+- authenticated event management view
+
+If the event name is useful context on mobile and its absence is accidental, restore it using appropriate mobile-first design.
+
+Do not blindly duplicate desktop UI on mobile.
+
+The goal is contextual clarity without overcrowding the mobile header.
+
+==================================================
+9. HIDDEN / NON-DISCOVERABLE ACTIONS
+==================================================
+
+This is a broader UI maturity issue.
+
+I discovered situations where an action such as Delete exists but is effectively invisible.
+
+For example, tapping empty/blank space can trigger an action even though the UI does not clearly communicate that the area is actionable.
+
+That is unacceptable for production UX.
+
+Perform a FULL discoverability audit.
+
+Look for:
+
+- invisible buttons
+- blank clickable areas
+- hidden actions
+- icon-only controls without appropriate affordance
+- hover-only functionality that doesn't work on touch
+- actions that require users to "know" where to tap
+- invisible overflow menus
+- unclear swipe actions
+- controls with insufficient contrast
+- actions whose hit area does not match their visual affordance
+- mobile controls that disappear
+- controls only discoverable by developer knowledge
+- destructive actions without clear visual context
+
+IMPORTANT:
+
+Do not assume I found every instance.
+
+Search for other examples of the same class of issue throughout:
+
+- events
+- campaigns
+- elections
+- candidates
+- positions
+- ticketing
+- organization management
+- finance
+- settings
+- admin
+- public experiences
+
+Every actionable element should have an understandable affordance.
+
+A user should not need to be a developer to discover functionality.
+
+==================================================
+10. CHECKBOX / REQUIRED INFORMATION MISMATCH
+==================================================
+
+There is a concern around a configurable checkbox/required-information flow.
+
+The organization can configure multiple pieces of information/requirements, but the public checkout/interaction appears to show a different or incomplete representation.
+
+Example pattern:
+
+Organization configures several required pieces of information
+→ public checkout displays only one or otherwise does not faithfully represent the configured requirements.
+
+Audit this end-to-end.
+
+Trace:
+
+ADMIN/ORGANIZATION CONFIGURATION
+→ STORED DATA
+→ API
+→ FRONTEND STATE
+→ PUBLIC FORM/CHECKOUT
+→ VALIDATION
+→ SUBMISSION
+→ STORED RESULT
+
+Determine whether:
+
+- data is not being persisted
+- API is dropping fields
+- frontend is only rendering one field
+- conditional logic is incorrect
+- fields are hidden
+- labels are mismatched
+- validation differs from display
+- mobile layout hides content
+- there is an unintended one-item limitation
+
+Fix the root cause.
+
+Do not change the intended business model without evidence.
+
+==================================================
+11. URL SHARE PREVIEW / SOCIAL PREVIEW AUDIT
+==================================================
+
+Audit public URL previews when users share:
+
+- an event
+- an election
+- a campaign
+- a candidate/participant where applicable
+- an organization
+
+Especially test sharing through platforms such as WhatsApp.
+
+Investigate:
+
+- Open Graph metadata
+- title
+- description
+- preview image
+- canonical URL
+- Twitter/social metadata where relevant
+- server-side rendering / crawler visibility
+- dynamic route metadata
+- image availability
+- image dimensions
+- cache behavior
+
+If a specific entity has no image, determine the appropriate fallback.
+
+For example:
+
+specific entity image
+→ event/campaign/election branding
+→ organization branding
+→ platform fallback
+
+Use sensible hierarchy.
+
+Do not use one generic image if a more relevant branded asset exists.
+
+The preview should communicate the actual entity being shared.
+
+Test real public URLs rather than assuming the metadata is correct.
+
+==================================================
+12. PAYMENT / CONFIGURATION MUTABILITY DURING LIVE OPERATIONS
+==================================================
+
+There is a serious logical concern around payment-enabled voting/campaign/event flows.
+
+Example:
+
+A voting/election experience is launched with fee collection enabled.
+
+While the experience is already active, an administrator may apparently be able to disable fee collection.
+
+This needs a deliberate audit.
+
+Determine whether configuration such as:
+
+- payment enabled/disabled
+- voting fee
+- ticket price
+- collection configuration
+- eligibility rules
+- critical election settings
+- campaign financial configuration
+
+should remain mutable after launch.
+
+Do NOT simply disable all editing.
+
+Instead establish lifecycle rules.
+
+Possible states may include:
+
+DRAFT
+→ configurable
+
+PUBLISHED
+→ limited editing
+
+LIVE
+→ protected critical configuration
+
+COMPLETED/ENDED
+→ historical/integrity protection
+
+The exact rules should follow EVENUM's existing business model and data integrity requirements.
+
+For every sensitive setting, determine:
+
+- whether it can change
+- when it can change
+- whether confirmation is required
+- whether users already interacting with the system could be affected
+- whether an audit record is necessary
+
+This is especially important for voting, payments, ticket inventory, and financial behavior.
+
+==================================================
+13. FINANCE UX — CURRENT EXPERIENCE NEEDS REWORK
+==================================================
+
+The finance area has a concrete UX issue.
+
+The current withdrawal experience appears to show a number field without a clear, proper "amount to withdraw" flow.
+
+This is not a mature financial UX.
+
+Audit the entire finance area.
+
+Review:
+
+- available balance
+- pending balance
+- withdrawable balance
+- withdrawal amount
+- fees
+- net amount received
+- withdrawal destination
+- confirmation
+- processing state
+- success
+- failure
+- history
+- transaction status
+
+The main finance page should NOT attempt to expose every operation simultaneously if that makes the experience cluttered.
+
+Use appropriate:
+
+- modal
+- bottom sheet
+- dedicated flow
+- step-based confirmation
+- contextual actions
+
+where they improve the experience.
+
+For example:
+
+Finance overview
+→ user taps Withdraw
+→ withdrawal experience opens
+→ amount entered
+→ fee/charge calculated
+→ destination confirmed
+→ user reviews
+→ confirms
+→ processing/result
+
+The exact implementation should fit the current architecture.
+
+Do NOT redesign the entire finance system unnecessarily.
+
+But fix the obvious UX gap where there is no clear amount-to-withdraw flow.
+
+==================================================
+14. WITHDRAWAL FEES / ADMIN CONFIGURATION
+==================================================
+
+I noticed there may be an administrative configuration related to withdrawal percentage/fees.
+
+Audit this carefully.
+
+Determine:
+
+- what this setting actually does
+- whether it is currently wired into the withdrawal calculation
+- whether it is user-visible
+- whether it is configurable by authorized administrators
+- whether there is a default
+- whether changing it affects existing withdrawals
+- whether calculations are consistent across UI/backend
+- whether it is correctly represented in transaction records
+
+Do not invent a new fee model.
+
+If the feature exists, verify it works correctly.
+
+If it is incomplete, identify exactly what is missing.
+
+Financial calculations must remain server-authoritative and deterministic.
+
+==================================================
+15. PAYMENT SANDBOX / DEVELOPMENT ENVIRONMENT
+==================================================
+
+This is another important issue.
+
+Currently, payment-dependent flows are failing during testing.
+
+Examples may include:
+
+- event ticket purchase
+- campaign contribution/payment
+- paid voting
+- other payment-required flows
+
+EVENUM needs a proper distinction between:
+
+DEVELOPMENT / TEST
+and
+PRODUCTION
+
+During development/testing, there should be a legitimate sandbox/simulation mechanism so the entire product can be tested end-to-end without requiring real money or relying on production payment credentials.
+
+IMPORTANT:
+
+Do NOT create a fake payment system that bypasses the actual payment architecture.
+
+Instead inspect the existing payment abstraction/integration and determine whether it already supports:
+
+- provider sandbox
+- test credentials
+- mock provider
+- simulated transaction adapter
+- development payment mode
+- deterministic test outcomes
+
+If there is an existing abstraction, use it.
+
+If not, introduce the smallest clean abstraction necessary.
+
+The desired behavior is conceptually:
+
+DEVELOPMENT / TEST
+→ safe sandbox/simulation
+→ realistic payment lifecycle
+→ success/failure/pending scenarios
+→ webhook/state transitions can be tested
+→ no real money
+
+PRODUCTION
+→ actual configured payment provider
+→ real payment flow
+
+The application should not randomly fail simply because real production payment credentials are not present in development.
+
+Also test:
+
+- successful payment
+- failed payment
+- cancelled payment
+- pending payment
+- duplicate callback/webhook
+- retry
+- timeout
+- user closes payment flow
+- payment succeeds but client disconnects
+- payment status reconciliation
+
+Financial state must remain server-authoritative.
+
+Do NOT expose a development bypass in production.
+
+Do NOT allow client-side manipulation of payment success.
+
+If the application already has a sandbox mechanism, investigate why it is not being used or why flows are currently failing.
+
+==================================================
+16. FULL PLATFORM LOGICAL AUDIT
+==================================================
+
+After fixing the explicitly reported issues, perform a broader audit for the same categories.
+
+Do not randomly redesign things.
+
+Look specifically for:
+
+A. Performance
+B. Loading
+C. Caching
+D. Editability
+E. Deletion/archive behavior
+F. Lifecycle/status rules
+G. Financial correctness
+H. Currency consistency
+I. Payment behavior
+J. Discoverability
+K. Hidden controls
+L. Mobile/desktop inconsistencies
+M. Public/private state mismatches
+N. Configuration not reflected in public experience
+O. Data configured in admin but not rendered publicly
+P. Data rendered publicly but not configurable where it should be
+Q. URL/social previews
+R. Empty/error/loading states
+S. Permissions/RBAC
+T. Race conditions and duplicate actions
+U. User mistakes and recovery
+V. Published/live content mutation
+W. Historical data integrity
+
+Think like a real user, organization administrator, event organizer, campaign owner, election administrator, voter, attendee, ticket buyer, contributor, and finance operator.
+
+The goal is to discover the gaps I have not personally noticed yet.
+
+==================================================
+17. HUMAN ERROR AND RECOVERY
+==================================================
+
+One of the central principles of this audit is:
+
+USERS ARE HUMAN.
+
+They will:
+
+- misspell names
+- change descriptions
+- upload the wrong image
+- configure something incorrectly
+- change their mind
+- publish something prematurely
+- want to correct information
+- cancel something
+- retry an operation
+- navigate away
+- lose connection
+- accidentally repeat an action
+
+EVENUM should provide mature recovery mechanisms where safe.
+
+Audit:
+
+- edit
+- cancel
+- delete
+- archive
+- restore where appropriate
+- retry
+- undo where appropriate
+- confirmation
+- validation
+- draft states
+- autosave where appropriate
+- error recovery
+
+Do not turn this into unlimited mutability.
+
+Protect authoritative records and financial/voting integrity.
+
+==================================================
+18. MOBILE-FIRST + DESKTOP VERIFICATION
+==================================================
+
+Every issue must be checked across:
+
+- mobile
+- tablet where relevant
+- desktop
+
+Do not assume that fixing desktop fixes mobile.
+
+Pay particular attention to:
+
+- headers
+- modals
+- bottom sheets
+- forms
+- tables/lists
+- buttons
+- action menus
+- finance
+- checkout
+- public pages
+- event pages
+- campaign pages
+- election pages
+
+Mobile should remain a first-class experience, not a compressed desktop UI.
+
+==================================================
+19. NO REGRESSION
+==================================================
+
+This is critical.
+
+Before modifying a system, understand what existing functionality depends on it.
+
+After modifications, verify:
+
+- authentication
+- organization management
+- events
+- campaigns
+- elections/voting
+- candidates/participants
+- ticketing
+- payments
+- finance
+- public pages
+- sharing
+- localization
+- themes
+- PWA behavior
+- permissions
+- admin functionality
+
+Do not trade one bug for another.
+
+If a proposed fix has a meaningful architectural risk, stop and investigate the dependency before changing it.
+
+==================================================
+20. TESTING
+==================================================
+
+Use real browser testing / Playwright where appropriate.
+
+Do not rely only on static code inspection.
+
+Test actual user flows.
+
+For performance:
+
+- cold launch
+- warm launch
+- navigation
+- modal opening
+- public pages
+- authenticated pages
+- cached vs uncached
+- slower network where practical
+
+For editing:
+
+- create
+- edit
+- save
+- cancel
+- publish
+- edit published content where allowed
+- verify public result
+
+For deletion:
+
+- draft
+- published
+- active/live
+- completed
+- dependency scenarios
+
+For payment:
+
+- sandbox success
+- failure
+- cancellation
+- pending
+- retry
+- duplicate callbacks
+- reconciliation
+
+For currency:
+
+- create financial object
+- view it privately
+- view it publicly
+- purchase/contribute
+- inspect confirmation
+- inspect history
+- inspect finance
+
+For social preview:
+
+- event
+- campaign
+- election
+- organization
+- with image
+- without image
+
+For configuration:
+
+- configure
+- publish
+- inspect public experience
+- change configuration
+- verify propagation/caching
+
+==================================================
+21. PRIORITIZATION
+==================================================
+
+Do not treat every issue as equally severe.
+
+Prioritize:
+
+P0 — correctness/security/financial/voting integrity
+P1 — severe performance or broken core workflow
+P2 — major UX/product maturity gap
+P3 — polish/consistency
+
+Fix P0/P1 issues first.
+
+Do not spend time polishing a minor icon while a payment flow is broken.
+
+==================================================
+22. IMPLEMENTATION DISCIPLINE
+==================================================
+
+Do not create a huge generic abstraction layer just because several issues look similar.
+
+Do not introduce libraries unless there is a clear reason.
+
+Do not replace working architecture.
+
+Do not make speculative changes.
+
+Do not alter business rules without understanding them.
+
+Do not expose development payment controls to production users.
+
+Do not make financial/voting records mutable merely to satisfy editability.
+
+Do not hide performance problems behind skeletons.
+
+Do not claim an issue is fixed without reproducing and verifying it.
+
+==================================================
+23. FINAL DELIVERABLE
+==================================================
+
+After the audit and implementation, provide a concise but concrete report:
+
+1. CRITICAL ISSUES FOUND
+2. PERFORMANCE ROOT CAUSES
+3. PERFORMANCE FIXES IMPLEMENTED
+4. CURRENCY/USD ISSUES FOUND AND FIXED
+5. EDITABILITY GAPS FOUND AND FIXED
+6. DELETE/ARCHIVE GAPS FOUND AND FIXED
+7. EVENT BRANDING FINDINGS
+8. UI/DISCOVERABILITY GAPS FOUND
+9. CHECKBOX/REQUIRED-FIELD FINDINGS
+10. URL/SOCIAL PREVIEW FINDINGS
+11. LIVE CONFIGURATION / LIFECYCLE FINDINGS
+12. FINANCE UX FINDINGS
+13. PAYMENT SANDBOX/TEST ENVIRONMENT FINDINGS
+14. OTHER IMPORTANT GAPS DISCOVERED
+15. TESTS PERFORMED
+16. ANY ITEMS INTENTIONALLY LEFT UNCHANGED AND WHY
+
+For every significant issue, distinguish:
+
+FOUND → ROOT CAUSE → FIXED → VERIFIED
+
+Do not give me a generic "audit completed successfully" response.
+
+I want evidence that the actual application was inspected and the actual problems were addressed.
+
+MOST IMPORTANT:
+
+This is NOT a request to make EVENUM look busy or polished.
+
+This is a request to make EVENUM behave like a mature, highly reliable production platform.
+
+Prioritize:
+
+REAL SPEED
+REAL CORRECTNESS
+REAL RECOVERY
+REAL DATA INTEGRITY
+REAL FINANCIAL SAFETY
+REAL VOTING INTEGRITY
+REAL USER CONTROL
+REAL MOBILE UX
+REAL DISCOVERABILITY
+
+while preserving everything that already works.
