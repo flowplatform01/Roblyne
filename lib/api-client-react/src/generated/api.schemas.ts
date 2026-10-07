@@ -105,6 +105,22 @@ export interface PaymentStatus {
   result?: PaymentStatusResult;
 }
 
+export type PaymentSimulationStatus = typeof PaymentSimulationStatus[keyof typeof PaymentSimulationStatus];
+
+
+export const PaymentSimulationStatus = {
+  pending: 'pending',
+  processing: 'processing',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+export interface PaymentSimulation {
+  /** @minLength 32 */
+  token: string;
+  status: PaymentSimulationStatus;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
@@ -1467,33 +1483,72 @@ export interface TransactionList {
   transactions: FinancialTransaction[];
 }
 
-export type AdminFinanceStatsByPillarItem = { [key: string]: unknown };
+export type AdminFinanceStatsByCurrencyItem = {
+  currency: string;
+  total_platform_revenue: number;
+  total_commission_collected: number;
+  total_org_earnings: number;
+  revenue_today: number;
+  revenue_this_week: number;
+  revenue_this_month: number;
+};
 
-export type AdminFinanceStatsPendingSettlements = { [key: string]: unknown };
+export type AdminFinanceStatsByPillarItem = {
+  pillar: string;
+  currency: string;
+  revenue: number;
+  commission: number;
+  count: number;
+};
 
-export type AdminFinanceStatsRevenueByDayItem = { [key: string]: unknown };
+export type AdminFinanceStatsPendingSettlementsItem = {
+  currency: string;
+  count: number;
+  total_amount: number;
+};
+
+export type AdminFinanceStatsRevenueByDayItem = {
+  date: string;
+  currency: string;
+  revenue: number;
+  count: number;
+};
 
 export interface AdminFinanceStats {
-  total_platform_revenue?: number;
-  total_commission_collected?: number;
-  total_org_earnings?: number;
-  revenue_today?: number;
-  revenue_this_week?: number;
-  revenue_this_month?: number;
+  /**
+     * Set only when all platform amounts have one unambiguous currency.
+     * @nullable
+     */
+  currency?: string | null;
+  /** @nullable */
+  total_platform_revenue?: number | null;
+  /** @nullable */
+  total_commission_collected?: number | null;
+  /** @nullable */
+  total_org_earnings?: number | null;
+  /** @nullable */
+  revenue_today?: number | null;
+  /** @nullable */
+  revenue_this_week?: number | null;
+  /** @nullable */
+  revenue_this_month?: number | null;
   total_transactions?: number;
   orgs_with_revenue?: number;
+  byCurrency?: AdminFinanceStatsByCurrencyItem[];
   byPillar?: AdminFinanceStatsByPillarItem[];
-  pendingSettlements?: AdminFinanceStatsPendingSettlements;
+  pendingSettlements?: AdminFinanceStatsPendingSettlementsItem[];
   revenueByDay?: AdminFinanceStatsRevenueByDayItem[];
 }
 
 export interface OrgBalance {
   org_id?: number;
   org_name?: string;
+  currency?: string;
   total_revenue?: number;
   total_commission?: number;
   total_earnings?: number;
-  pending_balance?: number;
+  available_balance?: number;
+  pending_settlement_balance?: number;
   released_balance?: number;
   transaction_count?: number;
 }
@@ -1512,6 +1567,11 @@ export interface OrgAnalytics {
 
 export interface CreateSettlementInput {
   orgId: number;
+  /**
+     * Optional for older clients; required when the organization has multiple available currencies.
+     * @pattern ^[A-Z]{3}$
+     */
+  currency?: string;
 }
 
 export type UpdateSettlementInputStatus = typeof UpdateSettlementInputStatus[keyof typeof UpdateSettlementInputStatus];

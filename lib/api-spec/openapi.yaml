@@ -1896,6 +1896,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: simulateDevelopmentPayment
+      tags: [payments]
+      summary: Advance a development-only simulated payment
+      description: This endpoint is disabled outside non-production simulation mode.
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentSimulation"
+      responses:
+        "200":
+          description: Updated simulated payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatus"
+        "400":
+          description: Invalid simulator request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Payment attempt not found or simulator disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -1977,6 +2013,17 @@ components:
         result:
           type: [object, "null"]
           additionalProperties: true
+
+    PaymentSimulation:
+      type: object
+      required: [token, status]
+      properties:
+        token:
+          type: string
+          minLength: 32
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed]
 
     # ── AUTH ─────────────────────────────────────────────────────────────────
     AuthUser:

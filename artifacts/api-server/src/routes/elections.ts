@@ -3,7 +3,7 @@ import { eq, sql, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import {
   db, electionsTable, positionsTable, candidatesTable,
-  votesTable, voteSelectionsTable, organizationsTable, electionEligibleVotersTable,
+  votesTable, voteSelectionsTable, organizationsTable, electionEligibleVotersTable, paymentIntentsTable,
 } from "@workspace/db";
 import {
   CreateElectionBody, UpdateElectionBody, GetElectionParams, UpdateElectionParams,
@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
-import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency, isPlatformCurrencySupported, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 
@@ -46,6 +46,24 @@ function isCandidateRemovalLocked(
   if (election.status !== "active") return true;
   if (!election.startsAt || election.startsAt <= now) return true;
   return Boolean(election.endsAt && election.endsAt <= now);
+}
+
+async function lockElectionStructure(tx: any, electionId: number): Promise<"missing" | "locked" | "editable"> {
+  const [election] = await tx.select({
+    status: electionsTable.status,
+    startsAt: electionsTable.startsAt,
+    endsAt: electionsTable.endsAt,
+  })
+    .from(electionsTable)
+    .where(eq(electionsTable.id, electionId))
+    .for("update");
+  if (!election) return "missing";
+  if (isCandidateRemovalLocked(election)) return "locked";
+  const [vote] = await tx.select({ id: votesTable.id })
+    .from(votesTable)
+    .where(eq(votesTable.electionId, electionId))
+    .limit(1);
+  return vote ? "locked" : "editable";
 }
 
 function toCsvValue(value: unknown): string {
@@ -110,6 +128,11 @@ router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
   const parsed = CreateElectionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, visibility, requiresAuth: rAuth, eligibilityMode, startsAt, endsAt, requiresPayment, paymentAmount, currency } = parsed.data;
+  const normalizedCurrency = (currency ?? await getPlatformCurrency()).trim().toUpperCase();
+  if (!await isPlatformCurrencySupported(normalizedCurrency)) {
+    res.status(400).json({ error: `Currency ${normalizedCurrency} is not enabled for this platform` });
+    return;
+  }
   if (!hasValidTimeWindow(startsAt, endsAt)) {
     res.status(400).json({ error: "The election closing time must be after its opening time" });
     return;
@@ -125,7 +148,7 @@ router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     inviteCode, startsAt, endsAt,
     requiresPayment: requiresPayment ?? false,
     paymentAmount: paymentAmount === undefined || paymentAmount === null ? null : String(paymentAmount),
-    currency: currency ?? await getPlatformCurrency(),
+    currency: normalizedCurrency,
   }).returning();
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
@@ -174,33 +197,101 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateElectionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [current] = await db.select({
-    startsAt: electionsTable.startsAt,
-    endsAt: electionsTable.endsAt,
-    requiresPayment: electionsTable.requiresPayment,
-    paymentAmount: electionsTable.paymentAmount,
-  })
-    .from(electionsTable).where(eq(electionsTable.id, paramParsed.data.electionId)).limit(1);
-  if (!current) { res.status(404).json({ error: "Not found" }); return; }
-  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
-  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
-  const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
-  const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
-  if (!hasValidTimeWindow(startsAt, endsAt)) {
-    res.status(400).json({ error: "The election closing time must be after its opening time" });
-    return;
-  }
-  if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
-    res.status(400).json({ error: "A positive payment amount is required when paid voting is enabled" });
+  if (
+    bodyParsed.data.currency !== undefined
+    && !await isPlatformCurrencySupported(bodyParsed.data.currency.trim().toUpperCase())
+  ) {
+    res.status(400).json({ error: `Currency ${bodyParsed.data.currency.toUpperCase()} is not enabled for this platform` });
     return;
   }
   const updateData = {
     ...bodyParsed.data,
+    currency: bodyParsed.data.currency === undefined ? undefined : bodyParsed.data.currency.trim().toUpperCase(),
     paymentAmount: bodyParsed.data.paymentAmount === undefined ? undefined : (bodyParsed.data.paymentAmount === null ? null : String(bodyParsed.data.paymentAmount)),
   };
-  const [election] = await db.update(electionsTable).set(updateData).where(eq(electionsTable.id, paramParsed.data.electionId)).returning();
-  if (!election) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
+  const outcome = await db.transaction(async (tx) => {
+    const [current] = await tx.select({
+      status: electionsTable.status,
+      startsAt: electionsTable.startsAt,
+      endsAt: electionsTable.endsAt,
+      requiresPayment: electionsTable.requiresPayment,
+      paymentAmount: electionsTable.paymentAmount,
+    })
+      .from(electionsTable)
+      .where(eq(electionsTable.id, paramParsed.data.electionId))
+      .for("update");
+    if (!current) return { kind: "missing" as const };
+
+    const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+    const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+    const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
+    const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
+    if (!hasValidTimeWindow(startsAt, endsAt)) return { kind: "invalid_window" as const };
+    if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
+      return { kind: "invalid_payment" as const };
+    }
+
+    const protectedFields = [
+      "requiresPayment", "paymentAmount", "currency", "requiresAuth", "eligibilityMode",
+      "visibility", "startsAt", "endsAt",
+    ] as const;
+    const changesCriticalSettings = protectedFields.some((field) =>
+      Object.prototype.hasOwnProperty.call(bodyParsed.data, field)
+    );
+    const statusRollback =
+      (current.status === "active" && bodyParsed.data.status === "draft")
+      || (current.status === "ended" && bodyParsed.data.status !== undefined && bodyParsed.data.status !== "ended");
+    if (statusRollback) return { kind: "locked" as const };
+
+    let hasPendingPayment = false;
+    if (changesCriticalSettings && current.status !== "draft") {
+      const [pendingPayment] = await tx.select({ id: paymentIntentsTable.id })
+        .from(paymentIntentsTable)
+        .where(and(
+          eq(paymentIntentsTable.pillar, "election"),
+          eq(paymentIntentsTable.entityId, paramParsed.data.electionId),
+          sql`${paymentIntentsTable.status} IN ('initializing', 'pending', 'processing')`,
+        ))
+        .limit(1);
+      hasPendingPayment = Boolean(pendingPayment);
+    }
+    const structureLock = current.status === "draft"
+      ? "editable"
+      : isCandidateRemovalLocked(current)
+        ? "locked"
+        : await (async () => {
+            const [vote] = await tx.select({ id: votesTable.id })
+              .from(votesTable)
+              .where(eq(votesTable.electionId, paramParsed.data.electionId))
+              .limit(1);
+            return vote ? "locked" : "editable";
+          })();
+    if (changesCriticalSettings && (structureLock === "locked" || hasPendingPayment)) {
+      return { kind: "locked" as const };
+    }
+
+    const [election] = await tx.update(electionsTable)
+      .set(updateData)
+      .where(eq(electionsTable.id, paramParsed.data.electionId))
+      .returning();
+    return election ? { kind: "updated" as const, election } : { kind: "missing" as const };
+  });
+  if (outcome.kind === "missing") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome.kind === "invalid_window") {
+    res.status(400).json({ error: "The election closing time must be after its opening time" });
+    return;
+  }
+  if (outcome.kind === "invalid_payment") {
+    res.status(400).json({ error: "A positive payment amount is required when paid voting is enabled" });
+    return;
+  }
+  if (outcome.kind === "locked") {
+    res.status(409).json({
+      error: "Voting eligibility, schedule, visibility, and payment settings are locked once voting begins or ballots/payment attempts exist. Ended elections cannot be reopened.",
+    });
+    return;
+  }
+  res.json({ ...outcome.election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
 
 // Delete election — must be org owner/admin
@@ -208,7 +299,32 @@ router.delete("/elections/:electionId", requireAuth, requireResourceOrgRole(elec
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = DeleteElectionParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(electionsTable).where(eq(electionsTable.id, parsed.data.electionId));
+  const outcome = await db.transaction(async (tx) => {
+    const [election] = await tx.select({ status: electionsTable.status })
+      .from(electionsTable)
+      .where(eq(electionsTable.id, parsed.data.electionId))
+      .for("update");
+    if (!election) return "not_found" as const;
+    const [vote] = await tx.select({ id: votesTable.id })
+      .from(votesTable)
+      .where(eq(votesTable.electionId, parsed.data.electionId))
+      .limit(1);
+    const [payment] = await tx.select({ id: paymentIntentsTable.id })
+      .from(paymentIntentsTable)
+      .where(and(
+        eq(paymentIntentsTable.pillar, "election"),
+        eq(paymentIntentsTable.entityId, parsed.data.electionId),
+      ))
+      .limit(1);
+    if (election.status !== "draft" || vote || payment) return "protected" as const;
+    await tx.delete(electionsTable).where(eq(electionsTable.id, parsed.data.electionId));
+    return "deleted" as const;
+  });
+  if (outcome === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome === "protected") {
+    res.status(409).json({ error: "Only draft elections with no ballots or payment history can be permanently deleted. End the election to preserve the official record." });
+    return;
+  }
   res.json({ message: "Deleted" });
 });
 
@@ -237,12 +353,19 @@ router.post("/elections/:electionId/positions", requireAuth, requireResourceOrgR
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = CreatePositionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const { title, description, maxSelections, sortOrder } = bodyParsed.data;
-  const [pos] = await db.insert(positionsTable).values({
-    electionId: paramParsed.data.electionId, title, description,
-    maxSelections: maxSelections ?? 1, sortOrder: sortOrder ?? 0,
-  }).returning();
-  res.status(201).json(pos);
+  const result = await db.transaction(async (tx) => {
+    const guard = await lockElectionStructure(tx, paramParsed.data.electionId);
+    if (guard !== "editable") return { kind: guard } as const;
+    const { title, description, maxSelections, sortOrder } = bodyParsed.data;
+    const [pos] = await tx.insert(positionsTable).values({
+      electionId: paramParsed.data.electionId, title, description,
+      maxSelections: maxSelections ?? 1, sortOrder: sortOrder ?? 0,
+    }).returning();
+    return { kind: "created" as const, pos };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Election not found" }); return; }
+  if (result.kind === "locked") { res.status(409).json({ error: "Election positions are locked after voting starts or ballots are cast." }); return; }
+  res.status(201).json(result.pos);
 });
 
 // Get position with candidates — single aggregated query for vote counts
@@ -292,15 +415,22 @@ router.patch("/elections/:electionId/positions/:positionId", requireAuth, requir
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdatePositionBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [pos] = await db.update(positionsTable)
-    .set(bodyParsed.data)
-    .where(and(
-      eq(positionsTable.id, paramParsed.data.positionId),
-      eq(positionsTable.electionId, paramParsed.data.electionId),
-    ))
-    .returning();
-  if (!pos) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(pos);
+  const result = await db.transaction(async (tx) => {
+    const guard = await lockElectionStructure(tx, paramParsed.data.electionId);
+    if (guard !== "editable") return { kind: guard } as const;
+    const [pos] = await tx.update(positionsTable)
+      .set(bodyParsed.data)
+      .where(and(
+        eq(positionsTable.id, paramParsed.data.positionId),
+        eq(positionsTable.electionId, paramParsed.data.electionId),
+      ))
+      .returning();
+    return pos ? { kind: "updated" as const, pos } : { kind: "position_missing" as const };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Election not found" }); return; }
+  if (result.kind === "locked") { res.status(409).json({ error: "Election positions are locked after voting starts or ballots are cast." }); return; }
+  if (result.kind === "position_missing") { res.status(404).json({ error: "Not found" }); return; }
+  res.json(result.pos);
 });
 
 router.delete("/elections/:electionId/positions/:positionId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -308,10 +438,18 @@ router.delete("/elections/:electionId/positions/:positionId", requireAuth, requi
   const rawPosId = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
   const parsed = DeletePositionParams.safeParse({ electionId: parseInt(rawElId, 10), positionId: parseInt(rawPosId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(positionsTable).where(and(
-    eq(positionsTable.id, parsed.data.positionId),
-    eq(positionsTable.electionId, parsed.data.electionId),
-  ));
+  const result = await db.transaction(async (tx) => {
+    const guard = await lockElectionStructure(tx, parsed.data.electionId);
+    if (guard !== "editable") return { kind: guard } as const;
+    const [pos] = await tx.delete(positionsTable).where(and(
+      eq(positionsTable.id, parsed.data.positionId),
+      eq(positionsTable.electionId, parsed.data.electionId),
+    )).returning({ id: positionsTable.id });
+    return pos ? { kind: "deleted" as const } : { kind: "position_missing" as const };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Election not found" }); return; }
+  if (result.kind === "locked") { res.status(409).json({ error: "Election positions are locked after voting starts or ballots are cast." }); return; }
+  if (result.kind === "position_missing") { res.status(404).json({ error: "Not found" }); return; }
   res.json({ message: "Deleted" });
 });
 
@@ -361,18 +499,26 @@ router.post("/elections/:electionId/candidates", requireAuth, requireResourceOrg
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = CreateCandidateBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const { positionId, name, bio, photoUrl, platform } = bodyParsed.data;
-  const [pos] = await db.select().from(positionsTable)
-    .where(and(
-      eq(positionsTable.id, positionId),
-      eq(positionsTable.electionId, paramParsed.data.electionId),
-    ))
-    .limit(1);
-  if (!pos) { res.status(400).json({ error: "Position does not belong to this election" }); return; }
-  const [candidate] = await db.insert(candidatesTable).values({
-    electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
-  }).returning();
-  res.status(201).json({ ...candidate, positionTitle: pos?.title ?? null, voteCount: 0 });
+  const result = await db.transaction(async (tx) => {
+    const guard = await lockElectionStructure(tx, paramParsed.data.electionId);
+    if (guard !== "editable") return { kind: guard } as const;
+    const { positionId, name, bio, photoUrl, platform } = bodyParsed.data;
+    const [pos] = await tx.select().from(positionsTable)
+      .where(and(
+        eq(positionsTable.id, positionId),
+        eq(positionsTable.electionId, paramParsed.data.electionId),
+      ))
+      .limit(1);
+    if (!pos) return { kind: "position_missing" as const };
+    const [candidate] = await tx.insert(candidatesTable).values({
+      electionId: paramParsed.data.electionId, positionId, name, bio, photoUrl, platform,
+    }).returning();
+    return { kind: "created" as const, candidate, positionTitle: pos.title };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Election not found" }); return; }
+  if (result.kind === "locked") { res.status(409).json({ error: "Candidates are locked after voting starts or ballots are cast." }); return; }
+  if (result.kind === "position_missing") { res.status(400).json({ error: "Position does not belong to this election" }); return; }
+  res.status(201).json({ ...result.candidate, positionTitle: result.positionTitle, voteCount: 0 });
 });
 
 router.get("/elections/:electionId/candidates/:candidateId", async (req, res): Promise<void> => {
@@ -416,9 +562,22 @@ router.patch("/elections/:electionId/candidates/:candidateId", requireAuth, requ
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateCandidateBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [candidate] = await db.update(candidatesTable).set(bodyParsed.data).where(and(eq(candidatesTable.id, paramParsed.data.candidateId), eq(candidatesTable.electionId, paramParsed.data.electionId))).returning();
-  if (!candidate) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...candidate, positionTitle: null, voteCount: null });
+  const result = await db.transaction(async (tx) => {
+    const guard = await lockElectionStructure(tx, paramParsed.data.electionId);
+    if (guard !== "editable") return { kind: guard } as const;
+    const [candidate] = await tx.update(candidatesTable)
+      .set(bodyParsed.data)
+      .where(and(
+        eq(candidatesTable.id, paramParsed.data.candidateId),
+        eq(candidatesTable.electionId, paramParsed.data.electionId),
+      ))
+      .returning();
+    return candidate ? { kind: "updated" as const, candidate } : { kind: "candidate_missing" as const };
+  });
+  if (result.kind === "missing") { res.status(404).json({ error: "Election not found" }); return; }
+  if (result.kind === "locked") { res.status(409).json({ error: "Candidate details are locked after voting starts or ballots are cast." }); return; }
+  if (result.kind === "candidate_missing") { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ...result.candidate, positionTitle: null, voteCount: null });
 });
 
 router.delete("/elections/:electionId/candidates/:candidateId", requireAuth, requireResourceOrgRole(electionsTable, "electionId", ["owner", "admin"]), async (req, res): Promise<void> => {

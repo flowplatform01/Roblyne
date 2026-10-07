@@ -35,6 +35,7 @@ export default function CampaignParticipate() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<number | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const submitMutation = useSubmitCampaignResponse();
@@ -49,10 +50,12 @@ export default function CampaignParticipate() {
     if (paymentStatus.status === "succeeded") {
       setPaymentPending(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
       setIsSuccess(true);
     } else if (paymentStatus.status === "failed") {
       setPaymentPending(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
       toast({ title: "Payment failed", description: "Your contribution was not completed. Please try again.", variant: "destructive" });
     }
   }, [paymentStatus, paymentId, toast]);
@@ -113,11 +116,12 @@ export default function CampaignParticipate() {
         onSuccess: (result) => {
           if ("paymentRequired" in result) {
             if (!result.checkoutUrl) {
-              toast({ title: "Payment unavailable", description: "FlowPay did not return a checkout link.", variant: "destructive" });
+              toast({ title: "Payment unavailable", description: "No payment checkout link was returned.", variant: "destructive" });
               return;
             }
             setPaymentId(result.paymentId);
             setPaymentPending(true);
+            setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
           }
@@ -145,8 +149,13 @@ export default function CampaignParticipate() {
           <Loader2 className="h-12 w-12 animate-spin text-amber-600/60 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
           <p className="text-lg text-muted-foreground font-light">
-            Complete the FlowPay checkout in the new tab. This page will update when your contribution is confirmed.
+            Complete the payment checkout in the new tab. This page will update when your contribution is confirmed.
           </p>
+          {checkoutUrl && (
+            <Button asChild variant="outline" className="mt-6">
+              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
+            </Button>
+          )}
         </div>
       </Layout>
     );

@@ -43,6 +43,23 @@ export async function getPlatformCurrency(database: any = db): Promise<string> {
   return settings?.defaultCurrency || "XAF";
 }
 
+export async function isPlatformCurrencySupported(currency: string, database: any = db): Promise<boolean> {
+  const [settings] = await database
+    .select({
+      defaultCurrency: platformSettingsTable.defaultCurrency,
+      supportedCurrencies: platformSettingsTable.supportedCurrencies,
+    })
+    .from(platformSettingsTable)
+    .limit(1);
+  const configured = settings?.supportedCurrencies || settings?.defaultCurrency || "XAF";
+  const allowed = configured
+    .replace(/[\[\]"']/g, "")
+    .split(/[,\s;|]+/)
+    .map((value: string) => value.trim().toUpperCase())
+    .filter(Boolean);
+  return allowed.includes(currency.trim().toUpperCase());
+}
+
 /**
  * Get the effective commission rate for a pillar.
  * Falls back to global rate if no pillar-specific config exists.

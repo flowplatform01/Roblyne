@@ -66,6 +66,9 @@ const CandidateProfile = lazyWithChunkRecovery(() => import('@/pages/CandidatePr
 const Settings = lazyWithChunkRecovery(() => import('@/pages/Settings'));
 const AdminDashboard = lazyWithChunkRecovery(() => import('@/pages/AdminDashboard'));
 const NotFound = lazyWithChunkRecovery(() => import('@/pages/not-found'));
+const DevPaymentSimulator = import.meta.env.DEV
+  ? lazyWithChunkRecovery(() => import('@/pages/DevPaymentSimulator'))
+  : null;
 
 // Production-tuned query client:
 // - staleTime: 30s for read-heavy data (discover, lists)
@@ -131,6 +134,8 @@ function Router() {
 
         {/* Platform Admin */}
         <Route path="/admin" component={AdminDashboard} />
+
+        {DevPaymentSimulator && <Route path="/dev-payment/:id" component={DevPaymentSimulator} />}
 
         <Route component={NotFound} />
       </Switch>

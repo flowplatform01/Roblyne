@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and } from "drizzle-orm";
-import { db, campaignsTable, campaignResponsesTable, organizationsTable } from "@workspace/db";
+import { db, campaignsTable, campaignResponsesTable, organizationsTable, paymentIntentsTable } from "@workspace/db";
 import {
   CreateCampaignBody, UpdateCampaignBody, GetCampaignParams, UpdateCampaignParams, DeleteCampaignParams, ListCampaignsQueryParams,
   SubmitCampaignResponseParams, SubmitCampaignResponseBody,
@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
-import { getPlatformCurrency, recordTransaction } from "../lib/commission-engine";
+import { getPlatformCurrency, isPlatformCurrencySupported, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 
@@ -152,6 +152,11 @@ router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
   const parsed = CreateCampaignBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { orgId, title, description, coverImageUrl, heroImageUrl, accentColor, theme, type, visibility, goalAmount, requiresPayment, paymentAmount, currency, fields, startsAt, endsAt } = parsed.data;
+  const normalizedCurrency = (currency ?? await getPlatformCurrency()).trim().toUpperCase();
+  if (!await isPlatformCurrencySupported(normalizedCurrency)) {
+    res.status(400).json({ error: `Currency ${normalizedCurrency} is not enabled for this platform` });
+    return;
+  }
   if (!hasValidTimeWindow(startsAt, endsAt)) {
     res.status(400).json({ error: "The campaign closing time must be after its opening time" });
     return;
@@ -165,7 +170,7 @@ router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     goalAmount: goalAmount ? String(goalAmount) : null,
     requiresPayment: requiresPayment ?? false,
     paymentAmount: paymentAmount ? String(paymentAmount) : null,
-    currency: currency ?? await getPlatformCurrency(),
+    currency: normalizedCurrency,
     fields: fields ?? [],
     startsAt, endsAt,
   }).returning();
@@ -206,32 +211,78 @@ router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campa
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateCampaignBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [current] = await db.select({
-    startsAt: campaignsTable.startsAt,
-    endsAt: campaignsTable.endsAt,
-    requiresPayment: campaignsTable.requiresPayment,
-    paymentAmount: campaignsTable.paymentAmount,
-  })
-    .from(campaignsTable).where(eq(campaignsTable.id, paramParsed.data.campaignId)).limit(1);
-  if (!current) { res.status(404).json({ error: "Not found" }); return; }
-  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
-  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
-  const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
-  const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
-  if (!hasValidTimeWindow(startsAt, endsAt)) {
-    res.status(400).json({ error: "The campaign closing time must be after its opening time" });
-    return;
-  }
-  if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
-    res.status(400).json({ error: "A positive payment amount is required when paid submissions are enabled" });
+  if (
+    bodyParsed.data.currency !== undefined
+    && !await isPlatformCurrencySupported(bodyParsed.data.currency.trim().toUpperCase())
+  ) {
+    res.status(400).json({ error: `Currency ${bodyParsed.data.currency.toUpperCase()} is not enabled for this platform` });
     return;
   }
   const updateData: any = { ...bodyParsed.data };
+  if (updateData.currency !== undefined) updateData.currency = updateData.currency.trim().toUpperCase();
   if (updateData.goalAmount !== undefined) updateData.goalAmount = updateData.goalAmount ? String(updateData.goalAmount) : null;
   if (updateData.paymentAmount !== undefined) updateData.paymentAmount = updateData.paymentAmount ? String(updateData.paymentAmount) : null;
-  const [campaign] = await db.update(campaignsTable).set(updateData).where(eq(campaignsTable.id, paramParsed.data.campaignId)).returning();
-  if (!campaign) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(campaignRow(campaign, null, 0));
+  const outcome = await db.transaction(async (tx) => {
+    const [current] = await tx.select({
+      status: campaignsTable.status,
+      startsAt: campaignsTable.startsAt,
+      endsAt: campaignsTable.endsAt,
+      requiresPayment: campaignsTable.requiresPayment,
+      paymentAmount: campaignsTable.paymentAmount,
+    })
+      .from(campaignsTable)
+      .where(eq(campaignsTable.id, paramParsed.data.campaignId))
+      .for("update");
+    if (!current) return { kind: "missing" as const };
+
+    const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+    const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+    const requiresPayment = bodyParsed.data.requiresPayment === undefined ? current.requiresPayment : bodyParsed.data.requiresPayment;
+    const paymentAmount = bodyParsed.data.paymentAmount === undefined ? current.paymentAmount : bodyParsed.data.paymentAmount;
+    if (!hasValidTimeWindow(startsAt, endsAt)) {
+      return { kind: "invalid_window" as const };
+    }
+    if (requiresPayment && (!paymentAmount || Number(paymentAmount) <= 0)) {
+      return { kind: "invalid_payment" as const };
+    }
+
+    const protectedFields = [
+      "requiresPayment", "paymentAmount", "currency", "fields", "goalAmount", "startsAt", "endsAt",
+    ] as const;
+    const changesLiveConfiguration = protectedFields.some((field) =>
+      Object.prototype.hasOwnProperty.call(bodyParsed.data, field)
+    );
+    if (
+      current.status === "ended" && bodyParsed.data.status && bodyParsed.data.status !== "ended"
+      || current.status === "active" && bodyParsed.data.status === "draft"
+      || current.status !== "draft" && changesLiveConfiguration
+    ) {
+      return { kind: "locked" as const };
+    }
+
+    const [campaign] = await tx.update(campaignsTable)
+      .set(updateData)
+      .where(eq(campaignsTable.id, paramParsed.data.campaignId))
+      .returning();
+    return campaign ? { kind: "updated" as const, campaign } : { kind: "missing" as const };
+  });
+
+  if (outcome.kind === "missing") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome.kind === "invalid_window") {
+    res.status(400).json({ error: "The campaign closing time must be after its opening time" });
+    return;
+  }
+  if (outcome.kind === "invalid_payment") {
+    res.status(400).json({ error: "A positive payment amount is required when paid submissions are enabled" });
+    return;
+  }
+  if (outcome.kind === "locked") {
+    res.status(409).json({
+      error: "A live campaign's payment, response fields, goal, and schedule are protected. End the campaign before changing its configuration.",
+    });
+    return;
+  }
+  res.json(campaignRow(outcome.campaign, null, 0));
 });
 
 // Delete campaign — must be org owner/admin
@@ -239,7 +290,32 @@ router.delete("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(camp
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = DeleteCampaignParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(campaignsTable).where(eq(campaignsTable.id, parsed.data.campaignId));
+  const outcome = await db.transaction(async (tx) => {
+    const [campaign] = await tx.select({ status: campaignsTable.status })
+      .from(campaignsTable)
+      .where(eq(campaignsTable.id, parsed.data.campaignId))
+      .for("update");
+    if (!campaign) return "not_found" as const;
+    const [response] = await tx.select({ id: campaignResponsesTable.id })
+      .from(campaignResponsesTable)
+      .where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId))
+      .limit(1);
+    const [payment] = await tx.select({ id: paymentIntentsTable.id })
+      .from(paymentIntentsTable)
+      .where(and(
+        eq(paymentIntentsTable.pillar, "campaign"),
+        eq(paymentIntentsTable.entityId, parsed.data.campaignId),
+      ))
+      .limit(1);
+    if (campaign.status !== "draft" || response || payment) return "protected" as const;
+    await tx.delete(campaignsTable).where(eq(campaignsTable.id, parsed.data.campaignId));
+    return "deleted" as const;
+  });
+  if (outcome === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome === "protected") {
+    res.status(409).json({ error: "Only draft campaigns with no submissions or payment history can be permanently deleted. End the campaign to preserve its history." });
+    return;
+  }
   res.json({ message: "Deleted" });
 });
 

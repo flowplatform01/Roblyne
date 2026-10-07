@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and } from "drizzle-orm";
-import { db, eventsTable, ticketTypesTable, ticketsTable, organizationsTable } from "@workspace/db";
+import { db, eventsTable, ticketTypesTable, ticketsTable, organizationsTable, paymentIntentsTable } from "@workspace/db";
 import {
   CreateEventBody, UpdateEventBody, GetEventParams, UpdateEventParams, DeleteEventParams, ListEventsQueryParams,
   ListTicketTypesParams, CreateTicketTypeParams, CreateTicketTypeBody,
@@ -13,7 +13,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { v4 as uuidv4 } from "uuid";
-import { getPlatformCurrency } from "../lib/commission-engine";
+import { getPlatformCurrency, isPlatformCurrencySupported } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 
@@ -138,18 +138,66 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateEventBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
-  const [current] = await db.select({ startsAt: eventsTable.startsAt, endsAt: eventsTable.endsAt })
-    .from(eventsTable).where(eq(eventsTable.id, paramParsed.data.eventId)).limit(1);
-  if (!current) { res.status(404).json({ error: "Not found" }); return; }
-  const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
-  const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
-  if (!hasValidTimeWindow(startsAt, endsAt)) {
+  const outcome = await db.transaction(async (tx) => {
+    const [current] = await tx.select({
+      status: eventsTable.status,
+      startsAt: eventsTable.startsAt,
+      endsAt: eventsTable.endsAt,
+    })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, paramParsed.data.eventId))
+      .for("update");
+    if (!current) return { kind: "missing" as const };
+
+    const startsAt = bodyParsed.data.startsAt === undefined ? current.startsAt : bodyParsed.data.startsAt;
+    const endsAt = bodyParsed.data.endsAt === undefined ? current.endsAt : bodyParsed.data.endsAt;
+    if (!hasValidTimeWindow(startsAt, endsAt)) return { kind: "invalid_window" as const };
+
+    const nextStatus = bodyParsed.data.status;
+    const invalidStatusTransition =
+      (current.status === "draft" && nextStatus !== undefined && nextStatus !== "published")
+      || (current.status === "published" && nextStatus !== undefined && !["published", "cancelled", "completed"].includes(nextStatus))
+      || (["cancelled", "completed"].includes(current.status) && nextStatus !== undefined && nextStatus !== current.status);
+    if (invalidStatusTransition) return { kind: "locked" as const };
+
+    const changesScheduleOrCapacity =
+      bodyParsed.data.startsAt !== undefined
+      || bodyParsed.data.endsAt !== undefined
+      || Object.prototype.hasOwnProperty.call(bodyParsed.data, "capacity");
+    if (current.status === "published" && changesScheduleOrCapacity) {
+      const [ticket] = await tx.select({ id: ticketsTable.id })
+        .from(ticketsTable)
+        .where(eq(ticketsTable.eventId, paramParsed.data.eventId))
+        .limit(1);
+      const [pendingPayment] = await tx.select({ id: paymentIntentsTable.id })
+        .from(paymentIntentsTable)
+        .where(and(
+          eq(paymentIntentsTable.pillar, "event"),
+          eq(paymentIntentsTable.entityId, paramParsed.data.eventId),
+          sql`${paymentIntentsTable.status} IN ('initializing', 'pending', 'processing')`,
+        ))
+        .limit(1);
+      if (ticket || pendingPayment) return { kind: "locked" as const };
+    }
+
+    const [event] = await tx.update(eventsTable)
+      .set(bodyParsed.data)
+      .where(eq(eventsTable.id, paramParsed.data.eventId))
+      .returning();
+    return event ? { kind: "updated" as const, event } : { kind: "missing" as const };
+  });
+  if (outcome.kind === "missing") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome.kind === "invalid_window") {
     res.status(400).json({ error: "The event closing time must be after its opening time" });
     return;
   }
-  const [event] = await db.update(eventsTable).set(bodyParsed.data).where(eq(eventsTable.id, paramParsed.data.eventId)).returning();
-  if (!event) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
+  if (outcome.kind === "locked") {
+    res.status(409).json({
+      error: "This event lifecycle transition or schedule change is not allowed after registration activity. Cancel the event rather than reopening or rewriting its history.",
+    });
+    return;
+  }
+  res.json({ ...outcome.event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
 // Delete event — must be org owner/admin
@@ -157,7 +205,32 @@ router.delete("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTabl
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = DeleteEventParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(eventsTable).where(eq(eventsTable.id, parsed.data.eventId));
+  const outcome = await db.transaction(async (tx) => {
+    const [event] = await tx.select({ status: eventsTable.status })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, parsed.data.eventId))
+      .for("update");
+    if (!event) return "not_found" as const;
+    const [ticket] = await tx.select({ id: ticketsTable.id })
+      .from(ticketsTable)
+      .where(eq(ticketsTable.eventId, parsed.data.eventId))
+      .limit(1);
+    const [payment] = await tx.select({ id: paymentIntentsTable.id })
+      .from(paymentIntentsTable)
+      .where(and(
+        eq(paymentIntentsTable.pillar, "event"),
+        eq(paymentIntentsTable.entityId, parsed.data.eventId),
+      ))
+      .limit(1);
+    if (event.status !== "draft" || ticket || payment) return "protected" as const;
+    await tx.delete(eventsTable).where(eq(eventsTable.id, parsed.data.eventId));
+    return "deleted" as const;
+  });
+  if (outcome === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome === "protected") {
+    res.status(409).json({ error: "Only draft events with no attendees or payment history can be permanently deleted. Cancel a published event to preserve its records." });
+    return;
+  }
   res.json({ message: "Deleted" });
 });
 
@@ -187,9 +260,14 @@ router.post("/events/:eventId/ticket-types", requireAuth, requireResourceOrgRole
   const bodyParsed = CreateTicketTypeBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
   const { name, description, price, currency, quantity, saleStartsAt, saleEndsAt } = bodyParsed.data;
+  const normalizedCurrency = (currency ?? await getPlatformCurrency()).trim().toUpperCase();
+  if (!await isPlatformCurrencySupported(normalizedCurrency)) {
+    res.status(400).json({ error: `Currency ${normalizedCurrency} is not enabled for this platform` });
+    return;
+  }
   const [tt] = await db.insert(ticketTypesTable).values({
     eventId: paramParsed.data.eventId, name, description,
-    price: String(price ?? 0), currency: currency ?? await getPlatformCurrency(),
+    price: String(price ?? 0), currency: normalizedCurrency,
     quantity, saleStartsAt, saleEndsAt,
   }).returning();
   res.status(201).json({ ...tt, price: parseFloat(tt.price) });
@@ -202,11 +280,68 @@ router.patch("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, require
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
   const bodyParsed = UpdateTicketTypeBody.safeParse(req.body);
   if (!bodyParsed.success) { res.status(400).json({ error: bodyParsed.error.message }); return; }
+  if (
+    bodyParsed.data.currency !== undefined
+    && !await isPlatformCurrencySupported(bodyParsed.data.currency.trim().toUpperCase())
+  ) {
+    res.status(400).json({ error: `Currency ${bodyParsed.data.currency.toUpperCase()} is not enabled for this platform` });
+    return;
+  }
   const updateData: any = { ...bodyParsed.data };
   if (updateData.price !== undefined) updateData.price = String(updateData.price);
-  const [tt] = await db.update(ticketTypesTable).set(updateData).where(and(eq(ticketTypesTable.id, paramParsed.data.ticketTypeId), eq(ticketTypesTable.eventId, paramParsed.data.eventId))).returning();
-  if (!tt) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ...tt, price: parseFloat(tt.price) });
+  if (updateData.currency !== undefined) updateData.currency = updateData.currency.trim().toUpperCase();
+  const outcome = await db.transaction(async (tx) => {
+    const [event] = await tx.select({ id: eventsTable.id })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, paramParsed.data.eventId))
+      .for("update");
+    if (!event) return { kind: "not_found" as const };
+    const [current] = await tx.select({ sold: ticketTypesTable.sold })
+      .from(ticketTypesTable)
+      .where(and(
+        eq(ticketTypesTable.id, paramParsed.data.ticketTypeId),
+        eq(ticketTypesTable.eventId, paramParsed.data.eventId),
+      ))
+      .for("update");
+    if (!current) return { kind: "not_found" as const };
+
+    const [pendingPayment] = await tx.select({ id: paymentIntentsTable.id })
+      .from(paymentIntentsTable)
+      .where(and(
+        eq(paymentIntentsTable.pillar, "event"),
+        eq(paymentIntentsTable.entityId, paramParsed.data.eventId),
+        sql`${paymentIntentsTable.payload}->'event'->>'ticketTypeId' = ${String(paramParsed.data.ticketTypeId)}`,
+        sql`${paymentIntentsTable.status} IN ('initializing', 'pending', 'processing')`,
+      ))
+      .limit(1);
+    const changingPrice = bodyParsed.data.price !== undefined || bodyParsed.data.currency !== undefined;
+    if (changingPrice && (current.sold > 0 || pendingPayment)) return { kind: "locked" as const };
+    if (
+      bodyParsed.data.quantity !== undefined
+      && bodyParsed.data.quantity !== null
+      && bodyParsed.data.quantity < current.sold
+    ) {
+      return { kind: "quantity" as const };
+    }
+    const [ticketType] = await tx.update(ticketTypesTable)
+      .set(updateData)
+      .where(and(
+        eq(ticketTypesTable.id, paramParsed.data.ticketTypeId),
+        eq(ticketTypesTable.eventId, paramParsed.data.eventId),
+      ))
+      .returning();
+    return ticketType ? { kind: "updated" as const, ticketType } : { kind: "not_found" as const };
+  });
+  if (outcome.kind === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome.kind === "locked") {
+    res.status(409).json({ error: "A ticket price or currency cannot change after tickets have sold or a payment is in progress." });
+    return;
+  }
+  if (outcome.kind === "quantity") {
+    res.status(409).json({ error: "Ticket quantity cannot be set below the number already reserved or sold." });
+    return;
+  }
+  res.json({ ...outcome.ticketType, price: parseFloat(outcome.ticketType.price) });
 });
 
 router.delete("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, requireResourceOrgRole(eventsTable, "eventId", ["owner", "admin"]), async (req, res): Promise<void> => {
@@ -214,7 +349,45 @@ router.delete("/events/:eventId/ticket-types/:ticketTypeId", requireAuth, requir
   const rawEvId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = DeleteTicketTypeParams.safeParse({ eventId: parseInt(rawEvId, 10), ticketTypeId: parseInt(rawTtId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(ticketTypesTable).where(and(eq(ticketTypesTable.id, parsed.data.ticketTypeId), eq(ticketTypesTable.eventId, parsed.data.eventId)));
+  const outcome = await db.transaction(async (tx) => {
+    const [event] = await tx.select({ id: eventsTable.id })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, parsed.data.eventId))
+      .for("update");
+    if (!event) return "not_found" as const;
+    const [ticketType] = await tx.select({ sold: ticketTypesTable.sold })
+      .from(ticketTypesTable)
+      .where(and(
+        eq(ticketTypesTable.id, parsed.data.ticketTypeId),
+        eq(ticketTypesTable.eventId, parsed.data.eventId),
+      ))
+      .for("update");
+    if (!ticketType) return "not_found" as const;
+    const [ticket] = await tx.select({ id: ticketsTable.id })
+      .from(ticketsTable)
+      .where(eq(ticketsTable.ticketTypeId, parsed.data.ticketTypeId))
+      .limit(1);
+    const [pendingPayment] = await tx.select({ id: paymentIntentsTable.id })
+      .from(paymentIntentsTable)
+      .where(and(
+        eq(paymentIntentsTable.pillar, "event"),
+        eq(paymentIntentsTable.entityId, parsed.data.eventId),
+        sql`${paymentIntentsTable.payload}->'event'->>'ticketTypeId' = ${String(parsed.data.ticketTypeId)}`,
+        sql`${paymentIntentsTable.status} IN ('initializing', 'pending', 'processing')`,
+      ))
+      .limit(1);
+    if (ticketType.sold > 0 || ticket || pendingPayment) return "protected" as const;
+    await tx.delete(ticketTypesTable).where(and(
+      eq(ticketTypesTable.id, parsed.data.ticketTypeId),
+      eq(ticketTypesTable.eventId, parsed.data.eventId),
+    ));
+    return "deleted" as const;
+  });
+  if (outcome === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+  if (outcome === "protected") {
+    res.status(409).json({ error: "This ticket type has attendee, reservation, or payment history and cannot be permanently deleted." });
+    return;
+  }
   res.json({ message: "Deleted" });
 });
 

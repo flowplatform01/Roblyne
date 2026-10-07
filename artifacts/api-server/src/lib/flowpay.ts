@@ -34,12 +34,24 @@ function requiredEnv(name: string, fallbackName?: string): string {
 }
 
 function getEnvironment(): FlowPayEnvironment {
+  if (process.env.NODE_ENV === "production") return "production";
   const configuredEnvironment = process.env.FLOWPAY_ENVIRONMENT?.trim().toLowerCase();
+  if (configuredEnvironment === "production") {
+    throw new Error("FlowPay production credentials may only be used when NODE_ENV=production");
+  }
   return configuredEnvironment === "production"
     ? "production"
     : configuredEnvironment === "sandbox"
       ? "sandbox"
-      : process.env.NODE_ENV === "production" ? "production" : "sandbox";
+      : "sandbox";
+}
+
+export function shouldUsePaymentSimulator(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  const configuredMode = process.env.EVENUM_PAYMENT_MODE?.trim().toLowerCase();
+  if (!configuredMode || configuredMode === "simulation") return true;
+  if (configuredMode === "flowpay") return false;
+  throw new Error("EVENUM_PAYMENT_MODE must be either simulation or flowpay");
 }
 
 function getWebhookSecret(environment = getEnvironment()): string {

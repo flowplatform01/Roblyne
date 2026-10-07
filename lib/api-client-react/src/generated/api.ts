@@ -73,6 +73,7 @@ import type {
   OrganizationStats,
   OrganizationUpdate,
   PaymentInitialization,
+  PaymentSimulation,
   PaymentStatus,
   Position,
   PositionInput,
@@ -6173,4 +6174,77 @@ export function useGetPaymentStatus<TData = Awaited<ReturnType<typeof getPayment
 
 
 
+
+export const getSimulateDevelopmentPaymentUrl = (paymentId: number,) => {
+
+
+
+
+  return `/api/payments/${paymentId}`
+}
+
+/**
+ * This endpoint is disabled outside non-production simulation mode.
+ * @summary Advance a development-only simulated payment
+ */
+export const simulateDevelopmentPayment = async (paymentId: number,
+    paymentSimulation: PaymentSimulation, options?: RequestInit): Promise<PaymentStatus> => {
+
+  return customFetch<PaymentStatus>(getSimulateDevelopmentPaymentUrl(paymentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paymentSimulation)
+  }
+);}
+
+
+
+
+
+export const getSimulateDevelopmentPaymentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof simulateDevelopmentPayment>>, TError,{paymentId: number;data: BodyType<PaymentSimulation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof simulateDevelopmentPayment>>, TError,{paymentId: number;data: BodyType<PaymentSimulation>}, TContext> => {
+
+const mutationKey = ['simulateDevelopmentPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof simulateDevelopmentPayment>>, {paymentId: number;data: BodyType<PaymentSimulation>}> = (props) => {
+          const {paymentId,data} = props ?? {};
+
+          return  simulateDevelopmentPayment(paymentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SimulateDevelopmentPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof simulateDevelopmentPayment>>>
+    export type SimulateDevelopmentPaymentMutationBody = BodyType<PaymentSimulation>
+    export type SimulateDevelopmentPaymentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Advance a development-only simulated payment
+ */
+export const useSimulateDevelopmentPayment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof simulateDevelopmentPayment>>, TError,{paymentId: number;data: BodyType<PaymentSimulation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof simulateDevelopmentPayment>>,
+        TError,
+        {paymentId: number;data: BodyType<PaymentSimulation>},
+        TContext
+      > => {
+      return useMutation(getSimulateDevelopmentPaymentMutationOptions(options));
+    }
 

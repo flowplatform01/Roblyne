@@ -1994,17 +1994,42 @@ export const GetOrgAnalyticsResponse = zod.object({
  * @summary Get platform-wide financial statistics
  */
 export const GetAdminFinanceStatsResponse = zod.object({
-  "total_platform_revenue": zod.number().optional(),
-  "total_commission_collected": zod.number().optional(),
-  "total_org_earnings": zod.number().optional(),
-  "revenue_today": zod.number().optional(),
-  "revenue_this_week": zod.number().optional(),
-  "revenue_this_month": zod.number().optional(),
+  "currency": zod.string().nullish().describe('Set only when all platform amounts have one unambiguous currency.'),
+  "total_platform_revenue": zod.number().nullish(),
+  "total_commission_collected": zod.number().nullish(),
+  "total_org_earnings": zod.number().nullish(),
+  "revenue_today": zod.number().nullish(),
+  "revenue_this_week": zod.number().nullish(),
+  "revenue_this_month": zod.number().nullish(),
   "total_transactions": zod.number().optional(),
   "orgs_with_revenue": zod.number().optional(),
-  "byPillar": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
-  "pendingSettlements": zod.record(zod.string(), zod.unknown()).optional(),
-  "revenueByDay": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+  "byCurrency": zod.array(zod.object({
+  "currency": zod.string(),
+  "total_platform_revenue": zod.number(),
+  "total_commission_collected": zod.number(),
+  "total_org_earnings": zod.number(),
+  "revenue_today": zod.number(),
+  "revenue_this_week": zod.number(),
+  "revenue_this_month": zod.number()
+})).optional(),
+  "byPillar": zod.array(zod.object({
+  "pillar": zod.string(),
+  "currency": zod.string(),
+  "revenue": zod.number(),
+  "commission": zod.number(),
+  "count": zod.number()
+})).optional(),
+  "pendingSettlements": zod.array(zod.object({
+  "currency": zod.string(),
+  "count": zod.number(),
+  "total_amount": zod.number()
+})).optional(),
+  "revenueByDay": zod.array(zod.object({
+  "date": zod.string(),
+  "currency": zod.string(),
+  "revenue": zod.number(),
+  "count": zod.number()
+})).optional()
 })
 
 
@@ -2079,8 +2104,12 @@ export const ListAdminSettlementsResponse = zod.array(ListAdminSettlementsRespon
 /**
  * @summary Create a settlement batch for an organization
  */
+export const createSettlementBodyCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+
 export const CreateSettlementBody = zod.object({
-  "orgId": zod.number()
+  "orgId": zod.number(),
+  "currency": zod.string().regex(createSettlementBodyCurrencyRegExp).optional().describe('Optional for older clients; required when the organization has multiple available currencies.')
 })
 
 export const CreateSettlementResponse = zod.object({
@@ -2134,10 +2163,12 @@ export const UpdateSettlementResponse = zod.object({
 export const ListOrgBalancesResponseItem = zod.object({
   "org_id": zod.number().optional(),
   "org_name": zod.string().optional(),
+  "currency": zod.string().optional(),
   "total_revenue": zod.number().optional(),
   "total_commission": zod.number().optional(),
   "total_earnings": zod.number().optional(),
-  "pending_balance": zod.number().optional(),
+  "available_balance": zod.number().optional(),
+  "pending_settlement_balance": zod.number().optional(),
   "released_balance": zod.number().optional(),
   "transaction_count": zod.number().optional()
 })
@@ -2281,6 +2312,32 @@ export const GetPaymentStatusParams = zod.object({
 })
 
 export const GetPaymentStatusResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['initializing', 'pending', 'processing', 'succeeded', 'failed']),
+  "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "checkoutUrl": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish()
+})
+
+
+/**
+ * This endpoint is disabled outside non-production simulation mode.
+ * @summary Advance a development-only simulated payment
+ */
+export const SimulateDevelopmentPaymentParams = zod.object({
+  "paymentId": zod.coerce.number()
+})
+
+export const simulateDevelopmentPaymentBodyTokenMin = 32;
+
+
+
+export const SimulateDevelopmentPaymentBody = zod.object({
+  "token": zod.string().min(simulateDevelopmentPaymentBodyTokenMin),
+  "status": zod.enum(['pending', 'processing', 'succeeded', 'failed'])
+})
+
+export const SimulateDevelopmentPaymentResponse = zod.object({
   "id": zod.number(),
   "status": zod.enum(['initializing', 'pending', 'processing', 'succeeded', 'failed']),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),

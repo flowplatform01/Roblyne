@@ -1111,28 +1111,35 @@ function FinanceAdminSection() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Settlement</DialogTitle>
-                    <DialogDescription>Initiate a new payout for an organization with a pending balance.</DialogDescription>
+                    <DialogDescription>Initiate a payout for an organization’s available balance in a selected currency. Payouts include the full available balance for that currency.</DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
-                    <Select value={createSettlementOrgId} onValueChange={setCreateSettlementOrgId}>
+                    <Select value={createSettlementSelection} onValueChange={setCreateSettlementSelection}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select Organization" />
                       </SelectTrigger>
                       <SelectContent>
-                        {orgBalances?.filter((ob: any) => (ob.pending_balance || 0) > 0).map((ob: any) => (
-                          <SelectItem key={ob.org_id} value={ob.org_id.toString()}>
-                            {ob.org_name} - {formatCurrency(ob.pending_balance || 0)}
+                        {availableOrgBalances.map((ob: any) => (
+                          <SelectItem key={`${ob.org_id}-${ob.currency}`} value={`${ob.org_id}:${ob.currency}`}>
+                            {ob.org_name} — {formatCurrency(ob.available_balance || 0, ob.currency)}
                           </SelectItem>
                         ))}
-                        {orgBalances?.filter((ob: any) => (ob.pending_balance || 0) > 0).length === 0 && (
-                          <div className="p-4 text-sm text-center text-muted-foreground">No orgs with pending balances</div>
+                        {availableOrgBalances.length === 0 && (
+                          <div className="p-4 text-sm text-center text-muted-foreground">No organizations have an available balance</div>
                         )}
                       </SelectContent>
                     </Select>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setCreateSettlementOpen(false)}>Cancel</Button>
-                    <Button disabled={!createSettlementOrgId || createSettlement.isPending} onClick={() => createSettlement.mutate(parseInt(createSettlementOrgId, 10))}>
+                    <Button
+                      disabled={!createSettlementSelection || createSettlement.isPending}
+                      onClick={() => {
+                        const [rawOrgId, currency] = createSettlementSelection.split(":");
+                        const orgId = Number.parseInt(rawOrgId, 10);
+                        if (Number.isInteger(orgId) && currency) createSettlement.mutate({ orgId, currency });
+                      }}
+                    >
                       {createSettlement.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Create Settlement
                     </Button>
@@ -1205,7 +1212,8 @@ function FinanceAdminSection() {
                 <TableRow className="bg-muted/20">
                   <TableHead>Organization</TableHead>
                   <TableHead className="text-right">Net Earnings</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
+                  <TableHead className="text-right">Available</TableHead>
+                  <TableHead className="text-right">Awaiting payout</TableHead>
                   <TableHead className="text-right">Released</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1219,11 +1227,12 @@ function FinanceAdminSection() {
                     </TableRow>
                   ))
                 ) : orgBalances?.slice(0, 15).map((ob: any) => (
-                  <TableRow key={ob.org_id} className="hover:bg-muted/20">
+                  <TableRow key={`${ob.org_id}-${ob.currency}`} className="hover:bg-muted/20">
                     <TableCell className="font-medium text-sm">{ob.org_name}</TableCell>
-                    <TableCell className="text-right text-sm text-primary">{formatCurrency(ob.total_earnings || 0)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ob.pending_balance || 0)}</TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ob.released_balance || 0)}</TableCell>
+                    <TableCell className="text-right text-sm text-primary">{formatCurrency(ob.total_earnings || 0, ob.currency)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ob.available_balance || 0, ob.currency)}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(ob.pending_settlement_balance || 0, ob.currency)}</TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">{formatCurrency(ob.released_balance || 0, ob.currency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

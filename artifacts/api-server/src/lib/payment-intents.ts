@@ -13,7 +13,12 @@ import {
   voteSelectionsTable,
 } from "@workspace/db";
 import { randomUUID } from "node:crypto";
-import { initializeFlowPayPayment, normalizeFlowPayStatus, type FlowPayPaymentStatus } from "./flowpay";
+import {
+  initializeFlowPayPayment,
+  normalizeFlowPayStatus,
+  shouldUsePaymentSimulator,
+  type FlowPayPaymentStatus,
+} from "./flowpay";
 import { recordTransaction, type Pillar, type TransactionType } from "./commission-engine";
 
 export interface PaymentPayload {
@@ -68,7 +73,7 @@ export async function createPaymentIntent(input: CreatePaymentIntentInput): Prom
     currency: input.currency,
     payerName: input.customerName,
     payerEmail: input.customerEmail,
-    paymentProvider: "flowpay",
+    paymentProvider: shouldUsePaymentSimulator() ? "evenum_dev_simulator" : "flowpay",
     paymentStatus: "pending",
     idempotencyKey,
     status: "pending",
@@ -93,6 +98,15 @@ export async function createPaymentIntent(input: CreatePaymentIntentInput): Prom
 }
 
 export async function initializePaymentIntent(intent: any): Promise<any> {
+  if (shouldUsePaymentSimulator()) {
+    const checkoutUrl = `/dev-payment/${intent.id}?token=${encodeURIComponent(intent.externalReference)}`;
+    const [updated] = await db.update(paymentIntentsTable)
+      .set({ status: "pending", checkoutUrl })
+      .where(eq(paymentIntentsTable.id, intent.id))
+      .returning();
+    return updated;
+  }
+
   const transaction = await initializeFlowPayPayment({
     externalReference: intent.externalReference,
     amount: Number(intent.amount),

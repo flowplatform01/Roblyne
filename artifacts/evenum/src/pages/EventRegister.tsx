@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
-import { hexToHsl } from "@/lib/branding";
+import { useOrgBranding } from "@/lib/branding";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { useCountdown } from "@/hooks/useLifecycle";
@@ -67,11 +67,13 @@ export default function EventRegister() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<number | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [ticketCode, setTicketCode] = useState('');
   const [ticketTypeName, setTicketTypeName] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
+  const brandingStyle = useOrgBranding(event);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
   const { data: paymentStatus } = usePaymentStatus(paymentId);
@@ -87,10 +89,12 @@ export default function EventRegister() {
       setTicketTypeName(result.ticketTypeName || "General Admission");
       setPaymentPending(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
       setIsSuccess(true);
     } else if (paymentStatus.status === "failed") {
       setPaymentPending(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
     }
   }, [paymentStatus, paymentId]);
 
@@ -134,6 +138,7 @@ export default function EventRegister() {
             }
             setPaymentId(result.paymentId);
             setPaymentPending(true);
+            setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
           }
@@ -170,6 +175,8 @@ export default function EventRegister() {
 
   if (!event) return null;
 
+  const lightHero = (event as any).theme === "light" && !(event as any).heroImageUrl && !event.coverImageUrl;
+
   if (paymentPending) {
     return (
       <Layout>
@@ -177,16 +184,17 @@ export default function EventRegister() {
           <Loader2 className="h-12 w-12 animate-spin text-emerald-600/60 mx-auto mb-8" />
           <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
           <p className="text-lg text-muted-foreground font-light">
-            Complete the FlowPay checkout in the new tab. This page will update when your payment is confirmed.
+            Complete the payment checkout in the new tab. This page will update when your payment is confirmed.
           </p>
+          {checkoutUrl && (
+            <Button asChild variant="outline" className="mt-6">
+              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
+            </Button>
+          )}
         </div>
       </Layout>
     );
   }
-
-  const primaryStyle: React.CSSProperties = (event as any).accentColor
-    ? { "--primary": hexToHsl((event as any).accentColor) } as React.CSSProperties
-    : {};
 
   if (event.status !== 'published') {
     const orgId = (event as any).orgId;
@@ -361,9 +369,13 @@ export default function EventRegister() {
 
   return (
     <Layout>
+      <div className="w-full bg-background text-foreground" style={brandingStyle}>
       {/* Hero */}
-      <div className="relative bg-[#0A1628] text-white overflow-hidden">
-        <PublicHeroBackdrop imageUrl={(event as any).heroImageUrl || event.coverImageUrl} />
+      <div className={`relative overflow-hidden ${lightHero ? "bg-background text-foreground" : "bg-[#0A1628] text-white"}`}>
+        <PublicHeroBackdrop
+          imageUrl={(event as any).heroImageUrl || event.coverImageUrl}
+          lightFallback={lightHero}
+        />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
             <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 font-bold uppercase tracking-widest text-xs">
@@ -382,11 +394,13 @@ export default function EventRegister() {
               url={shareUrl}
               title={event.title}
               description={event.description || `Register for ${event.title}`}
-              className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"
+              className={lightHero
+                ? "bg-transparent border-border text-foreground hover:bg-muted rounded-sm"
+                : "bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"}
             />
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 text-white/70 text-sm font-medium mb-10">
+          <div className={`flex flex-wrap justify-center gap-6 text-sm font-medium mb-10 ${lightHero ? "text-muted-foreground" : "text-white/70"}`}>
             {event.startsAt && (
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-emerald-400" />
@@ -413,11 +427,11 @@ export default function EventRegister() {
                   { value: countdown.minutes, label: t("eventRegister.minutes") },
                   { value: countdown.seconds, label: t("eventRegister.seconds") },
                 ].map(({ value, label }) => (
-                  <div key={label} className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-sm px-4 py-3 min-w-[60px]">
+                    <div key={label} className={`flex flex-col items-center backdrop-blur-md border rounded-sm px-4 py-3 min-w-[60px] ${lightHero ? "bg-background/80 border-border" : "bg-white/10 border-white/20"}`}>
                     <span className="text-2xl font-serif font-bold tabular-nums leading-none mb-1">
                       {String(value).padStart(2, '0')}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{label}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${lightHero ? "text-muted-foreground" : "text-white/40"}`}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -427,7 +441,7 @@ export default function EventRegister() {
       </div>
 
       {/* Two-column body */}
-      <div className="container mx-auto px-4 py-16 max-w-6xl" style={primaryStyle}>
+      <div className="container mx-auto px-4 py-16 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-16">
 
           {/* Left: Event info */}
@@ -662,6 +676,7 @@ export default function EventRegister() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </Layout>
   );

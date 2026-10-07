@@ -83,6 +83,7 @@ export default function ElectionVote() {
   const [paymentCustomerEmail, setPaymentCustomerEmail] = useState('');
   const [paymentCustomerPhone, setPaymentCustomerPhone] = useState('');
   const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
   const { data: paymentStatus } = usePaymentStatus(paymentId);
 
@@ -111,10 +112,12 @@ export default function ElectionVote() {
       setHasPaid(true);
       setPaymentProcessing(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
       setStep("success");
     } else if (paymentStatus.status === "failed") {
       setPaymentProcessing(false);
       setPaymentId(null);
+      setCheckoutUrl(null);
       setStep("review");
       toast({ title: "Payment failed", description: "Your ballot was not recorded. Please try again.", variant: "destructive" });
     }
@@ -198,11 +201,12 @@ export default function ElectionVote() {
           setPaymentProcessing(false);
           if ("paymentRequired" in result) {
             if (!result.checkoutUrl) {
-              toast({ title: "Payment unavailable", description: "FlowPay did not return a checkout link.", variant: "destructive" });
+              toast({ title: "Payment unavailable", description: "No payment checkout link was returned.", variant: "destructive" });
               setStep("review");
               return;
             }
             setPaymentId(result.paymentId);
+            setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
           }
@@ -600,6 +604,11 @@ export default function ElectionVote() {
               <p className="text-center text-xs text-muted-foreground/50 mt-4">
                 Your vote will be submitted automatically after payment confirmation.
               </p>
+              {checkoutUrl && (
+                <Button asChild variant="outline" className="mt-4 w-full">
+                  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
+                </Button>
+              )}
             </div>
           </div>
         </div>
