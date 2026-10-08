@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save } from "lucide-react";
+import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save, Plus, Trash2 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,16 @@ import { useTranslation } from "react-i18next";
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { EntityRecoveryActions } from "@/components/management/EntityRecoveryActions";
 
+type CampaignFieldType = "text" | "textarea" | "email" | "phone" | "number" | "select" | "checkbox" | "date";
+type EditableCampaignField = {
+  id: string;
+  label: string;
+  type: CampaignFieldType;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+};
+
 export default function CampaignDetail() {
   const [match, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id ? parseInt(params.id, 10) : 0;
@@ -43,6 +53,8 @@ export default function CampaignDetail() {
   const [isExporting, setIsExporting] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
   const [pendingStatus, setPendingStatus] = useState<"active" | "ended" | null>(null);
+  const [isEditingFields, setIsEditingFields] = useState(false);
+  const [formFieldsDraft, setFormFieldsDraft] = useState<EditableCampaignField[]>([]);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const { data: submissions, isLoading: isSubmissionsLoading } = useListCampaignSubmissions(campaignId, {
@@ -89,6 +101,76 @@ export default function CampaignDetail() {
           });
         }
       }
+    );
+  };
+
+  const canEditFormFields = campaign.status === "draft" && (campaign.submissionsCount ?? 0) === 0;
+  const beginFormFieldEditing = () => {
+    setFormFieldsDraft(((campaign.fields ?? []) as EditableCampaignField[]).map((field) => ({ ...field })));
+    setIsEditingFields(true);
+  };
+  const addFormField = () => {
+    const id = `field_${Date.now().toString(36)}_${formFieldsDraft.length + 1}`;
+    setFormFieldsDraft((fields) => [...fields, {
+      id,
+      label: "New field",
+      type: "text",
+      required: false,
+    }]);
+  };
+  const moveFormField = (index: number, direction: -1 | 1) => {
+    setFormFieldsDraft((fields) => {
+      const target = index + direction;
+      if (target < 0 || target >= fields.length) return fields;
+      const next = [...fields];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+  const handleSaveFormFields = () => {
+    const ids = formFieldsDraft.map((field) => field.id);
+    const hasInvalidField = formFieldsDraft.some((field) => (
+      !field.id.trim()
+      || !field.label.trim()
+      || (field.type === "select" && !(field.options ?? []).some((option) => option.trim()))
+    ));
+    if (hasInvalidField || new Set(ids).size !== ids.length) {
+      toast({
+        title: "Check the form fields",
+        description: "Each field needs a label, a unique response key, and select fields need at least one option.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateCampaign.mutate(
+      {
+        campaignId,
+        data: {
+          fields: formFieldsDraft.map((field) => ({
+            ...field,
+            label: field.label.trim(),
+            options: field.type === "select"
+              ? (field.options ?? []).map((option) => option.trim()).filter(Boolean)
+              : undefined,
+            placeholder: field.placeholder?.trim() || undefined,
+          })),
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
+          setIsEditingFields(false);
+          toast({ title: "Campaign form updated" });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Could not update the campaign form",
+            description: error?.data?.error || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
     );
   };
 
@@ -314,14 +396,113 @@ export default function CampaignDetail() {
             <TabsContent value="form" className="mt-0 space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FormInput className="h-5 w-5 text-muted-foreground" />
-                    Form Schema
-                  </CardTitle>
-                  <CardDescription>The fields configured for this campaign</CardDescription>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FormInput className="h-5 w-5 text-muted-foreground" />
+                        Form Schema
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        {canEditFormFields
+                          ? "Edit the questions contributors answer when submitting this campaign form."
+                          : "Form structure is locked after the campaign leaves draft or receives a submission."}
+                      </CardDescription>
+                    </div>
+                    {!isEditingFields && (
+                      <Button variant="outline" onClick={beginFormFieldEditing} disabled={!canEditFormFields}>
+                        <FormInput className="mr-2 h-4 w-4" /> Edit fields
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {!campaign.fields || campaign.fields.length === 0 ? (
+                  {isEditingFields ? (
+                    <div className="space-y-4">
+                      {formFieldsDraft.map((field, index) => (
+                        <div key={field.id} className="grid gap-4 rounded-lg border border-border/70 bg-muted/5 p-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`campaign-field-label-${index}`}>Field label</Label>
+                            <Input
+                              id={`campaign-field-label-${index}`}
+                              value={field.label}
+                              onChange={(event) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index ? { ...item, label: event.target.value } : item))}
+                              maxLength={120}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Field type</Label>
+                            <Select
+                              value={field.type}
+                              onValueChange={(value) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index
+                                ? {
+                                  ...item,
+                                  type: value as CampaignFieldType,
+                                  options: value === "select" ? (item.options?.length ? item.options : ["Option 1"]) : undefined,
+                                }
+                                : item))}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {(["text", "textarea", "email", "phone", "number", "select", "checkbox", "date"] as CampaignFieldType[]).map((type) => (
+                                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`campaign-field-placeholder-${index}`}>Placeholder <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                            <Input
+                              id={`campaign-field-placeholder-${index}`}
+                              value={field.placeholder ?? ""}
+                              onChange={(event) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index ? { ...item, placeholder: event.target.value } : item))}
+                              maxLength={160}
+                            />
+                          </div>
+                          {field.type === "select" && (
+                            <div className="space-y-1.5">
+                              <Label htmlFor={`campaign-field-options-${index}`}>Options, separated by commas</Label>
+                              <Input
+                                id={`campaign-field-options-${index}`}
+                                value={(field.options ?? []).join(", ")}
+                                onChange={(event) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index
+                                  ? { ...item, options: event.target.value.split(",").map((option) => option.trim()).filter(Boolean) }
+                                  : item))}
+                                placeholder="Option one, Option two"
+                              />
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={field.required}
+                                onChange={(event) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index ? { ...item, required: event.target.checked } : item))}
+                              />
+                              Required field
+                            </label>
+                            <span className="mr-auto text-xs text-muted-foreground font-mono">Response key: {field.id}</span>
+                            <Button type="button" variant="outline" size="sm" onClick={() => moveFormField(index, -1)} disabled={index === 0}>Move up</Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => moveFormField(index, 1)} disabled={index === formFieldsDraft.length - 1}>Move down</Button>
+                            <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => setFormFieldsDraft((fields) => fields.filter((_, i) => i !== index))}>
+                              <Trash2 className="mr-1.5 h-4 w-4" /> Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex flex-wrap justify-between gap-3">
+                        <Button type="button" variant="outline" onClick={addFormField}>
+                          <Plus className="mr-2 h-4 w-4" /> Add field
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="ghost" onClick={() => setIsEditingFields(false)} disabled={updateCampaign.isPending}>Cancel</Button>
+                          <Button type="button" onClick={handleSaveFormFields} disabled={updateCampaign.isPending}>
+                            {updateCampaign.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save form
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : !campaign.fields || campaign.fields.length === 0 ? (
                     <div className="text-center p-8 text-muted-foreground">No fields configured.</div>
                   ) : (
                     <div className="space-y-4">

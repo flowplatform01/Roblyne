@@ -5,13 +5,14 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import {
-  db, financialTransactionsTable, settlementsTable, commissionConfigsTable, organizationsTable,
+  db, financialTransactionsTable, settlementsTable, settlementAllocationsTable, commissionConfigsTable, organizationsTable,
   electionsTable, votesTable, voteSelectionsTable, eventsTable, ticketsTable, ticketTypesTable, campaignsTable, campaignResponsesTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requireOrgRole } from "../middlewares/orgAccess";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
+import { getAvailableSettlementAmount, planSettlementAllocations } from "../lib/settlement-allocation";
 
 const router: IRouter = Router();
 
@@ -54,9 +55,8 @@ router.get("/finance/commission-rates", async (_req, res): Promise<void> => {
 // ── ORG FINANCIAL WORKSPACE ────────────────────────────────────────────────
 
 /**
- * Request a payout of all currently available organization earnings.
- * Row locks make simultaneous requests safe: only one request can claim the
- * pending ledger rows.
+ * Request a payout for a chosen amount of available organization earnings.
+ * Ledger row locks and explicit allocations make simultaneous requests safe.
  */
 router.post("/organizations/:orgId/finance/settlements",
   requireAuth,
@@ -73,6 +73,7 @@ router.post("/organizations/:orgId/finance/settlements",
       ? req.body.currency.trim().toUpperCase()
       : null;
     const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : null;
+    const requestedAmount = Number(req.body?.amount);
 
     if (!["bank_transfer", "mobile_money"].includes(payoutMethod)) {
       res.status(400).json({ error: "Choose a valid payout method" }); return;
@@ -86,6 +87,9 @@ router.post("/organizations/:orgId/finance/settlements",
     if (notes && notes.length > 500) {
       res.status(400).json({ error: "Notes must be 500 characters or fewer" }); return;
     }
+    if (!Number.isFinite(requestedAmount)) {
+      res.status(400).json({ error: "Enter a valid withdrawal amount" }); return;
+    }
 
     try {
       const settlement = await db.transaction(async (tx) => {
@@ -98,7 +102,9 @@ router.post("/organizations/:orgId/finance/settlements",
           WHERE org_id = ${orgId}
             AND status = 'completed'
             AND settlement_status = 'pending'
+            AND settlement_id IS NULL
             ${currencyFilter}
+          ORDER BY created_at ASC, id ASC
           FOR UPDATE
         `);
         const pending = pendingRows.rows as Array<{ id: number | string; org_earnings: string; currency: string }>;
@@ -110,35 +116,45 @@ router.post("/organizations/:orgId/finance/settlements",
         if (pending.some((row) => row.currency !== currency)) {
           throw new Error("Withdrawals must be requested separately for each currency");
         }
-        const amount = Math.round(
-          pending.reduce((sum, row) => sum + parseFloat(String(row.org_earnings)), 0) * 100,
-        ) / 100;
-        if (amount <= 0) throw new Error("There is no available balance to withdraw");
-
         const pendingIds = pending.map((row) => Number(row.id));
+        const allocationTotals = await tx
+          .select({
+            transactionId: settlementAllocationsTable.financialTransactionId,
+            amount: sql<string>`COALESCE(SUM(${settlementAllocationsTable.amount}), 0)::text`,
+          })
+          .from(settlementAllocationsTable)
+          .where(inArray(settlementAllocationsTable.financialTransactionId, pendingIds))
+          .groupBy(settlementAllocationsTable.financialTransactionId);
+        const allocatedByTransactionId = new Map(
+          allocationTotals.map((row) => [Number(row.transactionId), String(row.amount)]),
+        );
+        const earningRows = pending.map((row) => ({
+          transactionId: Number(row.id),
+          orgEarnings: row.org_earnings,
+          allocatedAmount: allocatedByTransactionId.get(Number(row.id)) ?? "0.00",
+        }));
+        const allocations = planSettlementAllocations(earningRows, requestedAmount);
+        const amount = requestedAmount.toFixed(2);
+
         const [created] = await tx
           .insert(settlementsTable)
           .values({
             orgId,
-            amount: String(amount),
+            amount,
             currency,
             status: "pending_settlement",
-            transactionCount: pending.length,
+            transactionCount: allocations.length,
             payoutMethod,
             payoutAccount,
             notes: notes || null,
           })
           .returning();
 
-        await tx
-          .update(financialTransactionsTable)
-          .set({ settlementId: created.id, settlementStatus: "ready" })
-          .where(and(
-            eq(financialTransactionsTable.orgId, orgId),
-            inArray(financialTransactionsTable.id, pendingIds),
-            eq(financialTransactionsTable.settlementStatus, "pending"),
-            eq(financialTransactionsTable.status, "completed"),
-          ));
+        await tx.insert(settlementAllocationsTable).values(allocations.map((allocation) => ({
+          settlementId: created.id,
+          financialTransactionId: allocation.transactionId,
+          amount: allocation.amount,
+        })));
 
         return created;
       });
@@ -553,7 +569,9 @@ router.post("/admin/finance/settlements", async (req, res): Promise<void> => {
       WHERE org_id = ${orgId}
         AND settlement_status = 'pending'
         AND status = 'completed'
+        AND settlement_id IS NULL
         ${currencyFilter}
+      ORDER BY created_at ASC, id ASC
       FOR UPDATE
     `);
     const pending = pendingResult.rows as Array<{ id: number | string; org_earnings: string; currency: string }>;
@@ -564,23 +582,40 @@ router.post("/admin/finance/settlements", async (req, res): Promise<void> => {
     if (pending.some((row) => row.currency !== currency)) {
       throw Object.assign(new Error("Withdrawals must be requested separately for each currency"), { code: "MIXED_CURRENCIES" });
     }
-    const totalAmount = pending.reduce((sum, t) => sum + parseFloat(String(t.org_earnings)), 0);
     const pendingIds = pending.map((row) => Number(row.id));
+    const allocationTotals = await tx
+      .select({
+        transactionId: settlementAllocationsTable.financialTransactionId,
+        amount: sql<string>`COALESCE(SUM(${settlementAllocationsTable.amount}), 0)::text`,
+      })
+      .from(settlementAllocationsTable)
+      .where(inArray(settlementAllocationsTable.financialTransactionId, pendingIds))
+      .groupBy(settlementAllocationsTable.financialTransactionId);
+    const allocatedByTransactionId = new Map(
+      allocationTotals.map((row) => [Number(row.transactionId), String(row.amount)]),
+    );
+    const earningRows = pending.map((row) => ({
+      transactionId: Number(row.id),
+      orgEarnings: row.org_earnings,
+      allocatedAmount: allocatedByTransactionId.get(Number(row.id)) ?? "0.00",
+    }));
+    const totalAmount = getAvailableSettlementAmount(earningRows);
+    if (totalAmount <= 0) {
+      throw Object.assign(new Error("No pending transactions to settle"), { code: "NO_PENDING_TRANSACTIONS" });
+    }
+    const allocations = planSettlementAllocations(earningRows, totalAmount);
     const [created] = await tx.insert(settlementsTable).values({
       orgId,
-      amount: String(Math.round(totalAmount * 100) / 100),
+      amount: totalAmount.toFixed(2),
       currency,
       status: "pending_settlement",
-      transactionCount: pending.length,
+      transactionCount: allocations.length,
     }).returning();
-    await tx.update(financialTransactionsTable)
-      .set({ settlementId: created.id, settlementStatus: "ready" })
-      .where(and(
-        eq(financialTransactionsTable.orgId, orgId),
-        inArray(financialTransactionsTable.id, pendingIds),
-        eq(financialTransactionsTable.settlementStatus, "pending"),
-        eq(financialTransactionsTable.status, "completed"),
-      ));
+    await tx.insert(settlementAllocationsTable).values(allocations.map((allocation) => ({
+      settlementId: created.id,
+      financialTransactionId: allocation.transactionId,
+      amount: allocation.amount,
+    })));
     return created;
     });
     res.status(201).json(formatSettlement(settlement));
@@ -603,21 +638,57 @@ router.post("/admin/finance/settlements", async (req, res): Promise<void> => {
  */
 router.get("/admin/finance/org-balances", async (_req, res): Promise<void> => {
   const { rows } = await db.execute(sql`
+    WITH allocation_totals AS (
+      SELECT financial_transaction_id, SUM(amount) AS allocated_amount
+      FROM settlement_allocations
+      GROUP BY financial_transaction_id
+    ),
+    transaction_balances AS (
+      SELECT
+        ft.org_id,
+        ft.currency,
+        COALESCE(SUM(ft.gross_amount), 0)::float AS total_revenue,
+        COALESCE(SUM(ft.commission_amount), 0)::float AS total_commission,
+        COALESCE(SUM(ft.org_earnings), 0)::float AS total_earnings,
+        COALESCE(SUM(
+          CASE
+            WHEN ft.settlement_status = 'pending' AND ft.settlement_id IS NULL
+              THEN GREATEST(ft.org_earnings - COALESCE(at.allocated_amount, 0), 0)
+            ELSE 0
+          END
+        ), 0)::float AS available_balance,
+        COUNT(ft.id)::int AS transaction_count
+      FROM financial_transactions ft
+      LEFT JOIN allocation_totals at ON at.financial_transaction_id = ft.id
+      WHERE ft.status = 'completed'
+      GROUP BY ft.org_id, ft.currency
+    ),
+    settlement_balances AS (
+      SELECT
+        org_id,
+        currency,
+        COALESCE(SUM(amount) FILTER (WHERE status IN ('pending_settlement', 'ready')), 0)::float
+          AS pending_settlement_balance,
+        COALESCE(SUM(amount) FILTER (WHERE status IN ('released', 'completed')), 0)::float
+          AS released_balance
+      FROM settlements
+      GROUP BY org_id, currency
+    )
     SELECT
-      o.id                                                                                AS org_id,
-      o.name                                                                              AS org_name,
-      ft.currency,
-      COALESCE(SUM(ft.gross_amount), 0)::float                                            AS total_revenue,
-      COALESCE(SUM(ft.commission_amount), 0)::float                                       AS total_commission,
-      COALESCE(SUM(ft.org_earnings), 0)::float                                            AS total_earnings,
-      COALESCE(SUM(CASE WHEN ft.settlement_status = 'pending' THEN ft.org_earnings ELSE 0 END), 0)::float AS available_balance,
-      COALESCE(SUM(CASE WHEN ft.settlement_status = 'ready' THEN ft.org_earnings ELSE 0 END), 0)::float AS pending_settlement_balance,
-      COALESCE(SUM(CASE WHEN ft.settlement_status = 'completed' THEN ft.org_earnings ELSE 0 END), 0)::float AS released_balance,
-      COUNT(ft.id)::int                                                                   AS transaction_count
-    FROM organizations o
-    JOIN financial_transactions ft ON ft.org_id = o.id AND ft.status = 'completed'
-    GROUP BY o.id, o.name, ft.currency
-    ORDER BY total_revenue DESC, o.id, ft.currency
+      o.id AS org_id,
+      o.name AS org_name,
+      tb.currency,
+      tb.total_revenue,
+      tb.total_commission,
+      tb.total_earnings,
+      tb.available_balance,
+      COALESCE(sb.pending_settlement_balance, 0)::float AS pending_settlement_balance,
+      COALESCE(sb.released_balance, 0)::float AS released_balance,
+      tb.transaction_count
+    FROM transaction_balances tb
+    JOIN organizations o ON o.id = tb.org_id
+    LEFT JOIN settlement_balances sb ON sb.org_id = tb.org_id AND sb.currency = tb.currency
+    ORDER BY total_revenue DESC, o.id, tb.currency
   `);
   res.json(rows);
 });

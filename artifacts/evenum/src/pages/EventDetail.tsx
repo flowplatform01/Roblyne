@@ -5,6 +5,8 @@ import {
   useGetEvent, 
   useListTicketTypes,
   useCreateTicketType,
+  useUpdateTicketType,
+  useDeleteTicketType,
   useUpdateEvent,
   useListAttendees,
   useGetEventAnalytics,
@@ -27,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard, Save } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard, Save } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
@@ -135,6 +137,7 @@ export default function EventDetail() {
 
   const [activeTab, setActiveTab] = useState("tickets");
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+  const [editingTicketType, setEditingTicketType] = useState<any | null>(null);
   const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false);
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInMode, setCheckInMode] = useState<"manual" | "scan">("manual");
@@ -162,6 +165,8 @@ export default function EventDetail() {
   
   const updateEvent = useUpdateEvent();
   const createTicketType = useCreateTicketType();
+  const updateTicketType = useUpdateTicketType();
+  const deleteTicketType = useDeleteTicketType();
   const checkIn = useCheckInAttendee();
 
   const form = useForm<z.infer<typeof ticketTypeSchema>>({
@@ -233,6 +238,79 @@ export default function EventDetail() {
           toast({ title: "Ticket type created" });
         }
       }
+    );
+  };
+
+  const openCreateTicketDialog = () => {
+    setEditingTicketType(null);
+    form.reset({ name: "", description: "", price: 0, currency: "XAF", quantity: "" });
+    setIsTicketDialogOpen(true);
+  };
+
+  const openEditTicketDialog = (ticket: any) => {
+    setEditingTicketType(ticket);
+    form.reset({
+      name: ticket.name,
+      description: ticket.description ?? "",
+      price: ticket.price,
+      currency: ticket.currency || "XAF",
+      quantity: ticket.quantity == null ? "" : String(ticket.quantity),
+    });
+    setIsTicketDialogOpen(true);
+  };
+
+  const handleSaveTicketType = (values: z.infer<typeof ticketTypeSchema>) => {
+    if (!editingTicketType) {
+      handleCreateTicketType(values);
+      return;
+    }
+
+    updateTicketType.mutate(
+      {
+        eventId,
+        ticketTypeId: editingTicketType.id,
+        data: {
+          name: values.name,
+          description: values.description,
+          price: values.price,
+          currency: values.currency,
+          quantity: values.quantity ? Number(values.quantity) : null,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListTicketTypesQueryKey(eventId) });
+          setIsTicketDialogOpen(false);
+          setEditingTicketType(null);
+          toast({ title: "Ticket type updated" });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Could not update ticket type",
+            description: error?.data?.error || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const handleDeleteTicketType = (ticketTypeId: number) => {
+    deleteTicketType.mutate(
+      { eventId, ticketTypeId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListTicketTypesQueryKey(eventId) });
+          toast({ title: "Ticket type deleted" });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Could not delete ticket type",
+            description: error?.data?.error || "Ticket types with reservations or payment history cannot be deleted.",
+            variant: "destructive",
+          });
+        },
+      },
     );
   };
 
@@ -443,17 +521,20 @@ export default function EventDetail() {
             <TabsContent value="tickets" className="mt-0 space-y-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-serif font-bold">Ticket Types</h2>
-                <Dialog open={isTicketDialogOpen} onOpenChange={setIsTicketDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button><Plus className="mr-2 h-4 w-4" /> Add Ticket Type</Button>
-                  </DialogTrigger>
+                <Dialog open={isTicketDialogOpen} onOpenChange={(open) => {
+                  setIsTicketDialogOpen(open);
+                  if (!open) setEditingTicketType(null);
+                }}>
+                  <Button onClick={openCreateTicketDialog}><Plus className="mr-2 h-4 w-4" /> Add Ticket Type</Button>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add New Ticket Type</DialogTitle>
-                      <DialogDescription>Create a ticket option for your attendees.</DialogDescription>
+                      <DialogTitle>{editingTicketType ? "Edit Ticket Type" : "Add New Ticket Type"}</DialogTitle>
+                      <DialogDescription>
+                        {editingTicketType ? "Update this ticket option. Price and currency cannot change after a sale or payment begins." : "Create a ticket option for your attendees."}
+                      </DialogDescription>
                     </DialogHeader>
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(handleCreateTicketType)} className="space-y-4">
+                      <form onSubmit={form.handleSubmit(handleSaveTicketType)} className="space-y-4">
                         <FormField
                           control={form.control}
                           name="name"
@@ -501,9 +582,9 @@ export default function EventDetail() {
                           />
                         </div>
                         <DialogFooter>
-                          <Button type="submit" disabled={createTicketType.isPending}>
-                            {createTicketType.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Ticket
+                          <Button type="submit" disabled={createTicketType.isPending || updateTicketType.isPending}>
+                            {(createTicketType.isPending || updateTicketType.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingTicketType ? "Save Changes" : "Create Ticket"}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -520,7 +601,7 @@ export default function EventDetail() {
                     <Ticket className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium">No ticket types added</h3>
                     <p className="text-muted-foreground mb-4">Add at least one ticket type so people can register.</p>
-                    <Button onClick={() => setIsTicketDialogOpen(true)}>Create First Ticket</Button>
+                    <Button onClick={openCreateTicketDialog}>Create First Ticket</Button>
                   </CardContent>
                 </Card>
               ) : (
@@ -530,9 +611,44 @@ export default function EventDetail() {
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
                           <CardTitle className="font-serif text-lg">{ticket.name}</CardTitle>
-                          <span className="font-bold text-lg text-emerald-600">
-                            {ticket.price === 0 ? 'Free' : formatCurrency(ticket.price, ticket.currency || "XAF", locale)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg text-emerald-600">
+                              {ticket.price === 0 ? 'Free' : formatCurrency(ticket.price, ticket.currency || "XAF", locale)}
+                            </span>
+                            <Button variant="ghost" size="icon" aria-label={`Edit ${ticket.name}`} title="Edit ticket type" onClick={() => openEditTicketDialog(ticket)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Delete ${ticket.name}`}
+                                  title={ticket.sold ? "Ticket types with sales cannot be deleted" : "Delete ticket type"}
+                                  disabled={Boolean(ticket.sold) || deleteTicketType.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete ticket type?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This permanently removes “{ticket.name}”. Ticket types with reservations, sales, or payment history are protected.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteTicketType(ticket.id)}
+                                  >
+                                    Delete ticket type
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                         {ticket.description && <CardDescription className="line-clamp-2">{ticket.description}</CardDescription>}
                       </CardHeader>

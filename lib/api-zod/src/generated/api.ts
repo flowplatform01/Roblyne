@@ -1909,6 +1909,10 @@ export const RequestOrgWithdrawalParams = zod.object({
   "orgId": zod.coerce.number()
 })
 
+export const requestOrgWithdrawalBodyAmountMin = 0.01;
+export const requestOrgWithdrawalBodyAmountMax = 9999999999.99;
+export const requestOrgWithdrawalBodyAmountMultipleOf = 0.01;
+
 export const requestOrgWithdrawalBodyCurrencyRegExp = new RegExp('^[A-Z]{3}$');
 export const requestOrgWithdrawalBodyPayoutAccountMin = 3;
 export const requestOrgWithdrawalBodyPayoutAccountMax = 160;
@@ -1918,6 +1922,7 @@ export const requestOrgWithdrawalBodyNotesMax = 500;
 
 
 export const RequestOrgWithdrawalBody = zod.object({
+  "amount": zod.number().min(requestOrgWithdrawalBodyAmountMin).max(requestOrgWithdrawalBodyAmountMax).multipleOf(requestOrgWithdrawalBodyAmountMultipleOf).describe('Amount to withdraw from the available balance in the selected currency.'),
   "currency": zod.string().regex(requestOrgWithdrawalBodyCurrencyRegExp).optional().describe('Optional for older clients; required when withdrawing from an organization with multiple available currencies.'),
   "payoutMethod": zod.enum(['bank_transfer', 'mobile_money']),
   "payoutAccount": zod.string().min(requestOrgWithdrawalBodyPayoutAccountMin).max(requestOrgWithdrawalBodyPayoutAccountMax),

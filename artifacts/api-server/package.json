@@ -9,6 +9,7 @@
     "build:worker": "node ./build.mjs --worker",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "start:worker": "node --enable-source-maps ./dist/worker.mjs",
+    "test": "node --experimental-strip-types --test src/lib/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

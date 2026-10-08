@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, decimal, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, decimal, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -72,6 +72,21 @@ export const settlementsTable = pgTable("settlements", {
 }, (table) => ({
   orgIdIdx: index("settlements_org_id_idx").on(table.orgId),
   statusIdx: index("settlements_status_idx").on(table.status),
+}));
+
+// A settlement may claim only part of one or more ledger transactions. Keep
+// each claim explicit so later withdrawals can use the unallocated remainder.
+export const settlementAllocationsTable = pgTable("settlement_allocations", {
+  id: serial("id").primaryKey(),
+  settlementId: integer("settlement_id").notNull().references(() => settlementsTable.id, { onDelete: "cascade" }),
+  financialTransactionId: integer("financial_transaction_id").notNull().references(() => financialTransactionsTable.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  settlementIdx: index("settlement_allocations_settlement_id_idx").on(table.settlementId),
+  transactionIdx: index("settlement_allocations_financial_transaction_id_idx").on(table.financialTransactionId),
+  settlementTransactionUnique: uniqueIndex("settlement_allocations_settlement_transaction_uq")
+    .on(table.settlementId, table.financialTransactionId),
 }));
 
 export const insertCommissionConfigSchema = createInsertSchema(commissionConfigsTable).omit({ id: true, updatedAt: true });

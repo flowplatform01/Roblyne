@@ -259,6 +259,13 @@ router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campa
     ) {
       return { kind: "locked" as const };
     }
+    if (Object.prototype.hasOwnProperty.call(bodyParsed.data, "fields")) {
+      const [existingResponse] = await tx.select({ id: campaignResponsesTable.id })
+        .from(campaignResponsesTable)
+        .where(eq(campaignResponsesTable.campaignId, paramParsed.data.campaignId))
+        .limit(1);
+      if (existingResponse) return { kind: "fields_locked" as const };
+    }
 
     const [campaign] = await tx.update(campaignsTable)
       .set(updateData)
@@ -280,6 +287,10 @@ router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campa
     res.status(409).json({
       error: "A live campaign's payment, response fields, goal, and schedule are protected. End the campaign before changing its configuration.",
     });
+    return;
+  }
+  if (outcome.kind === "fields_locked") {
+    res.status(409).json({ error: "Campaign form fields cannot change after the first submission has been received." });
     return;
   }
   res.json(campaignRow(outcome.campaign, null, 0));

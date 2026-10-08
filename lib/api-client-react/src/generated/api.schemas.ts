@@ -1390,6 +1390,12 @@ export const RequestWithdrawalInputPayoutMethod = {
 
 export interface RequestWithdrawalInput {
   /**
+     * Amount to withdraw from the available balance in the selected currency.
+     * @minimum 0.01
+     * @maximum 9999999999.99
+     */
+  amount: number;
+  /**
      * Optional for older clients; required when withdrawing from an organization with multiple available currencies.
      * @pattern ^[A-Z]{3}$
      */

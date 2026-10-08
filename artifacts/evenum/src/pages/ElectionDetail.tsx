@@ -31,7 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, DollarSign, CreditCard } from "lucide-react";
+import { Loader2, Plus, Pencil, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, DollarSign, CreditCard } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
@@ -90,7 +90,9 @@ export default function ElectionDetail() {
 
   const [activeTab, setActiveTab] = useState("positions");
   const [isPositionDialogOpen, setIsPositionDialogOpen] = useState(false);
+  const [editingPosition, setEditingPosition] = useState<any | null>(null);
   const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
+  const [editingCandidate, setEditingCandidate] = useState<any | null>(null);
   const [candidatePositionId, setCandidatePositionId] = useState<number | null>(null);
   const [voterEmailsInput, setVoterEmailsInput] = useState("");
   const [pendingStatus, setPendingStatus] = useState<"active" | "ended" | null>(null);
@@ -105,11 +107,15 @@ export default function ElectionDetail() {
   );
   const lifecycleNow = useLifecycleClock();
   const candidateRemovalLocked = isCandidateRemovalLocked(election, lifecycleNow)
+    || Number(election?.totalVotes ?? 0) > 0
     || Boolean(candidates?.some(candidate => (candidate.voteCount ?? 0) > 0));
   
   const updateElection = useUpdateElection();
   const createPosition = useCreatePosition();
+  const updatePosition = useUpdatePosition();
+  const deletePosition = useDeletePosition();
   const createCandidate = useCreateCandidate();
+  const updateCandidate = useUpdateCandidate();
   const deleteCandidate = useDeleteCandidate();
   const addEligibleVoters = useAddEligibleVoters();
   const removeEligibleVoter = useRemoveEligibleVoter();
@@ -173,6 +179,39 @@ export default function ElectionDetail() {
   };
 
   const handleCreateCandidate = (values: z.infer<typeof candidateSchema>) => {
+    const onSuccess = () => {
+      queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
+      queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
+      setIsCandidateDialogOpen(false);
+      setCandidatePositionId(null);
+      setEditingCandidate(null);
+      candidateForm.reset();
+      toast({ title: editingCandidate ? "Candidate updated" : "Candidate added" });
+    };
+    const onError = (error: any) => {
+      toast({
+        variant: "destructive",
+        title: editingCandidate ? "Failed to update candidate" : "Failed to add candidate",
+        description: error?.data?.error || "Please try again.",
+      });
+    };
+
+    if (editingCandidate) {
+      updateCandidate.mutate(
+        {
+          electionId,
+          candidateId: editingCandidate.id,
+          data: {
+            name: values.name,
+            bio: values.bio || "",
+            platform: values.platform || "",
+            photoUrl: values.photoUrl || "",
+          },
+        },
+        { onSuccess, onError },
+      );
+      return;
+    }
     if (!candidatePositionId) return;
     createCandidate.mutate(
       {
@@ -185,18 +224,7 @@ export default function ElectionDetail() {
           photoUrl: values.photoUrl || undefined,
         },
       },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
-          setIsCandidateDialogOpen(false);
-          setCandidatePositionId(null);
-          candidateForm.reset();
-          toast({ title: "Candidate added" });
-        },
-        onError: (error: any) => {
-          toast({ variant: "destructive", title: "Failed to add candidate", description: error?.data?.error || "Please try again." });
-        },
-      }
+      { onSuccess, onError },
     );
   };
 
@@ -206,6 +234,7 @@ export default function ElectionDetail() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
+          queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
           toast({ title: "Candidate removed", description: `${candidateName} has been removed.` });
         },
         onError: (error: any) => {
@@ -216,22 +245,85 @@ export default function ElectionDetail() {
   };
 
   const openCandidateDialog = (positionId: number) => {
+    setEditingCandidate(null);
     setCandidatePositionId(positionId);
     candidateForm.reset();
     setIsCandidateDialogOpen(true);
   };
 
+  const openEditCandidateDialog = (candidate: any) => {
+    setEditingCandidate(candidate);
+    setCandidatePositionId(candidate.positionId);
+    candidateForm.reset({
+      name: candidate.name ?? "",
+      bio: candidate.bio ?? "",
+      platform: candidate.platform ?? "",
+      photoUrl: candidate.photoUrl ?? "",
+    });
+    setIsCandidateDialogOpen(true);
+  };
+
+  const openCreatePositionDialog = () => {
+    setEditingPosition(null);
+    form.reset({ title: "", description: "", maxSelections: 1, sortOrder: 0 });
+    setIsPositionDialogOpen(true);
+  };
+
+  const openEditPositionDialog = (position: any) => {
+    setEditingPosition(position);
+    form.reset({
+      title: position.title,
+      description: position.description ?? "",
+      maxSelections: position.maxSelections,
+      sortOrder: position.sortOrder ?? 0,
+    });
+    setIsPositionDialogOpen(true);
+  };
+
   const handleCreatePosition = (values: z.infer<typeof positionSchema>) => {
-    createPosition.mutate(
-      { electionId, data: values },
+    const onSuccess = () => {
+      queryClient.invalidateQueries({ queryKey: getListPositionsQueryKey(electionId) });
+      queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
+      setIsPositionDialogOpen(false);
+      setEditingPosition(null);
+      form.reset();
+      toast({ title: editingPosition ? "Position updated" : "Position created" });
+    };
+    const onError = (error: any) => {
+      toast({
+        title: editingPosition ? "Could not update position" : "Could not create position",
+        description: error?.data?.error || "Please try again.",
+        variant: "destructive",
+      });
+    };
+    if (editingPosition) {
+      updatePosition.mutate(
+        { electionId, positionId: editingPosition.id, data: values },
+        { onSuccess, onError },
+      );
+      return;
+    }
+    createPosition.mutate({ electionId, data: values }, { onSuccess, onError });
+  };
+
+  const handleDeletePosition = (positionId: number, title: string) => {
+    deletePosition.mutate(
+      { electionId, positionId },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListPositionsQueryKey(electionId) });
-          setIsPositionDialogOpen(false);
-          form.reset();
-          toast({ title: "Position created" });
-        }
-      }
+          queryClient.invalidateQueries({ queryKey: getListCandidatesQueryKey(electionId) });
+          queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
+          toast({ title: "Position removed", description: `${title} and its candidates were removed.` });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Could not remove position",
+            description: error?.data?.error || "Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
     );
   };
 

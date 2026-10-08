@@ -1135,6 +1135,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const [payoutAccount, setPayoutAccount] = useState("");
   const [withdrawalNotes, setWithdrawalNotes] = useState("");
   const [withdrawalCurrency, setWithdrawalCurrency] = useState("");
+  const [withdrawalAmount, setWithdrawalAmount] = useState("");
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
   const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
@@ -1154,6 +1155,15 @@ function FinanceSection({ orgId }: { orgId: number }) {
     ? withdrawalCurrency
     : availableBalances[0]?.currency ?? "";
   const selectedBalance = availableBalances.find((balance) => balance.currency === selectedCurrency);
+  const requestedAmount = withdrawalAmount.trim() ? Number(withdrawalAmount) : Number.NaN;
+  const withdrawalAmountIsValid = Number.isFinite(requestedAmount)
+    && requestedAmount > 0
+    && Math.abs(requestedAmount * 100 - Math.round(requestedAmount * 100)) < 0.000001
+    && !!selectedBalance
+    && requestedAmount <= selectedBalance.availableBalance;
+  const remainingAfterWithdrawal = selectedBalance && withdrawalAmountIsValid
+    ? Math.max(0, selectedBalance.availableBalance - requestedAmount)
+    : null;
   const renderCurrencyBalances = (field: "availableBalance" | "pendingSettlementBalance" | "releasedBalance") => (
     currencyBalances.length > 0
       ? currencyBalances.map((balance) => (
@@ -1192,10 +1202,19 @@ function FinanceSection({ orgId }: { orgId: number }) {
       toast({ title: "No balance available", description: "There are no earnings ready for withdrawal.", variant: "destructive" });
       return;
     }
+    if (!withdrawalAmountIsValid) {
+      toast({
+        title: "Enter a valid withdrawal amount",
+        description: `Choose an amount from 0.01 up to ${formatCurrency(selectedBalance.availableBalance, selectedCurrency)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     requestWithdrawal.mutate(
       {
         orgId,
         data: {
+          amount: Math.round(requestedAmount * 100) / 100,
           currency: selectedCurrency,
           payoutMethod,
           payoutAccount: payoutAccount.trim(),
@@ -1209,6 +1228,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
           queryClient.invalidateQueries({ queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) });
           setPayoutAccount("");
           setWithdrawalNotes("");
+          setWithdrawalAmount("");
           toast({
             title: "Withdrawal request submitted",
             description: `${formatCurrency(settlement.amount, settlement.currency)} is now being processed.`,
@@ -1252,25 +1272,34 @@ function FinanceSection({ orgId }: { orgId: number }) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-serif">Withdraw available earnings</CardTitle>
           <CardDescription>
-            A payout request transfers the full available balance in one currency. Partial withdrawals are not supported.
+            Choose the amount you want to withdraw. You can leave part of your available balance for a later request.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 rounded-lg border border-border/60 bg-background/70 px-4 py-3">
-            <div className="text-xs text-muted-foreground">Amount for this payout request</div>
-            <div className="mt-1 font-serif text-xl font-bold">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+              <div>
+                <div className="text-xs text-muted-foreground">Available in {selectedCurrency || "selected currency"}</div>
+                <div className="mt-1 font-serif text-xl font-bold">
               {selectedBalance ? formatCurrency(selectedBalance.availableBalance, selectedCurrency) : "No available balance"}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              The final amount is recalculated from eligible transactions when you submit.
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {remainingAfterWithdrawal === null
+                  ? "Enter an amount to preview your remaining balance."
+                  : `${formatCurrency(remainingAfterWithdrawal, selectedCurrency)} will remain available.`}
+              </div>
             </div>
           </div>
-          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto] items-end">
+          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.5fr_1.5fr_auto] items-end">
             <div className="space-y-1.5">
               <Label htmlFor="withdrawal-currency">Currency</Label>
               <Select
                 value={selectedCurrency}
-                onValueChange={setWithdrawalCurrency}
+                onValueChange={(currency) => {
+                  setWithdrawalCurrency(currency);
+                  setWithdrawalAmount("");
+                }}
                 disabled={availableBalances.length === 0 || requestWithdrawal.isPending}
               >
                 <SelectTrigger id="withdrawal-currency"><SelectValue placeholder="No available balance" /></SelectTrigger>
@@ -1280,6 +1309,27 @@ function FinanceSection({ orgId }: { orgId: number }) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="withdrawal-amount">Amount to withdraw</Label>
+              <Input
+                id="withdrawal-amount"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                max={selectedBalance?.availableBalance}
+                step="0.01"
+                value={withdrawalAmount}
+                onChange={(event) => setWithdrawalAmount(event.target.value)}
+                placeholder="Enter an amount"
+                required
+                disabled={!selectedBalance || requestWithdrawal.isPending}
+              />
+              {selectedBalance && (
+                <p className="text-xs text-muted-foreground">
+                  Maximum: {formatCurrency(selectedBalance.availableBalance, selectedCurrency)}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="payout-method">Payout method</Label>
@@ -1315,7 +1365,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
                 disabled={requestWithdrawal.isPending}
               />
             </div>
-            <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || !payoutAccount.trim()}>
+            <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || !payoutAccount.trim() || !withdrawalAmountIsValid}>
               {requestWithdrawal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
               Request payout
             </Button>
