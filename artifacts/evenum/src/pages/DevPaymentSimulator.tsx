@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetPaymentStatusQueryKey,
@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SimulatedStatus = "pending" | "processing" | "succeeded" | "failed";
+type SimulationOutcome = SimulatedStatus | "cancelled";
 
 export default function DevPaymentSimulator() {
   const queryClient = useQueryClient();
+  const [cancelledOutcome, setCancelledOutcome] = useState(false);
   const paymentId = useMemo(() => {
     const segment = window.location.pathname.split("/").filter(Boolean).at(-1);
     return Number(segment);
@@ -36,9 +38,11 @@ export default function DevPaymentSimulator() {
   const paymentStatus = (paymentQuery.data as any)?.paymentStatus as SimulatedStatus | undefined;
   const terminal = paymentStatus === "succeeded" || paymentStatus === "failed";
 
-  const setStatus = (status: SimulatedStatus) => {
+  const setStatus = (status: SimulationOutcome) => {
+    setCancelledOutcome(status === "cancelled");
     simulation.mutate({ paymentId, data: { token, status } });
   };
+  const displayedStatus = cancelledOutcome && paymentStatus === "failed" ? "cancelled" : paymentStatus;
 
   return (
     <Layout>
@@ -68,8 +72,14 @@ export default function DevPaymentSimulator() {
                   : paymentStatus === "failed" ? <XCircle className="h-4 w-4 text-destructive" />
                     : <Loader2 className="h-4 w-4 text-muted-foreground" />}
                 <span>Payment status:</span>
-                <strong className="capitalize">{paymentStatus ?? "unknown"}</strong>
+                <strong className="capitalize">{displayedStatus ?? "unknown"}</strong>
               </div>
+            )}
+
+            {cancelledOutcome && paymentStatus === "failed" && (
+              <p role="status" className="rounded-md border border-amber-500/30 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                Checkout cancellation is processed as a failed payment. No ticket, campaign submission, or vote is recorded.
+              </p>
             )}
 
             {simulation.isError && (
@@ -91,6 +101,13 @@ export default function DevPaymentSimulator() {
                 disabled={!token || terminal || simulation.isPending || paymentQuery.isError}
               >
                 Simulate failed payment
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setStatus("cancelled")}
+                disabled={!token || terminal || simulation.isPending || paymentQuery.isError}
+              >
+                Simulate cancelled checkout
               </Button>
               <Button
                 variant="outline"

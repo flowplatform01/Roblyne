@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useLocation } from "wouter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useCreateElection, getListElectionsQueryKey, useListOrganizations } from "@workspace/api-client-react";
+import { useCreateElection, getListElectionsQueryKey, useListOrganizations, useGetPublicCommissionRates } from "@workspace/api-client-react";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -53,6 +53,7 @@ export default function CreateElection() {
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const createElection = useCreateElection();
+  const { data: commissionRates } = useGetPublicCommissionRates();
   const queryClient = useQueryClient();
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
 
@@ -114,7 +115,8 @@ export default function CreateElection() {
   const requiresPayment = form.watch("requiresPayment");
   const currency = form.watch("currency") || "XAF";
   const paymentAmount = Number(form.watch("paymentAmount") || 0);
-  const estimatedReceipt = Math.max(0, paymentAmount * 0.95);
+  const electionRate = commissionRates?.election;
+  const estimatedReceipt = electionRate == null ? null : Math.max(0, paymentAmount * (1 - electionRate));
 
   return (
     <DashboardLayout orgId={selectedOrgId}>
@@ -370,7 +372,14 @@ export default function CreateElection() {
                            <div className="rounded-md border border-primary/20 bg-primary/5 dark:border-white/20 dark:bg-white/5 p-3 self-end">
                              <p className="text-xs text-muted-foreground">Estimated amount your organization receives</p>
                              <p className="text-lg font-semibold text-primary dark:text-white">
-                                {formatCurrency(estimatedReceipt, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
+                                {estimatedReceipt == null
+                                  ? "Fee estimate unavailable"
+                                  : formatCurrency(estimatedReceipt, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}
+                             </p>
+                             <p className="mt-1 text-xs text-muted-foreground">
+                               {electionRate == null
+                                 ? "The final amount uses the platform’s current commission."
+                                 : `After a ${(electionRate * 100).toLocaleString(i18n.language, { maximumFractionDigits: 2 })}% platform fee`}
                              </p>
                            </div>
                         </div>

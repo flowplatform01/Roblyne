@@ -27,6 +27,13 @@ description: Lifecycle enforcement architecture across all three public pillars 
 - Candidate removal and ballot writes must serialize on the election row with `FOR UPDATE`. The ballot structure must be re-read after the lock; pre-lock candidate validation can become stale if an admin deletes a candidate concurrently.
 - Paid election finalization must acquire the same election-row lock before inserting vote selections, because payment creation and ballot recording happen in separate requests.
 
+### Event edits after registration activity
+- Title and description remain editable after an event has attendees, but schedule, capacity, visibility, location, and online-event details are locked once ticket or pending-payment activity exists.
+
+**Why:** People may already have paid or made plans based on the published event details, so changing core logistics after registration risks invalidating those expectations.
+
+**How to apply:** Keep the server as the source of truth for event edit locks. Compare incoming values with stored values so resubmitting unchanged fields does not falsely trigger the lock.
+
 **Why:** Without the `startsAt` check an election that hasn't opened accepts votes if status was set to `active` early. Without the atomic capacity lock, events could oversell when concurrent registrations pass the pre-transaction count. Without expiry guards in delayed flows a voter who lingers on the payment screen past `endsAt` could still cast a ballot.
 
 **How to apply:** Any new public submission endpoint must perform (1) status gate, (2) `startsAt > now` gate, (3) `endsAt <= now` gate, all with `<=` on the expiry boundary. Transactional atomic checks must be re-evaluated inside `FOR UPDATE` locks for any quantity-limited resource.

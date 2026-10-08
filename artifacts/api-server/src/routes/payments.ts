@@ -47,7 +47,7 @@ router.post("/payments/:paymentId", async (req, res): Promise<void> => {
     !Number.isInteger(paymentId)
     || paymentId <= 0
     || typeof token !== "string"
-    || !["pending", "processing", "succeeded", "failed"].includes(status)
+    || !["pending", "processing", "succeeded", "failed", "cancelled"].includes(status)
   ) {
     res.status(400).json({ error: "Invalid simulator request" });
     return;

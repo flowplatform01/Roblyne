@@ -203,7 +203,8 @@ export default function EventRegister() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">{t("eventRegister.registrationUnavailable")}</h1>
+          <p className="text-sm font-semibold tracking-widest uppercase text-muted-foreground mb-2">{t("eventRegister.registrationUnavailable")}</p>
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-4 break-words">{event.title}</h1>
           <p className="text-xl text-muted-foreground font-light mb-8">{t("eventRegister.registrationUnavailableDescription")}</p>
           {event.organizationName && (
             <div className="inline-flex items-center gap-2 text-sm text-muted-foreground/70 border border-border/50 rounded-full px-4 py-1.5">
@@ -229,7 +230,8 @@ export default function EventRegister() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl animate-in fade-in duration-700">
           <AlertCircle className="h-14 w-14 text-muted-foreground/40 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">{t("eventRegister.registrationClosed")}</h1>
+          <p className="text-sm font-semibold tracking-widest uppercase text-muted-foreground mb-2">{t("eventRegister.registrationClosed")}</p>
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold mb-4 break-words">{event.title}</h1>
           <p className="text-xl text-muted-foreground font-light mb-8">{t("eventRegister.registrationClosedDescription")}</p>
           {event.organizationName && (
             <div className="flex flex-col items-center gap-3">

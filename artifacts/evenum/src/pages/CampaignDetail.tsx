@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -29,6 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { EntityRecoveryActions } from "@/components/management/EntityRecoveryActions";
 
 export default function CampaignDetail() {
   const [match, params] = useRoute("/campaigns/:id");
@@ -40,6 +42,7 @@ export default function CampaignDetail() {
   const [activeTab, setActiveTab] = useState("submissions");
   const [isExporting, setIsExporting] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<"active" | "ended" | null>(null);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const { data: submissions, isLoading: isSubmissionsLoading } = useListCampaignSubmissions(campaignId, {
@@ -77,6 +80,13 @@ export default function CampaignDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetCampaignQueryKey(campaignId) });
           toast({ title: `Campaign marked as ${newStatus}` });
+        },
+        onError: (error) => {
+          toast({
+            title: "Could not update campaign status",
+            description: error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          });
         }
       }
     );
@@ -165,19 +175,20 @@ export default function CampaignDetail() {
               ctaLabel="Share Campaign"
               variant="icon"
             />
+            <EntityRecoveryActions kind="campaign" entity={campaign} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" aria-label="Campaign actions"><MoreVertical className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {campaign.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('active')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('active')}>
                     <Play className="mr-2 h-4 w-4 text-emerald-600" /> Start Campaign
                   </DropdownMenuItem>
                 )}
                 {campaign.status === 'active' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('ended')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('ended')}>
                     <Square className="mr-2 h-4 w-4 text-amber-600" /> End Campaign
                   </DropdownMenuItem>
                 )}
@@ -186,6 +197,34 @@ export default function CampaignDetail() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingStatus === "active" ? "Start this campaign?" : "End this campaign?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "active"
+                ? "The public form will open and people can begin submitting responses or contributions."
+                : "New responses will stop. Existing submissions and financial records will be preserved, and an ended campaign cannot be reopened."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateCampaign.isPending}>Keep current status</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pendingStatus || updateCampaign.isPending}
+              className={pendingStatus === "ended" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!pendingStatus) return;
+                handleStatusChange(pendingStatus);
+                setPendingStatus(null);
+              }}
+            >
+              {pendingStatus === "active" ? "Start campaign" : "End campaign"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 min-w-0">

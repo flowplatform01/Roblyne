@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { EntityRecoveryActions } from "@/components/management/EntityRecoveryActions";
 
 const ticketTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -137,6 +139,7 @@ export default function EventDetail() {
   const [checkInCode, setCheckInCode] = useState("");
   const [checkInMode, setCheckInMode] = useState<"manual" | "scan">("manual");
   const [isExporting, setIsExporting] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<"published" | "cancelled" | "completed" | null>(null);
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
@@ -198,6 +201,13 @@ export default function EventDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(eventId) });
           toast({ title: `Event marked as ${newStatus}` });
+        },
+        onError: (error) => {
+          toast({
+            title: "Could not update event status",
+            description: error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          });
         }
       }
     );
@@ -340,24 +350,25 @@ export default function EventDetail() {
               ctaLabel="Share Event"
               variant="icon"
             />
+            <EntityRecoveryActions kind="event" entity={event} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" aria-label="Event actions"><MoreVertical className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {event.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('published')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('published')}>
                     <Play className="mr-2 h-4 w-4 text-emerald-600" /> Publish Event
                   </DropdownMenuItem>
                 )}
                 {event.status === 'published' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('completed')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('completed')}>
                     <CheckCircle2 className="mr-2 h-4 w-4 text-primary" /> Mark Completed
                   </DropdownMenuItem>
                 )}
                 {(event.status === 'draft' || event.status === 'published') && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('cancelled')} className="text-destructive">
+                  <DropdownMenuItem onClick={() => setPendingStatus('cancelled')} className="text-destructive">
                     <Square className="mr-2 h-4 w-4" /> Cancel Event
                   </DropdownMenuItem>
                 )}
@@ -366,6 +377,38 @@ export default function EventDetail() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus === "published" ? "Publish this event?" : pendingStatus === "cancelled" ? "Cancel this event?" : "Mark this event completed?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "published"
+                ? "The public registration page will become available immediately."
+                : pendingStatus === "cancelled"
+                  ? "Registration will close. Existing attendee and payment records will be preserved, and this cancellation cannot be reversed."
+                  : "The event will be closed and marked complete. Existing attendee and payment records will be preserved."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateEvent.isPending}>Keep current status</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pendingStatus || updateEvent.isPending}
+              className={pendingStatus === "cancelled" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!pendingStatus) return;
+                handleStatusChange(pendingStatus);
+                setPendingStatus(null);
+              }}
+            >
+              {pendingStatus === "published" ? "Publish event" : pendingStatus === "cancelled" ? "Cancel event" : "Mark completed"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 min-w-0">

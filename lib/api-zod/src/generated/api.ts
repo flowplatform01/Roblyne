@@ -294,7 +294,7 @@ export const GetPublicOrganizationResponse = zod.object({
   "endsAt": zod.coerce.date().nullish(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code; currently XAF (FCFA)'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -486,7 +486,7 @@ export const ListElectionsResponseItem = zod.object({
   "endsAt": zod.coerce.date().nullish(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code; currently XAF (FCFA)'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -543,7 +543,7 @@ export const CreateElectionResponse = zod.object({
   "endsAt": zod.coerce.date().nullish(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code; currently XAF (FCFA)'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -578,7 +578,7 @@ export const GetElectionResponse = zod.object({
   "endsAt": zod.coerce.date().nullish(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code; currently XAF (FCFA)'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -634,7 +634,7 @@ export const UpdateElectionResponse = zod.object({
   "endsAt": zod.coerce.date().nullish(),
   "requiresPayment": zod.boolean().optional().describe('Whether a participation fee is required to vote'),
   "paymentAmount": zod.number().nullish().describe('Fee amount required to participate (null if free)'),
-  "currency": zod.string().optional().describe('ISO 4217 currency code e.g. USD, EUR, GBP'),
+  "currency": zod.string().optional().describe('Platform-approved ISO 4217 currency code; currently XAF (FCFA)'),
   "totalVotes": zod.number().optional(),
   "positionsCount": zod.number().optional(),
   "candidatesCount": zod.number().optional(),
@@ -2176,6 +2176,28 @@ export const ListOrgBalancesResponse = zod.array(ListOrgBalancesResponseItem)
 
 
 /**
+ * These public rates are estimates only; payment processing applies the authoritative rate at transaction time.
+ * @summary Get current platform commission rates for payout estimates
+ */
+export const getPublicCommissionRatesResponseEventMin = 0;
+export const getPublicCommissionRatesResponseEventMax = 1;
+
+export const getPublicCommissionRatesResponseElectionMin = 0;
+export const getPublicCommissionRatesResponseElectionMax = 1;
+
+export const getPublicCommissionRatesResponseCampaignMin = 0;
+export const getPublicCommissionRatesResponseCampaignMax = 1;
+
+
+
+export const GetPublicCommissionRatesResponse = zod.object({
+  "event": zod.number().min(getPublicCommissionRatesResponseEventMin).max(getPublicCommissionRatesResponseEventMax),
+  "election": zod.number().min(getPublicCommissionRatesResponseElectionMin).max(getPublicCommissionRatesResponseElectionMax),
+  "campaign": zod.number().min(getPublicCommissionRatesResponseCampaignMin).max(getPublicCommissionRatesResponseCampaignMax)
+})
+
+
+/**
  * @summary Get all commission configurations
  */
 export const ListCommissionConfigsResponseItem = zod.object({
@@ -2334,7 +2356,7 @@ export const simulateDevelopmentPaymentBodyTokenMin = 32;
 
 export const SimulateDevelopmentPaymentBody = zod.object({
   "token": zod.string().min(simulateDevelopmentPaymentBodyTokenMin),
-  "status": zod.enum(['pending', 'processing', 'succeeded', 'failed'])
+  "status": zod.enum(['pending', 'processing', 'succeeded', 'failed', 'cancelled'])
 })
 
 export const SimulateDevelopmentPaymentResponse = zod.object({

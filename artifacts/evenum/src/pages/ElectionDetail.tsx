@@ -17,6 +17,7 @@ import {
   getGetElectionQueryKey,
   getListEligibleVotersQueryKey,
   getListCandidatesQueryKey,
+  useGetPublicCommissionRates,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,6 +43,8 @@ import { useLifecycleClock } from "@/hooks/useLifecycle";
 import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { EntityRecoveryActions } from "@/components/management/EntityRecoveryActions";
+import { formatCurrency } from "@/lib/currency";
 
 const candidateSchema = z.object({
   name: z.string().min(1, "Candidate name is required"),
@@ -90,6 +93,7 @@ export default function ElectionDetail() {
   const [isCandidateDialogOpen, setIsCandidateDialogOpen] = useState(false);
   const [candidatePositionId, setCandidatePositionId] = useState<number | null>(null);
   const [voterEmailsInput, setVoterEmailsInput] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<"active" | "ended" | null>(null);
 
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
@@ -156,6 +160,13 @@ export default function ElectionDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
           toast({ title: `Election marked as ${newStatus}` });
+        },
+        onError: (error) => {
+          toast({
+            title: "Could not update election status",
+            description: error instanceof Error ? error.message : "Please try again.",
+            variant: "destructive",
+          });
         }
       }
     );
@@ -348,19 +359,20 @@ export default function ElectionDetail() {
               ctaLabel="Share Election"
               variant="icon"
             />
+            <EntityRecoveryActions kind="election" entity={election} />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" aria-label="Election actions"><MoreVertical className="h-4 w-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {election.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('active')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('active')}>
                     <Play className="mr-2 h-4 w-4 text-emerald-600" /> Start Election
                   </DropdownMenuItem>
                 )}
                 {election.status === 'active' && (
-                  <DropdownMenuItem onClick={() => handleStatusChange('ended')}>
+                  <DropdownMenuItem onClick={() => setPendingStatus('ended')}>
                     <Square className="mr-2 h-4 w-4 text-amber-600" /> End Election
                   </DropdownMenuItem>
                 )}
@@ -376,6 +388,34 @@ export default function ElectionDetail() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingStatus === "active" ? "Start this election?" : "End this election?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "active"
+                ? "The ballot will open according to its schedule, and eligible voters may begin voting when the opening time is reached."
+                : "Voting will close. Cast ballots and payment records will be preserved, and an ended election cannot be reopened."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateElection.isPending}>Keep current status</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pendingStatus || updateElection.isPending}
+              className={pendingStatus === "ended" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!pendingStatus) return;
+                handleStatusChange(pendingStatus);
+                setPendingStatus(null);
+              }}
+            >
+              {pendingStatus === "active" ? "Start election" : "End election"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 min-w-0">
@@ -810,6 +850,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
   const [requiresPayment, setRequiresPayment] = useState<boolean>(election.requiresPayment ?? false);
   const [paymentAmount, setPaymentAmount] = useState<string>(election.paymentAmount ? String(election.paymentAmount) : '');
   const [currency] = useState<string>('XAF');
+  const { data: commissionRates } = useGetPublicCommissionRates();
 
   const updateElection = useUpdateElection();
 
@@ -858,6 +899,9 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
       }
     );
   };
+  const estimatedReceipt = commissionRates?.election == null
+    ? null
+    : Math.max(0, (Number(paymentAmount) || 0) * (1 - commissionRates.election));
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -915,7 +959,14 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                   <div className="space-y-1.5 rounded-md border border-primary/20 bg-primary/5 dark:border-white/20 dark:bg-white/5 p-3">
                     <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estimated amount you receive</Label>
                     <p className="text-lg font-semibold text-primary">
-                      XAF {(Math.max(0, Number(paymentAmount) || 0) * 0.95).toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                      {estimatedReceipt == null
+                        ? "Fee estimate unavailable"
+                        : formatCurrency(estimatedReceipt, currency, "en-US")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {commissionRates?.election == null
+                        ? "The final amount uses the platform’s current commission."
+                        : `After a ${(commissionRates.election * 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}% platform fee`}
                     </p>
                   </div>
               </div>

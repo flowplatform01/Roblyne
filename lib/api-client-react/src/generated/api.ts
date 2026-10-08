@@ -52,6 +52,7 @@ import type {
   EventAnalytics,
   EventInput,
   EventUpdate,
+  GetPublicCommissionRates200,
   HealthStatus,
   ListAdminSettlementsParams,
   ListAdminTransactionsParams,
@@ -5692,6 +5693,84 @@ export function useListOrgBalances<TData = Awaited<ReturnType<typeof listOrgBala
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListOrgBalancesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicCommissionRatesUrl = () => {
+
+
+
+
+  return `/api/finance/commission-rates`
+}
+
+/**
+ * These public rates are estimates only; payment processing applies the authoritative rate at transaction time.
+ * @summary Get current platform commission rates for payout estimates
+ */
+export const getPublicCommissionRates = async ( options?: RequestInit): Promise<GetPublicCommissionRates200> => {
+
+  return customFetch<GetPublicCommissionRates200>(getGetPublicCommissionRatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicCommissionRatesQueryKey = () => {
+    return [
+    `/api/finance/commission-rates`
+    ] as const;
+    }
+
+
+export const getGetPublicCommissionRatesQueryOptions = <TData = Awaited<ReturnType<typeof getPublicCommissionRates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicCommissionRates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicCommissionRatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicCommissionRates>>> = ({ signal }) => getPublicCommissionRates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicCommissionRates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicCommissionRatesQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicCommissionRates>>>
+export type GetPublicCommissionRatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get current platform commission rates for payout estimates
+ */
+
+export function useGetPublicCommissionRates<TData = Awaited<ReturnType<typeof getPublicCommissionRates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicCommissionRates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicCommissionRatesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useLocation } from "wouter";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { useCreateCampaign, getListCampaignsQueryKey, useListOrganizations } from "@workspace/api-client-react";
+import { useCreateCampaign, getListCampaignsQueryKey, useListOrganizations, useGetPublicCommissionRates } from "@workspace/api-client-react";
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -54,6 +54,7 @@ export default function CreateCampaign() {
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const createCampaign = useCreateCampaign();
+  const { data: commissionRates } = useGetPublicCommissionRates();
   const queryClient = useQueryClient();
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
 
@@ -85,7 +86,8 @@ export default function CreateCampaign() {
 
   const requiresPayment = form.watch("requiresPayment");
   const paymentAmount = Number(form.watch("paymentAmount") || 0);
-  const estimatedReceipt = Math.max(0, paymentAmount * 0.95);
+  const campaignRate = commissionRates?.campaign;
+  const estimatedReceipt = campaignRate == null ? null : Math.max(0, paymentAmount * (1 - campaignRate));
 
   function onSubmit(values: z.infer<typeof campaignSchema>) {
     // Transform options string to array for select fields
@@ -312,7 +314,11 @@ export default function CreateCampaign() {
                       <FormItem>
                         <FormLabel>Required Amount (XAF)</FormLabel>
                         <FormControl><Input type="number" step="1" min={1} placeholder="200" className="h-11" {...field} /></FormControl>
-                        <FormDescription>Estimated amount your organization receives: {formatCurrency(estimatedReceipt, "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}</FormDescription>
+                        <FormDescription>
+                          {estimatedReceipt == null
+                            ? "Fee estimate unavailable. The final amount uses the platform’s current commission."
+                            : `Estimated amount after a ${(campaignRate! * 100).toLocaleString(i18n.language, { maximumFractionDigits: 2 })}% platform fee: ${formatCurrency(estimatedReceipt, "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US")}`}
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -434,7 +440,8 @@ export default function CreateCampaign() {
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background border shadow-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="absolute right-2 top-2 h-9 w-9 bg-background border shadow-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                        aria-label={`Remove ${form.watch(`fields.${index}.label`) || "campaign"} field`}
                         onClick={() => remove(index)}
                       >
                         <Trash2 className="h-4 w-4" />

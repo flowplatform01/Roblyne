@@ -113,6 +113,7 @@ export const PaymentSimulationStatus = {
   processing: 'processing',
   succeeded: 'succeeded',
   failed: 'failed',
+  cancelled: 'cancelled',
 } as const;
 
 export interface PaymentSimulation {
@@ -266,7 +267,7 @@ export interface Election {
      * @nullable
      */
   paymentAmount?: number | null;
-  /** ISO 4217 currency code e.g. USD, EUR, GBP */
+  /** Platform-approved ISO 4217 currency code; currently XAF (FCFA) */
   currency?: string;
   totalVotes?: number;
   positionsCount?: number;
@@ -1723,6 +1724,24 @@ export const ListAdminSettlementsStatus = {
   released: 'released',
   completed: 'completed',
 } as const;
+
+export type GetPublicCommissionRates200 = {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  event: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  election: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  campaign: number;
+};
 
 export type DiscoverParams = {
 type?: DiscoverType;

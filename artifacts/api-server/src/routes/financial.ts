@@ -11,7 +11,7 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { requireOrgRole } from "../middlewares/orgAccess";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
-import { getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
+import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
 
 const router: IRouter = Router();
 
@@ -36,6 +36,20 @@ function formatSettlement(row: any) {
     amount: parseFloat(row.amount ?? "0"),
   };
 }
+
+/**
+ * Public fee rates are used only for transparent net-amount estimates.
+ * The payment pipeline recalculates the authoritative commission at settlement time.
+ */
+router.get("/finance/commission-rates", async (_req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+  const [event, election, campaign] = await Promise.all([
+    getCommissionRate("event"),
+    getCommissionRate("election"),
+    getCommissionRate("campaign"),
+  ]);
+  res.json({ event, election, campaign });
+});
 
 // ── ORG FINANCIAL WORKSPACE ────────────────────────────────────────────────
 

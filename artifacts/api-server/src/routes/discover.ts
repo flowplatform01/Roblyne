@@ -6,25 +6,10 @@ import { getJson, setJson } from "../lib/redis";
 import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
+type DiscoverResponse = { items: any[]; featured: any[]; trending: any[] };
+const discoveryInFlight = new Map<string, Promise<DiscoverResponse>>();
 
-// ── DISCOVER ────────────────────────────────────────────────────────────────
-
-router.get("/discover", async (req, res): Promise<void> => {
-  const queryParsed = DiscoverQueryParams.safeParse(req.query);
-  const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
-  const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
-  const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
-  const cacheKey = `evenum:discover:v2:${typeFilter}:${limit}:${sort}`;
-  // Discovery is public and intentionally tolerates a few seconds of staleness.
-  // This also gives the reverse proxy/browser a useful fallback when Redis is absent.
-  res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=15");
-  const cached = await getJson<{ items: any[]; featured: any[]; trending: any[] }>(cacheKey);
-  if (cached) {
-    res.setHeader("X-Cache", "HIT");
-    res.json(cached);
-    return;
-  }
-
+async function buildDiscoverResponse(typeFilter: string | undefined, limit: number, sort: string): Promise<DiscoverResponse> {
   // Fetch all three pillars in parallel using a single aggregated query each.
   // Participant counts come from a correlated subquery, avoiding N+1 loops.
   const [elections, events, campaigns] = await Promise.all([
@@ -80,17 +65,17 @@ router.get("/discover", async (req, res): Promise<void> => {
   ]);
 
   const items: any[] = [
-    ...elections.rows.map((r: any) => ({ ...compactListMedia(r), type: "election" })),
-    ...events.rows.map((r: any) => ({ ...compactListMedia(r), type: "event" })),
-    ...campaigns.rows.map((r: any) => ({ ...compactListMedia(r), type: "campaign" })),
+    ...elections.rows.map((row: any) => ({ ...compactListMedia(row), type: "election" })),
+    ...events.rows.map((row: any) => ({ ...compactListMedia(row), type: "event" })),
+    ...campaigns.rows.map((row: any) => ({ ...compactListMedia(row), type: "campaign" })),
   ];
 
   if (sort === "trending" || sort === "popular") {
     items.sort((a, b) => {
       if (sort === "popular") return b.participantsCount - a.participantsCount;
-      const score = (i: typeof a) => {
-        const ageHours = Math.max(1, (Date.now() - new Date(i.createdAt).getTime()) / 3_600_000);
-        return i.participantsCount / Math.pow(ageHours, 0.5);
+      const score = (item: typeof a) => {
+        const ageHours = Math.max(1, (Date.now() - new Date(item.createdAt).getTime()) / 3_600_000);
+        return item.participantsCount / Math.pow(ageHours, 0.5);
       };
       return score(b) - score(a);
     });
@@ -98,13 +83,46 @@ router.get("/discover", async (req, res): Promise<void> => {
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  const featured = items.filter(i => i.status === "active" || i.status === "published").slice(0, 4);
+  const featured = items.filter((item) => item.status === "active" || item.status === "published").slice(0, 4);
   const trending = [...items].sort((a, b) => b.participantsCount - a.participantsCount).slice(0, 4);
+  return { items: items.slice(0, limit), featured, trending };
+}
 
-  const response = { items: items.slice(0, limit), featured, trending };
-  await setJson(cacheKey, response, 10);
-  res.setHeader("X-Cache", "MISS");
-  res.json(response);
+// ── DISCOVER ────────────────────────────────────────────────────────────────
+
+router.get("/discover", async (req, res): Promise<void> => {
+  const queryParsed = DiscoverQueryParams.safeParse(req.query);
+  const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
+  const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
+  const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
+  const cacheKey = `evenum:discover:v2:${typeFilter}:${limit}:${sort}`;
+  // Discovery is public and intentionally tolerates a few seconds of staleness.
+  // This also gives the reverse proxy/browser a useful fallback when Redis is absent.
+  res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=15");
+  const cached = await getJson<DiscoverResponse>(cacheKey);
+  if (cached) {
+    res.setHeader("X-Cache", "HIT");
+    res.json(cached);
+    return;
+  }
+
+  let responsePromise = discoveryInFlight.get(cacheKey);
+  const isOwner = !responsePromise;
+  if (!responsePromise) {
+    responsePromise = buildDiscoverResponse(typeFilter, limit, sort).then(async (response) => {
+      await setJson(cacheKey, response, 10);
+      return response;
+    });
+    discoveryInFlight.set(cacheKey, responsePromise);
+    const ownedPromise = responsePromise;
+    void ownedPromise.then(
+      () => { if (discoveryInFlight.get(cacheKey) === ownedPromise) discoveryInFlight.delete(cacheKey); },
+      () => { if (discoveryInFlight.get(cacheKey) === ownedPromise) discoveryInFlight.delete(cacheKey); },
+    );
+  }
+
+  res.setHeader("X-Cache", isOwner ? "MISS" : "COALESCED");
+  res.json(await responsePromise);
 });
 
 // ── SEARCH ─────────────────────────────────────────────────────────────────

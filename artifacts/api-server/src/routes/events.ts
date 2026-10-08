@@ -143,6 +143,11 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
       status: eventsTable.status,
       startsAt: eventsTable.startsAt,
       endsAt: eventsTable.endsAt,
+      capacity: eventsTable.capacity,
+      location: eventsTable.location,
+      isOnline: eventsTable.isOnline,
+      onlineUrl: eventsTable.onlineUrl,
+      visibility: eventsTable.visibility,
     })
       .from(eventsTable)
       .where(eq(eventsTable.id, paramParsed.data.eventId))
@@ -160,11 +165,17 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
       || (["cancelled", "completed"].includes(current.status) && nextStatus !== undefined && nextStatus !== current.status);
     if (invalidStatusTransition) return { kind: "locked" as const };
 
-    const changesScheduleOrCapacity =
-      bodyParsed.data.startsAt !== undefined
-      || bodyParsed.data.endsAt !== undefined
-      || Object.prototype.hasOwnProperty.call(bodyParsed.data, "capacity");
-    if (current.status === "published" && changesScheduleOrCapacity) {
+    const timeChanged = (currentValue: Date | null, nextValue: Date | undefined) =>
+      nextValue !== undefined && currentValue?.getTime() !== nextValue.getTime();
+    const changesAttendeeInstructions =
+      timeChanged(current.startsAt, bodyParsed.data.startsAt)
+      || timeChanged(current.endsAt, bodyParsed.data.endsAt)
+      || (bodyParsed.data.capacity !== undefined && bodyParsed.data.capacity !== current.capacity)
+      || (bodyParsed.data.location !== undefined && bodyParsed.data.location !== current.location)
+      || (bodyParsed.data.isOnline !== undefined && bodyParsed.data.isOnline !== current.isOnline)
+      || (bodyParsed.data.onlineUrl !== undefined && bodyParsed.data.onlineUrl !== current.onlineUrl)
+      || (bodyParsed.data.visibility !== undefined && bodyParsed.data.visibility !== current.visibility);
+    if (current.status === "published" && changesAttendeeInstructions) {
       const [ticket] = await tx.select({ id: ticketsTable.id })
         .from(ticketsTable)
         .where(eq(ticketsTable.eventId, paramParsed.data.eventId))
@@ -193,7 +204,7 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
   }
   if (outcome.kind === "locked") {
     res.status(409).json({
-      error: "This event lifecycle transition or schedule change is not allowed after registration activity. Cancel the event rather than reopening or rewriting its history.",
+      error: "Schedule, capacity, visibility, and attendee location details cannot be changed after registrations or a pending payment exist. Cancel the event rather than rewriting information for existing attendees.",
     });
     return;
   }
