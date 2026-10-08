@@ -197,8 +197,68 @@ router.delete("/admin/users/:id", async (req, res): Promise<void> => {
 
 // DELETE /api/admin/organizations/:id
 router.delete("/admin/organizations/:id", async (req, res): Promise<void> => {
-  const orgId = parseInt(req.params.id);
-  await db.execute(sql`DELETE FROM organizations WHERE id = ${orgId}`);
+  const orgId = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(orgId) || orgId <= 0) {
+    res.status(400).json({ error: "Invalid organization ID" });
+    return;
+  }
+
+  let result: "deleted" | "missing" | "has_history";
+  try {
+    result = await db.transaction(async (tx) => {
+      const { rows: [organization] } = await tx.execute(
+        sql`SELECT id FROM organizations WHERE id = ${orgId}`,
+      );
+      if (!organization) return "missing" as const;
+
+      const { rows: [history] } = await tx.execute(sql`
+        SELECT (
+          EXISTS (SELECT 1 FROM financial_transactions WHERE org_id = ${orgId})
+          OR EXISTS (SELECT 1 FROM settlements WHERE org_id = ${orgId})
+          OR EXISTS (
+            SELECT 1 FROM tickets t
+            INNER JOIN events e ON e.id = t.event_id
+            WHERE e.org_id = ${orgId}
+          )
+          OR EXISTS (
+            SELECT 1 FROM votes v
+            INNER JOIN elections e ON e.id = v.election_id
+            WHERE e.org_id = ${orgId}
+          )
+          OR EXISTS (
+            SELECT 1 FROM campaign_responses r
+            INNER JOIN campaigns c ON c.id = r.campaign_id
+            WHERE c.org_id = ${orgId}
+          )
+        ) AS has_history
+      `);
+      if (history?.has_history) return "has_history" as const;
+
+      await tx.execute(sql`DELETE FROM organizations WHERE id = ${orgId}`);
+      return "deleted" as const;
+    }, { isolationLevel: "serializable" });
+  } catch (error) {
+    let current: unknown = error;
+    while (current && typeof current === "object") {
+      if ("code" in current && current.code === "40001") {
+        res.status(409).json({ error: "Organization data changed during deletion. Please review it and try again." });
+        return;
+      }
+      current = "cause" in current ? current.cause : undefined;
+    }
+    throw error;
+  }
+
+  if (result === "missing") {
+    res.status(404).json({ error: "Organization not found" });
+    return;
+  }
+  if (result === "has_history") {
+    res.status(409).json({
+      error: "This organization has financial, ticket, vote, or campaign-response history and cannot be deleted without an archive.",
+    });
+    return;
+  }
   res.json({ message: "Organization deleted" });
 });
 

@@ -20,3 +20,4 @@
 - [Workspace dependency overrides](workspace-dependency-overrides.md) — put pnpm security pins in pnpm-workspace.yaml so existing platform overrides are preserved
 - [Concurrent vote error handling](concurrent-vote-error-handling.md) — Drizzle may wrap PostgreSQL unique violations under cause; classify nested 23505 errors before returning duplicate-safe responses
 - [Evenum loading UX](evenum-loading-ux.md) — use structural skeletons for initial reads; reserve spinners/progress for mutations and indeterminate operations
+- [Payment status access and retained history](evenum-payment-status-retention.md) — public status polling needs a capability token; organization deletion must preserve transaction and participant history

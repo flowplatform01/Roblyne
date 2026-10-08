@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save, Plus, Trash2 } from "lucide-react";
@@ -465,7 +466,7 @@ export default function CampaignDetail() {
                                 id={`campaign-field-options-${index}`}
                                 value={(field.options ?? []).join(", ")}
                                 onChange={(event) => setFormFieldsDraft((fields) => fields.map((item, i) => i === index
-                                  ? { ...item, options: event.target.value.split(",").map((option) => option.trim()).filter(Boolean) }
+                                ? { ...item, options: event.target.value.split(",").map((option: string) => option.trim()).filter(Boolean) }
                                   : item))}
                                 placeholder="Option one, Option two"
                               />

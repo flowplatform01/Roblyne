@@ -1904,13 +1904,19 @@ paths:
     get:
       operationId: getPaymentStatus
       tags: [payments]
-      summary: Get the public status of a payment attempt
+      summary: Get payment status with its unguessable status token
       parameters:
         - name: paymentId
           in: path
           required: true
           schema:
             type: integer
+        - name: statusToken
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 32
       responses:
         "200":
           description: Payment status
@@ -2011,7 +2017,7 @@ components:
 
     PaymentInitialization:
       type: object
-      required: [paymentRequired, paymentId, paymentStatus]
+      required: [paymentRequired, paymentId, paymentStatus, statusToken]
       properties:
         paymentRequired:
           type: boolean
@@ -2021,6 +2027,9 @@ components:
         paymentStatus:
           type: string
           enum: [pending, processing, succeeded, failed]
+        statusToken:
+          type: string
+          minLength: 32
         checkoutUrl:
           type: ["string", "null"]
 
@@ -2040,7 +2049,13 @@ components:
           type: ["string", "null"]
         result:
           type: [object, "null"]
-          additionalProperties: true
+          properties:
+            message:
+              type: string
+            ticketCode:
+              type: string
+            ticketTypeName:
+              type: string
 
     PaymentSimulation:
       type: object
@@ -2901,7 +2916,7 @@ components:
         currency:
           type: string
         quantity:
-          type: integer
+          type: ["integer", "null"]
         saleStartsAt:
           type: string
           format: date-time
@@ -3713,6 +3728,10 @@ components:
           items:
             type: object
             additionalProperties: true
+            properties:
+              currency:
+                type: string
+                pattern: "^[A-Z]{3}$"
 
     CreateSettlementInput:
       type: object

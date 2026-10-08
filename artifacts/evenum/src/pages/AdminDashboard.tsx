@@ -31,7 +31,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import {
   Users, Building2, Vote, CalendarDays, Megaphone,
   ShieldCheck, Trash2, Loader2, ShieldOff, Shield, Search, X,
-  TrendingUp, Activity, AlertCircle, BarChart3, DollarSign, Receipt, Wallet, CircleDollarSign, CheckCircle2, ArrowRight, Settings, Plus
+  TrendingUp, Activity, AlertCircle, BarChart3, Coins, Receipt, Wallet, CheckCircle2, ArrowRight, Settings, Plus
 } from 'lucide-react';
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -317,7 +317,7 @@ export default function AdminDashboard() {
               {users && <span className="ml-1 text-xs opacity-60">({users.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="finance" className="gap-2">
-              <DollarSign className="h-3.5 w-3.5" />
+              <Coins className="h-3.5 w-3.5" />
               Finance
             </TabsTrigger>
             <TabsTrigger value="governance" className="gap-2">
@@ -424,7 +424,7 @@ export default function AdminDashboard() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete "{org.name}"?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This permanently deletes the organization and all its elections, events, and campaigns. This cannot be undone.
+                                    This permanently deletes the organization and its content. Deletion is blocked when financial, ticket, vote, or campaign-response history exists, so those records are not erased.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -865,7 +865,7 @@ function FinanceAdminSection() {
   };
 
   const kpis = [
-    { label: 'Platform Revenue', field: 'total_platform_revenue', icon: CircleDollarSign, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Platform Revenue', field: 'total_platform_revenue', icon: Coins, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Commission Collected', field: 'total_commission_collected', icon: Receipt, accent: 'text-primary dark:text-white', bg: 'bg-primary/10 dark:bg-white/10' },
     { label: 'Revenue Today', field: 'revenue_today', icon: TrendingUp, accent: 'text-violet-600', bg: 'bg-violet-50' },
     { label: 'Revenue This Week', field: 'revenue_this_week', icon: Activity, accent: 'text-amber-600', bg: 'bg-amber-50' },

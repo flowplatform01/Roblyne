@@ -35,7 +35,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck, Settings, Save, Globe, Wallet, DollarSign, Receipt, ArrowUpRight, CheckCircle2, TrendingUp, BarChart3, Activity } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Loader2, Plus, Users, Vote, CalendarDays, Megaphone, ArrowRight, ExternalLink, Trash2, Shield, UserCheck, Settings, Save, Globe, Wallet, Receipt, ArrowUpRight, CheckCircle2, TrendingUp, BarChart3, Activity } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
@@ -896,7 +897,11 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 
   const totalVotes = elections.reduce((s: number, e: any) => s + (e.totalVotes || 0), 0);
   const totalTickets = events.reduce((s: number, e: any) => s + (e.ticketsSold || 0), 0);
-  const totalRaised = campaigns.reduce((s: number, c: any) => s + (c.amountRaised || 0), 0);
+  const totalRaisedByCurrency = Array.from(campaigns.reduce((totals: Map<string, number>, campaign: any) => {
+    const currency = campaign.currency || "XAF";
+    totals.set(currency, (totals.get(currency) || 0) + Number(campaign.amountRaised || 0));
+    return totals;
+  }, new Map<string, number>()));
   // Detect dominant currency from paid elections (fall back to XAF)
   const electionCurrency = elections.find((e: any) => e.currency)?.currency || 'XAF';
 
@@ -945,7 +950,13 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                 <Megaphone className="h-4 w-4 text-amber-600" />
               </div>
             </div>
-            <p className="text-3xl font-serif font-bold tabular-nums">{formatCurrency(totalRaised, electionCurrency)}</p>
+            <div className="text-xl font-serif font-bold tabular-nums">
+              {totalRaisedByCurrency.length > 0
+                ? totalRaisedByCurrency.map(([currency, amount]) => (
+                    <div key={currency}>{formatCurrency(amount, currency)}</div>
+                  ))
+                : formatCurrency(0)}
+            </div>
             <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Total Raised</p>
             <p className="text-[11px] text-muted-foreground/60 mt-0.5">{campaigns.length} campaigns</p>
           </CardContent>
@@ -1106,10 +1117,10 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                     </TableCell>
                     <TableCell className="text-right font-bold">{(c.submissionsCount || 0).toLocaleString()}</TableCell>
                     <TableCell className="text-right hidden md:table-cell text-sm text-primary">{(c.paidContributors || 0).toLocaleString()}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell text-sm">{formatCurrency(c.avgContribution || 0)}</TableCell>
-                    <TableCell className="text-right text-sm font-medium text-primary">{formatCurrency(c.amountRaised || 0)}</TableCell>
+                    <TableCell className="text-right hidden md:table-cell text-sm">{formatCurrency(c.avgContribution || 0, c.currency || "XAF")}</TableCell>
+                    <TableCell className="text-right text-sm font-medium text-primary">{formatCurrency(c.amountRaised || 0, c.currency || "XAF")}</TableCell>
                     <TableCell className="text-right hidden lg:table-cell text-sm text-muted-foreground">
-                      {c.goalAmount ? formatCurrency(c.goalAmount) : '—'}
+                      {c.goalAmount ? formatCurrency(c.goalAmount, c.currency || "XAF") : '—'}
                       {c.goalCompletion != null && (
                         <span className="ml-1 text-xs text-primary">({c.goalCompletion.toFixed(1)}%)</span>
                       )}
@@ -1136,6 +1147,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const [withdrawalNotes, setWithdrawalNotes] = useState("");
   const [withdrawalCurrency, setWithdrawalCurrency] = useState("");
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
+  const [withdrawalReviewOpen, setWithdrawalReviewOpen] = useState(false);
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
   const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
@@ -1210,6 +1222,14 @@ function FinanceSection({ orgId }: { orgId: number }) {
       });
       return;
     }
+    setWithdrawalReviewOpen(true);
+  };
+
+  const submitWithdrawalRequest = () => {
+    if (!selectedBalance || !withdrawalAmountIsValid || !payoutAccount.trim()) {
+      setWithdrawalReviewOpen(false);
+      return;
+    }
     requestWithdrawal.mutate(
       {
         orgId,
@@ -1223,6 +1243,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
       },
       {
         onSuccess: (settlement) => {
+          setWithdrawalReviewOpen(false);
           queryClient.invalidateQueries({ queryKey: getGetOrgFinanceSummaryQueryKey(orgId) });
           queryClient.invalidateQueries({ queryKey: getListOrgSettlementsQueryKey(orgId) });
           queryClient.invalidateQueries({ queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) });
@@ -1367,11 +1388,53 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </div>
             <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || !payoutAccount.trim() || !withdrawalAmountIsValid}>
               {requestWithdrawal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
-              Request payout
+              Review payout
             </Button>
           </form>
         </CardContent>
       </Card>
+      <AlertDialog open={withdrawalReviewOpen} onOpenChange={setWithdrawalReviewOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm payout request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review the amount and destination before submitting this payout request.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 rounded-md border bg-muted/30 p-4 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Amount</span>
+              <strong>{formatCurrency(requestedAmount, selectedCurrency)}</strong>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Payout method</span>
+              <strong>{payoutMethod === "mobile_money" ? "Mobile money" : "Bank transfer"}</strong>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Destination</span>
+              <strong className="break-all">{payoutAccount.trim()}</strong>
+            </div>
+            {remainingAfterWithdrawal !== null && (
+              <div className="flex justify-between gap-4 border-t pt-3">
+                <span className="text-muted-foreground">Remaining available balance</span>
+                <strong>{formatCurrency(remainingAfterWithdrawal, selectedCurrency)}</strong>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Evenum does not calculate payout-provider fees here. Your bank or mobile-money provider may charge separately.
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={requestWithdrawal.isPending}>Back to form</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={requestWithdrawal.isPending || !withdrawalAmountIsValid || !payoutAccount.trim()}
+              onClick={submitWithdrawalRequest}
+            >
+              {requestWithdrawal.isPending ? "Submitting…" : "Submit payout request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-primary/20 shadow-sm bg-primary/5 dark:border-white/20 dark:bg-white/5">

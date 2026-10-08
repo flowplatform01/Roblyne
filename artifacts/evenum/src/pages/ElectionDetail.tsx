@@ -5,9 +5,12 @@ import {
   useGetElection, 
   useListPositions,
   useCreatePosition,
+  useUpdatePosition,
+  useDeletePosition,
   useUpdateElection,
   useListCandidates,
   useCreateCandidate,
+  useUpdateCandidate,
   useDeleteCandidate,
   useGetElectionAnalytics,
   useListEligibleVoters,
@@ -31,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Plus, Pencil, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, DollarSign, CreditCard } from "lucide-react";
+import { Loader2, Plus, Pencil, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, Coins, CreditCard } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
@@ -1006,7 +1009,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
       <Card className="border-border/50">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
+            <Coins className="h-5 w-5 text-primary" />
             <CardTitle className="text-base font-serif">Participation & Fees</CardTitle>
           </div>
           <CardDescription>Configure whether voters must pay an entry fee before accessing the ballot.</CardDescription>

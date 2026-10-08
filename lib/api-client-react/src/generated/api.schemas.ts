@@ -65,6 +65,8 @@ export interface PaymentInitialization {
   paymentRequired: true;
   paymentId: number;
   paymentStatus: PaymentInitializationPaymentStatus;
+  /** @minLength 32 */
+  statusToken: string;
   /** @nullable */
   checkoutUrl?: string | null;
 }
@@ -93,7 +95,11 @@ export const PaymentStatusPaymentStatus = {
 /**
  * @nullable
  */
-export type PaymentStatusResult = { [key: string]: unknown } | null;
+export type PaymentStatusResult = {
+  message?: string;
+  ticketCode?: string;
+  ticketTypeName?: string;
+} | null;
 
 export interface PaymentStatus {
   id: number;
@@ -937,7 +943,8 @@ export interface TicketTypeUpdate {
   /** @minimum 0 */
   price?: number;
   currency?: string;
-  quantity?: number;
+  /** @nullable */
+  quantity?: number | null;
   saleStartsAt?: string;
   saleEndsAt?: string;
 }
@@ -1564,7 +1571,11 @@ export type OrgAnalyticsElectionsItem = { [key: string]: unknown };
 
 export type OrgAnalyticsEventsItem = { [key: string]: unknown };
 
-export type OrgAnalyticsCampaignsItem = { [key: string]: unknown };
+export type OrgAnalyticsCampaignsItem = {
+  /** @pattern ^[A-Z]{3}$ */
+  currency?: string;
+  [key: string]: unknown;
+ };
 
 export interface OrgAnalytics {
   elections?: OrgAnalyticsElectionsItem[];
@@ -1789,4 +1800,11 @@ export const SearchType = {
   campaigns: 'campaigns',
   organizations: 'organizations',
 } as const;
+
+export type GetPaymentStatusParams = {
+/**
+ * @minLength 32
+ */
+statusToken: string;
+};
 

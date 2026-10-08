@@ -34,12 +34,13 @@ export default function CampaignParticipate() {
   const [baseData, setBaseData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [paymentStatusToken, setPaymentStatusToken] = useState<string | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const { data: campaign, isLoading: isCampaignLoading } = useGetCampaign(campaignId);
   const submitMutation = useSubmitCampaignResponse();
-  const { data: paymentStatus } = usePaymentStatus(paymentId);
+  const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
   const countdown = useCountdown(campaign?.endsAt);
@@ -50,11 +51,13 @@ export default function CampaignParticipate() {
     if (paymentStatus.status === "succeeded") {
       setPaymentPending(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
       setIsSuccess(true);
     } else if (paymentStatus.status === "failed") {
       setPaymentPending(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
       toast({ title: "Payment failed", description: "Your contribution was not completed. Please try again.", variant: "destructive" });
     }
@@ -120,6 +123,7 @@ export default function CampaignParticipate() {
               return;
             }
             setPaymentId(result.paymentId);
+            setPaymentStatusToken(result.statusToken);
             setPaymentPending(true);
             setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");

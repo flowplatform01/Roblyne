@@ -82,18 +82,24 @@ router.post("/payments/:paymentId", async (req, res): Promise<void> => {
       id: `evenum-dev-${paymentId}`,
     },
   });
-  const payment = await getPaymentStatus(paymentId);
+  const payment = await getPaymentStatus(paymentId, token);
   res.json(payment ?? { id: paymentId, status: result.status, paymentStatus: result.status, checkoutUrl: null, result: null });
 });
 
 router.get("/payments/:paymentId", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
   const rawId = Array.isArray(req.params.paymentId) ? req.params.paymentId[0] : req.params.paymentId;
   const paymentId = Number.parseInt(rawId, 10);
   if (!Number.isInteger(paymentId) || paymentId <= 0) {
     res.status(400).json({ error: "Invalid payment ID" });
     return;
   }
-  const payment = await getPaymentStatus(paymentId);
+  const statusToken = req.query.statusToken;
+  if (typeof statusToken !== "string" || statusToken.length < 32) {
+    res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+  const payment = await getPaymentStatus(paymentId, statusToken);
   if (!payment) {
     res.status(404).json({ error: "Payment not found" });
     return;

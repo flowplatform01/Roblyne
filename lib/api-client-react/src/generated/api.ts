@@ -52,6 +52,7 @@ import type {
   EventAnalytics,
   EventInput,
   EventUpdate,
+  GetPaymentStatusParams,
   GetPublicCommissionRates200,
   HealthStatus,
   ListAdminSettlementsParams,
@@ -6177,20 +6178,29 @@ export function useSearch<TData = Awaited<ReturnType<typeof search>>, TError = E
 
 
 
-export const getGetPaymentStatusUrl = (paymentId: number,) => {
+export const getGetPaymentStatusUrl = (paymentId: number,
+    params: GetPaymentStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/payments/${paymentId}`
+  return stringifiedParams.length > 0 ? `/api/payments/${paymentId}?${stringifiedParams}` : `/api/payments/${paymentId}`
 }
 
 /**
- * @summary Get the public status of a payment attempt
+ * @summary Get payment status with its unguessable status token
  */
-export const getPaymentStatus = async (paymentId: number, options?: RequestInit): Promise<PaymentStatus> => {
+export const getPaymentStatus = async (paymentId: number,
+    params: GetPaymentStatusParams, options?: RequestInit): Promise<PaymentStatus> => {
 
-  return customFetch<PaymentStatus>(getGetPaymentStatusUrl(paymentId),
+  return customFetch<PaymentStatus>(getGetPaymentStatusUrl(paymentId,params),
   {
     ...options,
     method: 'GET'
@@ -6203,23 +6213,25 @@ export const getPaymentStatus = async (paymentId: number, options?: RequestInit)
 
 
 
-export const getGetPaymentStatusQueryKey = (paymentId: number,) => {
+export const getGetPaymentStatusQueryKey = (paymentId: number,
+    params?: GetPaymentStatusParams,) => {
     return [
-    `/api/payments/${paymentId}`
+    `/api/payments/${paymentId}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetPaymentStatusQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPaymentStatusQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(paymentId: number,
+    params: GetPaymentStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetPaymentStatusQueryKey(paymentId);
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentStatusQueryKey(paymentId,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentStatus>>> = ({ signal }) => getPaymentStatus(paymentId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentStatus>>> = ({ signal }) => getPaymentStatus(paymentId,params, { signal, ...requestOptions });
 
 
 
@@ -6233,15 +6245,16 @@ export type GetPaymentStatusQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Get the public status of a payment attempt
+ * @summary Get payment status with its unguessable status token
  */
 
 export function useGetPaymentStatus<TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(
- paymentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ paymentId: number,
+    params: GetPaymentStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetPaymentStatusQueryOptions(paymentId,options)
+  const queryOptions = getGetPaymentStatusQueryOptions(paymentId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

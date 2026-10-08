@@ -22,10 +22,10 @@ export default function DevPaymentSimulator() {
     return Number(segment);
   }, []);
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
-  const paymentQuery = useGetPaymentStatus(paymentId, {
+  const paymentQuery = useGetPaymentStatus(paymentId, { statusToken: token }, {
     query: {
-      queryKey: getGetPaymentStatusQueryKey(paymentId),
-      enabled: Number.isInteger(paymentId) && paymentId > 0,
+      queryKey: getGetPaymentStatusQueryKey(paymentId, { statusToken: token }),
+      enabled: Number.isInteger(paymentId) && paymentId > 0 && token.length >= 32,
       refetchInterval: 1500,
     },
   });

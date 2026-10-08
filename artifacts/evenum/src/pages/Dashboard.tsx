@@ -5,7 +5,7 @@ import { useListOrganizations } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { DashboardLoadingSkeleton } from "@/components/loading/LoadingStates";
-import { Building2, Plus, ArrowRight, CalendarDays, Vote, Megaphone } from "lucide-react";
+import { Building2, Plus, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
@@ -85,21 +85,6 @@ export default function Dashboard() {
                     <p className="text-muted-foreground/50 italic font-light">{t("dashboard.noDescriptionProvided")}</p>
                   )}
                   
-                  {/* Mock stats - we don't have stats in the list endpoint, but visual indicators look good */}
-                  <div className="mt-8 flex gap-6 border-t border-border/50 pt-6">
-                    <div className="flex flex-col gap-1">
-                      <Vote className="h-4 w-4 text-muted-foreground mb-1" />
-                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.elections")}</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <CalendarDays className="h-4 w-4 text-muted-foreground mb-1" />
-                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.events")}</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Megaphone className="h-4 w-4 text-muted-foreground mb-1" />
-                       <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{t("organizations.campaigns")}</span>
-                    </div>
-                  </div>
                 </CardContent>
                 <div className="px-8 py-4 bg-muted/10 border-t border-border/50 group-hover:bg-primary/5 transition-colors duration-500">
                   <Button variant="ghost" className="w-full justify-between h-12 text-base font-medium group-hover:text-primary" asChild>

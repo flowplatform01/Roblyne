@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   db,
   paymentIntentsTable,
@@ -104,7 +104,7 @@ export async function initializePaymentIntent(intent: any): Promise<any> {
       .set({ status: "pending", checkoutUrl })
       .where(eq(paymentIntentsTable.id, intent.id))
       .returning();
-    return updated;
+    return { ...updated, statusToken: intent.externalReference };
   }
 
   const transaction = await initializeFlowPayPayment({
@@ -136,7 +136,7 @@ export async function initializePaymentIntent(intent: any): Promise<any> {
       flowpayTransactionId: transaction.id,
     }).where(eq(financialTransactionsTable.id, updated.financialTransactionId));
   }
-  return updated;
+  return { ...updated, statusToken: intent.externalReference };
 }
 
 export async function failPaymentIntent(intentId: number, message: string): Promise<void> {
@@ -320,23 +320,24 @@ export async function processFlowPayWebhook(input: {
   });
 }
 
-export async function getPaymentStatus(paymentId: number): Promise<any | null> {
-  const [intent] = await db.select().from(paymentIntentsTable).where(eq(paymentIntentsTable.id, paymentId)).limit(1);
+export async function getPaymentStatus(paymentId: number, statusToken: string): Promise<any | null> {
+  const [intent] = await db.select().from(paymentIntentsTable).where(and(
+    eq(paymentIntentsTable.id, paymentId),
+    eq(paymentIntentsTable.externalReference, statusToken),
+  )).limit(1);
   if (!intent) return null;
   let result: any = null;
   if (intent.status === "succeeded" && intent.flowpayTransactionId) {
     if (intent.pillar === "event") {
       const [ticket] = await db.select({
-        ticket: ticketsTable,
+        ticketCode: ticketsTable.ticketCode,
         ticketTypeName: ticketTypesTable.name,
       }).from(ticketsTable)
         .innerJoin(ticketTypesTable, eq(ticketTypesTable.id, ticketsTable.ticketTypeId))
         .where(eq(ticketsTable.flowpayTransactionId, intent.flowpayTransactionId)).limit(1);
-      result = ticket ? { ...ticket.ticket, ticketTypeName: ticket.ticketTypeName } : null;
+      result = ticket ? { ticketCode: ticket.ticketCode, ticketTypeName: ticket.ticketTypeName } : null;
     } else if (intent.pillar === "campaign") {
-      const [response] = await db.select().from(campaignResponsesTable)
-        .where(eq(campaignResponsesTable.flowpayTransactionId, intent.flowpayTransactionId)).limit(1);
-      result = response ?? null;
+      result = { message: "Contribution recorded" };
     } else {
       result = { message: "Vote recorded" };
     }

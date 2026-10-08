@@ -7,6 +7,6 @@ export function formatCurrency(
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    maximumFractionDigits: currency === "XAF" ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
 }

@@ -888,6 +888,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
           paymentRequired: true,
           paymentId: intent.id,
           paymentStatus: intent.paymentStatus,
+          statusToken: intent.statusToken,
           checkoutUrl: intent.checkoutUrl,
         });
       } catch (error: any) {

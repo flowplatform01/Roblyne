@@ -367,7 +367,7 @@
     "organizedBy": "Organized by",
     "seeMoreFromOrganizer": "See more from this organizer",
     "youAreRegistered": "You're Registered!",
-    "confirmationSent": "We've sent a confirmation email to {{email}}.",
+    "registrationConfirmed": "The ticket below is ready for {{email}}. Present it at the door.",
     "yourTicketCode": "Your Ticket Code",
     "showAtDoor": "Show this code at the door for check-in.",
     "aboutEvent": "About this event",

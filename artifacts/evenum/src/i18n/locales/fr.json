@@ -367,7 +367,7 @@
     "organizedBy": "Organisé par",
     "seeMoreFromOrganizer": "Voir plus de cet organisateur",
     "youAreRegistered": "Vous êtes inscrit !",
-    "confirmationSent": "Un e-mail de confirmation a été envoyé à {{email}}.",
+    "registrationConfirmed": "Le billet ci-dessous est prêt pour {{email}}. Présentez-le à l'entrée.",
     "yourTicketCode": "Votre code de billet",
     "showAtDoor": "Présentez ce code à l'entrée pour vous enregistrer.",
     "aboutEvent": "À propos de cet événement",

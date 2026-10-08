@@ -940,12 +940,17 @@ export const SubmitVoteBody = zod.object({
 }))
 })
 
+export const submitVoteResponseTwoStatusTokenMin = 32;
+
+
+
 export const SubmitVoteResponse = zod.union([zod.object({
   "message": zod.string()
 }),zod.object({
   "paymentRequired": zod.literal(true),
   "paymentId": zod.number(),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "statusToken": zod.string().min(submitVoteResponseTwoStatusTokenMin),
   "checkoutUrl": zod.string().nullish()
 })])
 
@@ -1321,7 +1326,7 @@ export const UpdateTicketTypeBody = zod.object({
   "description": zod.string().optional(),
   "price": zod.number().min(updateTicketTypeBodyPriceMin).optional(),
   "currency": zod.string().optional(),
-  "quantity": zod.number().optional(),
+  "quantity": zod.number().nullish(),
   "saleStartsAt": zod.coerce.date().optional(),
   "saleEndsAt": zod.coerce.date().optional()
 })
@@ -1376,6 +1381,10 @@ export const RegisterForEventBody = zod.object({
   "quantity": zod.number().min(1).default(registerForEventBodyQuantityDefault)
 })
 
+export const registerForEventResponseTwoStatusTokenMin = 32;
+
+
+
 export const RegisterForEventResponse = zod.union([zod.object({
   "id": zod.number(),
   "eventId": zod.number(),
@@ -1395,6 +1404,7 @@ export const RegisterForEventResponse = zod.union([zod.object({
   "paymentRequired": zod.literal(true),
   "paymentId": zod.number(),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "statusToken": zod.string().min(registerForEventResponseTwoStatusTokenMin),
   "checkoutUrl": zod.string().nullish()
 })])
 
@@ -1734,6 +1744,10 @@ export const SubmitCampaignResponseBody = zod.object({
   "data": zod.record(zod.string(), zod.unknown()).describe('Field values keyed by field ID')
 })
 
+export const submitCampaignResponseResponseTwoStatusTokenMin = 32;
+
+
+
 export const SubmitCampaignResponseResponse = zod.union([zod.object({
   "id": zod.number(),
   "campaignId": zod.number(),
@@ -1750,6 +1764,7 @@ export const SubmitCampaignResponseResponse = zod.union([zod.object({
   "paymentRequired": zod.literal(true),
   "paymentId": zod.number(),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
+  "statusToken": zod.string().min(submitCampaignResponseResponseTwoStatusTokenMin),
   "checkoutUrl": zod.string().nullish()
 })])
 
@@ -1988,10 +2003,15 @@ export const GetOrgAnalyticsParams = zod.object({
   "orgId": zod.coerce.number()
 })
 
+export const getOrgAnalyticsResponseCampaignsItemCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+
 export const GetOrgAnalyticsResponse = zod.object({
   "elections": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
   "events": zod.array(zod.record(zod.string(), zod.unknown())).optional(),
-  "campaigns": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+  "campaigns": zod.array(zod.object({
+  "currency": zod.string().regex(getOrgAnalyticsResponseCampaignsItemCurrencyRegExp).optional()
+})).optional()
 })
 
 
@@ -2332,10 +2352,18 @@ export const SearchResponse = zod.object({
 
 
 /**
- * @summary Get the public status of a payment attempt
+ * @summary Get payment status with its unguessable status token
  */
 export const GetPaymentStatusParams = zod.object({
   "paymentId": zod.coerce.number()
+})
+
+export const getPaymentStatusQueryStatusTokenMin = 32;
+
+
+
+export const GetPaymentStatusQueryParams = zod.object({
+  "statusToken": zod.coerce.string().min(getPaymentStatusQueryStatusTokenMin)
 })
 
 export const GetPaymentStatusResponse = zod.object({
@@ -2343,7 +2371,11 @@ export const GetPaymentStatusResponse = zod.object({
   "status": zod.enum(['initializing', 'pending', 'processing', 'succeeded', 'failed']),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
   "checkoutUrl": zod.string().nullish(),
-  "result": zod.record(zod.string(), zod.unknown()).nullish()
+  "result": zod.object({
+  "message": zod.string().optional(),
+  "ticketCode": zod.string().optional(),
+  "ticketTypeName": zod.string().optional()
+}).nullish()
 })
 
 
@@ -2369,5 +2401,9 @@ export const SimulateDevelopmentPaymentResponse = zod.object({
   "status": zod.enum(['initializing', 'pending', 'processing', 'succeeded', 'failed']),
   "paymentStatus": zod.enum(['pending', 'processing', 'succeeded', 'failed']),
   "checkoutUrl": zod.string().nullish(),
-  "result": zod.record(zod.string(), zod.unknown()).nullish()
+  "result": zod.object({
+  "message": zod.string().optional(),
+  "ticketCode": zod.string().optional(),
+  "ticketTypeName": zod.string().optional()
+}).nullish()
 })

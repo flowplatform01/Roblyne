@@ -66,6 +66,7 @@ export default function EventRegister() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [paymentStatusToken, setPaymentStatusToken] = useState<string | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [ticketCode, setTicketCode] = useState('');
@@ -76,7 +77,7 @@ export default function EventRegister() {
   const brandingStyle = useOrgBranding(event);
   const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
   const registerMutation = useRegisterForEvent();
-  const { data: paymentStatus } = usePaymentStatus(paymentId);
+  const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
   const countdown = useCountdown(event?.endsAt);
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
@@ -89,11 +90,13 @@ export default function EventRegister() {
       setTicketTypeName(result.ticketTypeName || "General Admission");
       setPaymentPending(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
       setIsSuccess(true);
     } else if (paymentStatus.status === "failed") {
       setPaymentPending(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
     }
   }, [paymentStatus, paymentId]);
@@ -137,13 +140,14 @@ export default function EventRegister() {
               return;
             }
             setPaymentId(result.paymentId);
+            setPaymentStatusToken(result.statusToken);
             setPaymentPending(true);
             setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
           }
           setIsSuccess(true);
-          setTicketCode(result?.ticketCode || `TKT-${Math.floor(Math.random() * 1000000)}`);
+          setTicketCode(result.ticketCode);
           setTicketTypeName(selectedTicket?.name || 'General Admission');
         },
         onError: () => setPaymentPending(false),
@@ -267,9 +271,9 @@ export default function EventRegister() {
             <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
               <CheckCircle2 className="h-12 w-12" />
             </div>
-            <h1 className="text-5xl font-serif font-bold mb-4 tracking-tight">You're In</h1>
+            <h1 className="text-5xl font-serif font-bold mb-4 tracking-tight">{t("eventRegister.youAreRegistered")}</h1>
             <p className="text-xl text-muted-foreground font-light leading-relaxed">
-              Confirmation sent to <strong className="text-foreground">{formData.email}</strong>. Present this ticket at the door.
+              {t("eventRegister.registrationConfirmed", { email: formData.email })}
             </p>
           </div>
 

@@ -83,9 +83,10 @@ export default function ElectionVote() {
   const [paymentCustomerEmail, setPaymentCustomerEmail] = useState('');
   const [paymentCustomerPhone, setPaymentCustomerPhone] = useState('');
   const [paymentId, setPaymentId] = useState<number | null>(null);
+  const [paymentStatusToken, setPaymentStatusToken] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
-  const { data: paymentStatus } = usePaymentStatus(paymentId);
+  const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
 
   // ── Display preferences ───────────────────────────────────────────────────
   const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
@@ -112,11 +113,13 @@ export default function ElectionVote() {
       setHasPaid(true);
       setPaymentProcessing(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
       setStep("success");
     } else if (paymentStatus.status === "failed") {
       setPaymentProcessing(false);
       setPaymentId(null);
+      setPaymentStatusToken(null);
       setCheckoutUrl(null);
       setStep("review");
       toast({ title: "Payment failed", description: "Your ballot was not recorded. Please try again.", variant: "destructive" });
@@ -206,6 +209,7 @@ export default function ElectionVote() {
               return;
             }
             setPaymentId(result.paymentId);
+            setPaymentStatusToken(result.statusToken);
             setCheckoutUrl(result.checkoutUrl);
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
