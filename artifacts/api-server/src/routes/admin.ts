@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, platformSettingsTable } from "@workspace/db";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
+import { bootstrapLimiter } from "../middlewares/rateLimit";
+import { MAX_BOOTSTRAP_CODE_BYTES, MIN_BOOTSTRAP_CODE_BYTES, verifyBootstrapCode } from "../lib/bootstrap-code";
 import { sql, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -8,13 +10,29 @@ const PLATFORM_ADMIN_ROLE_LOCK_KEY = 4_533_326;
 
 /**
  * POST /api/admin/bootstrap
- * Grants the authenticated user platform-admin status — ONLY if no platform admin
- * currently exists. Self-sealing: once one admin exists this endpoint returns 409.
+ * Grants the authenticated user platform-admin status only with the operator's
+ * setup code and only if no platform admin currently exists.
  */
-router.post("/admin/bootstrap", async (req, res): Promise<void> => {
+router.post("/admin/bootstrap", bootstrapLimiter, async (req, res): Promise<void> => {
   const sessionUserId = req.session.userId;
   if (!sessionUserId) {
     res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const configuredCode = process.env.PLATFORM_ADMIN_BOOTSTRAP_SECRET;
+  if (!configuredCode || Buffer.byteLength(configuredCode, "utf8") < MIN_BOOTSTRAP_CODE_BYTES) {
+    res.status(503).json({ error: "First-administrator setup is not configured" });
+    return;
+  }
+
+  const setupCode = typeof req.body?.setupCode === "string" ? req.body.setupCode : "";
+  if (!setupCode || Buffer.byteLength(setupCode, "utf8") > MAX_BOOTSTRAP_CODE_BYTES) {
+    res.status(400).json({ error: "Enter the one-time administrator setup code" });
+    return;
+  }
+  if (!verifyBootstrapCode(configuredCode, setupCode)) {
+    res.status(403).json({ error: "Invalid administrator setup code" });
     return;
   }
 

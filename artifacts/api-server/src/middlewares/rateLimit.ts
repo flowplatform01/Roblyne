@@ -87,6 +87,16 @@ export const authLimiter = rateLimit({
   store: createRedisStore("evenum:ratelimit:auth") as never,
 });
 
+// Brute-force protection for the first-administrator setup code.
+export const bootstrapLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: isDev ? 100 : 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many setup-code attempts. Please wait before trying again." },
+  store: createRedisStore("evenum:ratelimit:bootstrap") as never,
+});
+
 // Tighter limit specifically on state-changing requests (votes, registrations, submissions).
 export const writeLimiter = rateLimit({
   windowMs: 60 * 1000,

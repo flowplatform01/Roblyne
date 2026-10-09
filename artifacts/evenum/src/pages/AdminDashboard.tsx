@@ -87,6 +87,7 @@ export default function AdminDashboard() {
 
   const [orgSearch, setOrgSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [bootstrapSecret, setBootstrapSecret] = useState('');
   const [activeSection, setActiveSection] = useState<AdminSection>(readAdminSection);
 
   const { data: stats, isLoading: statsLoading } = useAdminStats(isPlatformAdmin);
@@ -162,12 +163,17 @@ export default function AdminDashboard() {
   });
 
   const bootstrap = useMutation({
-    mutationFn: () => customFetch(`${API_BASE}/api/admin/bootstrap`, { method: 'POST' }),
+    mutationFn: () => customFetch(`${API_BASE}/api/admin/bootstrap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setupCode: bootstrapSecret }),
+    }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({ title: 'Welcome, Administrator', description: 'You now have platform admin access.' });
     },
     onError: (e: any) => toast({ variant: 'destructive', title: 'Access denied', description: e?.data?.error || 'Bootstrap failed' }),
+    onSettled: () => setBootstrapSecret(''),
   });
 
   if (authLoading) {
@@ -208,33 +214,50 @@ export default function AdminDashboard() {
           </div>
           <Card className="text-left border-border/60">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-serif">Claim Administrator Access</CardTitle>
+              <CardTitle className="text-base font-serif">{t('admin.bootstrapTitle')}</CardTitle>
               <CardDescription>
-                If no platform administrator exists yet, you can claim that role now. This option
-                disappears permanently once any administrator is registered.
+                {t('admin.bootstrapDescription')}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="platform-admin-bootstrap-code">{t('admin.bootstrapCodeLabel')}</Label>
+                <Input
+                  id="platform-admin-bootstrap-code"
+                  type="password"
+                  autoComplete="one-time-code"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  minLength={32}
+                  maxLength={512}
+                  value={bootstrapSecret}
+                  onChange={(event) => setBootstrapSecret(event.target.value)}
+                  placeholder={t('admin.bootstrapCodePlaceholder')}
+                  disabled={bootstrap.isPending}
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t('admin.bootstrapCodeHint')}
+                </p>
+              </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button className="w-full">
+                  <Button className="w-full" disabled={bootstrapSecret.length < 32 || bootstrap.isPending}>
                     <Shield className="mr-2 h-4 w-4" />
-                    Claim Admin Access
+                    {t('admin.bootstrapStart')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Become Platform Administrator?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('admin.bootstrapConfirmTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This grants your account full platform admin privileges — visibility into all
-                      organizations, users, and content. This is only possible when no other admin exists.
+                      {t('admin.bootstrapConfirmDescription')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={() => bootstrap.mutate()} disabled={bootstrap.isPending}>
                       {bootstrap.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Yes, make me admin
+                      {t('admin.bootstrapConfirmAction')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
