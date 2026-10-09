@@ -415,7 +415,7 @@
     "faqs": [
       {
         "q": "How can I keep my ticket?",
-        "a": "Save it on this device to reopen it from the event page in this browser, or print it/save it as a PDF before leaving."
+        "a": "Download the ticket PDF, print the ticket, or save a copy in this browser on this device to reopen later. Nothing is emailed."
       },
       {
         "q": "Is my ticket transferable?",
@@ -429,12 +429,15 @@
     "officialTicket": "Official ticket",
     "attendee": "Attendee",
     "entryCode": "Entry code",
-    "printTicket": "Print or save ticket",
+    "downloadTicketPdf": "Download ticket (PDF)",
+    "printTicket": "Print ticket",
+    "ticketPdfDownloaded": "Ticket PDF downloaded.",
+    "ticketDownloadError": "The ticket PDF could not be downloaded. Please try again or use Print ticket.",
     "saveTicketOnDevice": "Save on this device",
     "ticketSavedOnDevice": "Saved on this device",
-    "ticketSaveHint": "Save before leaving to reopen this ticket from the event page in this browser. Only your name, ticket type, and entry code are stored on this device.",
-    "ticketSavedHint": "Saved in this browser on this device. Return to this event page to view it again.",
-    "ticketStorageError": "This browser could not save the ticket. Print or save it as a PDF before leaving.",
+    "ticketSaveHint": "Save stores your name, ticket type, and entry code in this browser on this device. It does not download a file or send an email. Return to this event page in the same browser and choose View saved ticket.",
+    "ticketSavedHint": "Saved in this browser on this device. No file was downloaded or email sent. Return to this event page and choose View saved ticket.",
+    "ticketStorageError": "This browser could not save the ticket. Download the PDF or print it before leaving.",
     "savedTicketAvailable": "A ticket saved on this device is available.",
     "viewSavedTicket": "View saved ticket",
     "removeSavedTicket": "Remove saved copy"

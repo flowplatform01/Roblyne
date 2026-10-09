@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink, Bookmark, Download } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink, Bookmark, Download, Printer } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { useOrgBranding } from "@/lib/branding";
@@ -51,6 +51,52 @@ function generateICS(event: any): string {
   ].join('\r\n');
 }
 
+async function renderSvgAsPngDataUrl(svg: SVGSVGElement): Promise<string> {
+  const copy = svg.cloneNode(true) as SVGSVGElement;
+  copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  copy.setAttribute("width", "420");
+  copy.setAttribute("height", "420");
+
+  const imageUrl = URL.createObjectURL(
+    new Blob([new XMLSerializer().serializeToString(copy)], { type: "image/svg+xml;charset=utf-8" }),
+  );
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not render the ticket QR code."));
+      image.src = imageUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 420;
+    canvas.height = 420;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare the ticket QR code.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const match = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  return match
+    ? [Number.parseInt(match[1], 16), Number.parseInt(match[2], 16), Number.parseInt(match[3], 16)]
+    : [217, 119, 6];
+}
+
+function safeFilePart(value: string): string {
+  return value.normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "event";
+}
+
 export default function EventRegister() {
   const [, params] = useRoute("/events/:id/register");
   const eventId = params?.id ? parseInt(params.id, 10) : 0;
@@ -66,6 +112,9 @@ export default function EventRegister() {
   const [ticketTypeName, setTicketTypeName] = useState('');
   const [savedTicket, setSavedTicket] = useState<SavedEventTicket | null>(null);
   const [ticketStorageError, setTicketStorageError] = useState(false);
+  const [isDownloadingTicket, setIsDownloadingTicket] = useState(false);
+  const [ticketDownloadError, setTicketDownloadError] = useState(false);
+  const [ticketPdfDownloaded, setTicketPdfDownloaded] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
@@ -88,6 +137,9 @@ export default function EventRegister() {
     setTicketCode("");
     setTicketTypeName("");
     setTicketStorageError(false);
+    setIsDownloadingTicket(false);
+    setTicketDownloadError(false);
+    setTicketPdfDownloaded(false);
     setSavedTicket(null);
 
     if (!Number.isInteger(eventId) || eventId <= 0) {
@@ -251,6 +303,118 @@ export default function EventRegister() {
       setTicketStorageError(false);
     } catch {
       setTicketStorageError(true);
+    }
+  };
+
+  const downloadTicketPdf = async () => {
+    const ticketElement = document.querySelector<HTMLElement>("[data-event-ticket-print]");
+    const qrSvg = ticketElement?.querySelector<SVGSVGElement>("[data-ticket-qr] svg");
+    if (!event || !ticketCode || !formData.name.trim() || !qrSvg) {
+      setTicketDownloadError(true);
+      return;
+    }
+
+    setIsDownloadingTicket(true);
+    setTicketDownloadError(false);
+    setTicketPdfDownloaded(false);
+    try {
+      const [{ jsPDF }, qrImage] = await Promise.all([
+        import("jspdf"),
+        renderSvgAsPngDataUrl(qrSvg),
+      ]);
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a5" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const accent = hexToRgb((event as any).accentColor || "");
+
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pageWidth, pdf.internal.pageSize.getHeight(), "F");
+      pdf.setFillColor(10, 22, 40);
+      pdf.rect(0, 0, pageWidth, 44, "F");
+      pdf.setFillColor(...accent);
+      pdf.rect(0, 0, pageWidth, 3, "F");
+
+      pdf.setTextColor(220, 227, 238);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.text(`${t("eventRegister.officialTicket").toLocaleUpperCase(locale)} · ${event.organizationName || "Evenum"}`, 14, 13);
+
+      const title = String(event.title || "Event");
+      let titleSize = 23;
+      pdf.setFont("times", "bold");
+      pdf.setFontSize(titleSize);
+      let titleLines = pdf.splitTextToSize(title, pageWidth - 28) as string[];
+      while (titleLines.length > 2 && titleSize > 15) {
+        titleSize -= 1;
+        pdf.setFontSize(titleSize);
+        titleLines = pdf.splitTextToSize(title, pageWidth - 28) as string[];
+      }
+      if (titleLines.length > 2) {
+        titleLines = [...titleLines.slice(0, 2)];
+        titleLines[1] = `${titleLines[1].replace(/[.…]+$/g, "")}…`;
+      }
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(titleSize);
+      pdf.text(titleLines, 14, 30);
+
+      pdf.setDrawColor(224, 228, 234);
+      pdf.line(14, 49, pageWidth - 14, 49);
+
+      const drawDetail = (label: string, value: string, x: number, y: number, width: number) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8);
+        pdf.setTextColor(116, 125, 138);
+        pdf.text(label.toLocaleUpperCase(locale), x, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(12);
+        pdf.setTextColor(27, 35, 48);
+        const lines = pdf.splitTextToSize(value || "—", width) as string[];
+        pdf.text(lines.slice(0, 2), x, y + 7);
+      };
+
+      drawDetail(t("eventRegister.attendee"), formData.name, 14, 61, 120);
+      drawDetail(t("eventRegister.ticketType"), ticketTypeName || "General Admission", 14, 84, 120);
+      const dateText = event.startsAt
+        ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }).format(new Date(event.startsAt))
+        : "—";
+      const locationText = event.isOnline
+        ? t("eventRegister.onlineEvent")
+        : (event.location || t("eventRegister.locationTba"));
+      drawDetail(t("eventRegister.date"), dateText, 14, 107, 58);
+      drawDetail(t("eventRegister.location"), locationText, 82, 107, 58);
+
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(224, 228, 234);
+      pdf.roundedRect(153, 57, 45, 45, 2, 2, "FD");
+      pdf.addImage(qrImage, "PNG", 155, 59, 41, 41);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(7);
+      pdf.setTextColor(116, 125, 138);
+      pdf.text(t("eventRegister.scanAtDoor").toLocaleUpperCase(locale), 175.5, 109, { align: "center" });
+
+      pdf.setDrawColor(224, 228, 234);
+      pdf.line(14, 129, pageWidth - 14, 129);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(116, 125, 138);
+      pdf.text(t("eventRegister.entryCode").toLocaleUpperCase(locale), 14, 136);
+      pdf.setFont("courier", "bold");
+      let codeSize = 15;
+      pdf.setFontSize(codeSize);
+      while (pdf.getTextWidth(ticketCode) > 132 && codeSize > 8) {
+        codeSize -= 1;
+        pdf.setFontSize(codeSize);
+      }
+      pdf.setTextColor(27, 35, 48);
+      pdf.text(ticketCode, 14, 144);
+
+      const fileName = `${safeFilePart(event.title || "event")}-ticket-${safeFilePart(ticketCode)}.pdf`;
+      await pdf.save(fileName);
+      setTicketPdfDownloaded(true);
+    } catch (error) {
+      console.error("Ticket PDF download failed", error);
+      setTicketDownloadError(true);
+    } finally {
+      setIsDownloadingTicket(false);
     }
   };
 
@@ -467,7 +631,7 @@ export default function EventRegister() {
 
               {/* QR Code */}
               <div className="shrink-0 flex flex-col items-center gap-3">
-                <div className="p-4 bg-white rounded-sm border border-border/60 shadow-sm">
+                <div data-ticket-qr className="p-4 bg-white rounded-sm border border-border/60 shadow-sm">
                   <QRCodeSVG value={ticketCode} size={140} level="M" includeMargin={false} />
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("eventRegister.scanAtDoor")}</p>
@@ -476,18 +640,32 @@ export default function EventRegister() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center" data-event-ticket-actions>
-            <Button variant="default" className="h-12 px-8" onClick={() => window.print()} data-testid="print-event-ticket">
-              <Download className="mr-2 h-4 w-4" /> {t("eventRegister.printTicket")}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 max-w-xl mx-auto" data-event-ticket-actions>
+            <Button variant="default" className="h-12 w-full justify-center px-4" onClick={downloadTicketPdf} disabled={isDownloadingTicket} data-testid="download-event-ticket">
+              {isDownloadingTicket ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {t("eventRegister.downloadTicketPdf")}
             </Button>
-            <Button variant="outline" className="h-12 px-8" onClick={handleAddToCalendar}>
+            <Button variant="outline" className="h-12 w-full justify-center px-4" onClick={() => window.print()} data-testid="print-event-ticket">
+              <Printer className="mr-2 h-4 w-4" /> {t("eventRegister.printTicket")}
+            </Button>
+            <Button variant="outline" className="h-12 w-full justify-center px-4" onClick={handleAddToCalendar}>
               <CalendarDays className="mr-2 h-4 w-4" /> {t("eventRegister.addToCalendar")}
             </Button>
-            <Button variant="outline" className="h-12 px-8" onClick={saveTicketOnDevice} data-testid="save-event-ticket">
+            <Button variant="outline" className="h-12 w-full justify-center px-4" onClick={saveTicketOnDevice} data-testid="save-event-ticket">
               {isTicketSaved ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Bookmark className="mr-2 h-4 w-4" />}
               {t(isTicketSaved ? "eventRegister.ticketSavedOnDevice" : "eventRegister.saveTicketOnDevice")}
             </Button>
           </div>
+          {ticketDownloadError && (
+            <p role="alert" className="mt-4 text-center text-sm text-destructive">
+              {t("eventRegister.ticketDownloadError")}
+            </p>
+          )}
+          {ticketPdfDownloaded && !ticketDownloadError && (
+            <p role="status" className="mt-4 text-center text-sm text-primary">
+              {t("eventRegister.ticketPdfDownloaded")}
+            </p>
+          )}
           <p role={ticketStorageError ? "alert" : "status"} className="mt-4 text-center text-sm text-muted-foreground">
             {ticketStorageError
               ? t("eventRegister.ticketStorageError")

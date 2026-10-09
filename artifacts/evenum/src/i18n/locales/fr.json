@@ -415,7 +415,7 @@
     "faqs": [
       {
         "q": "Comment conserver mon billet ?",
-        "a": "Enregistrez-le sur cet appareil pour le retrouver depuis la page de l'événement dans ce navigateur, ou imprimez-le/enregistrez-le en PDF avant de quitter."
+        "a": "Téléchargez le billet en PDF, imprimez-le ou enregistrez une copie dans ce navigateur sur cet appareil pour le retrouver plus tard. Aucun e-mail n'est envoyé."
       },
       {
         "q": "Puis-je transférer mon billet ?",
@@ -429,12 +429,15 @@
     "officialTicket": "Billet officiel",
     "attendee": "Participant",
     "entryCode": "Code d'entrée",
-    "printTicket": "Imprimer ou enregistrer le billet",
+    "downloadTicketPdf": "Télécharger le billet (PDF)",
+    "printTicket": "Imprimer le billet",
+    "ticketPdfDownloaded": "Le billet PDF a été téléchargé.",
+    "ticketDownloadError": "Le billet PDF n'a pas pu être téléchargé. Réessayez ou utilisez l'impression.",
     "saveTicketOnDevice": "Enregistrer sur cet appareil",
     "ticketSavedOnDevice": "Enregistré sur cet appareil",
-    "ticketSaveHint": "Enregistrez le billet avant de quitter pour le rouvrir depuis la page de l'événement dans ce navigateur. Seuls votre nom, le type de billet et le code d'entrée sont conservés sur cet appareil.",
-    "ticketSavedHint": "Enregistré dans ce navigateur sur cet appareil. Revenez sur cette page pour consulter le billet.",
-    "ticketStorageError": "Ce navigateur n'a pas pu enregistrer le billet. Imprimez-le ou enregistrez-le en PDF avant de quitter.",
+    "ticketSaveHint": "L'enregistrement conserve votre nom, le type de billet et le code d'entrée dans ce navigateur sur cet appareil. Aucun fichier n'est téléchargé et aucun e-mail n'est envoyé. Revenez sur cette page dans le même navigateur et choisissez Consulter le billet enregistré.",
+    "ticketSavedHint": "Enregistré dans ce navigateur sur cet appareil. Aucun fichier n'a été téléchargé et aucun e-mail n'a été envoyé. Revenez sur cette page et choisissez Consulter le billet enregistré.",
+    "ticketStorageError": "Ce navigateur n'a pas pu enregistrer le billet. Téléchargez le PDF ou imprimez-le avant de quitter.",
     "savedTicketAvailable": "Un billet enregistré sur cet appareil est disponible.",
     "viewSavedTicket": "Consulter le billet enregistré",
     "removeSavedTicket": "Supprimer la copie enregistrée"
