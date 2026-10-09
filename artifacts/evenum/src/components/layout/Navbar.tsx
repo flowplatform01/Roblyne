@@ -57,9 +57,8 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center">
-            <EvenumLogo size="md" showWordmark className="hidden sm:inline-flex" />
-            <EvenumLogo size="md" showWordmark={false} className="sm:hidden" />
+          <Link href="/" className="flex shrink-0 items-center" aria-label="Evenum home">
+            <EvenumLogo size="md" showWordmark />
           </Link>
           
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
