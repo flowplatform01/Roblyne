@@ -26,9 +26,10 @@ import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
 
-function isLegacyPlatformIdentityField(field: { id: string; label: string; type: string }): boolean {
-  return (field.id === "field_name" && field.label === "Full Name" && field.type === "text")
-    || (field.id === "field_email" && field.label === "Email Address" && field.type === "email");
+const LEGACY_PLATFORM_IDENTITY_FIELD_IDS = new Set(["field_name", "field_email", "field_phone"]);
+
+function isLegacyPlatformIdentityField(field: { id: string }): boolean {
+  return LEGACY_PLATFORM_IDENTITY_FIELD_IDS.has(field.id);
 }
 
 export default function CampaignParticipate() {
@@ -193,7 +194,7 @@ export default function CampaignParticipate() {
   const campaignTypeLabel = t(`campaignParticipate.${campaignTypeLabelKeys[campaignType] || "typeCustom"}`);
   const successType = ["application", "contribution", "donation", "membership", "registration"].includes(campaignType)
     ? campaignType
-    : "submission";
+    : campaignType === "merchandise" ? "merchandise" : "submission";
   const successTitle = t(`campaignParticipate.${successType}SuccessTitle`);
   const successDescription = t(`campaignParticipate.${successType}SuccessDescription`, { title: campaign.title });
   const submitActionKey = requiresPayment
@@ -202,6 +203,9 @@ export default function CampaignParticipate() {
         application: "submitApplication",
         registration: "submitRegistration",
         membership: "requestMembership",
+         contribution: "submitContribution",
+         donation: "submitDonation",
+         merchandise: "submitMerchandise",
       }[campaignType] || "submit");
   const campaignAccentColor = (campaign as any).accentColor || "#D97706";
   const primaryStyle: React.CSSProperties = { "--primary": hexToHsl(campaignAccentColor) } as React.CSSProperties;
@@ -214,9 +218,16 @@ export default function CampaignParticipate() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Campaign Opens Soon</h1>
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("campaignParticipate.notOpen")}</h1>
           <p className="text-xl text-muted-foreground font-light mb-8">
-            Contributions open {campaign.startsAt ? new Date(campaign.startsAt).toLocaleString() : "soon"}.
+            {t("campaignParticipate.opensAt", {
+              date: campaign.startsAt
+                ? new Intl.DateTimeFormat(i18n.language.startsWith("fr") ? "fr-FR" : "en-US", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(campaign.startsAt))
+                : t("campaignParticipate.soon"),
+            })}
           </p>
           {campaign.organizationName && (
             <div className="inline-flex items-center gap-2.5 bg-muted/50 border border-border/50 rounded-full pl-2 pr-4 py-1.5">
@@ -247,8 +258,8 @@ export default function CampaignParticipate() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <AlertCircle className="h-14 w-14 text-muted-foreground/30 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Campaign Unavailable</h1>
-          <p className="text-xl text-muted-foreground font-light mb-8">This campaign is not currently accepting submissions.</p>
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("campaignParticipate.unavailable")}</h1>
+          <p className="text-xl text-muted-foreground font-light mb-8">{t("campaignParticipate.unavailableDescription")}</p>
           {campaign.organizationName && (
             <div className="inline-flex items-center gap-2.5 bg-muted/50 border border-border/50 rounded-full pl-2 pr-4 py-1.5">
               {orgLogoUrl ? (

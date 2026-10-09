@@ -494,25 +494,25 @@ export default function EventDetail() {
             <TabsList className="mb-6 min-w-0 max-w-full border-b rounded-none bg-transparent p-0 w-full flex-nowrap justify-start h-auto overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none">
               <TabsTrigger 
                 value="tickets" 
-                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
+                className="px-2 py-3 md:px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Ticket Types
               </TabsTrigger>
               <TabsTrigger 
                 value="attendees" 
-                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
+                className="px-2 py-3 md:px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Attendees
               </TabsTrigger>
               <TabsTrigger 
                 value="analytics" 
-                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
+                className="px-2 py-3 md:px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Analytics
               </TabsTrigger>
               <TabsTrigger 
                 value="branding" 
-                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
+                className="px-2 py-3 md:px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Branding
               </TabsTrigger>

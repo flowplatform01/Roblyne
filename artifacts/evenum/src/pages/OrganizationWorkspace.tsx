@@ -124,7 +124,7 @@ export default function OrganizationWorkspace() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full min-w-0">
-         <TabsList className="no-scrollbar mb-6 w-full min-w-0 max-w-full justify-start gap-1 overflow-x-auto overscroll-x-contain border bg-muted/50 p-1 flex-nowrap [-webkit-overflow-scrolling:touch]">
+         <TabsList className="no-scrollbar mb-6 w-full min-w-0 max-w-full justify-start gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border bg-muted/50 p-1 flex-nowrap">
            <TabsTrigger value="overview" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
            <TabsTrigger value="elections" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Elections</TabsTrigger>
            <TabsTrigger value="events" className="shrink-0 px-3 py-2.5 transition-colors md:px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Events</TabsTrigger>

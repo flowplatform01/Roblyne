@@ -45,9 +45,10 @@ type CampaignFieldConfig = {
   options?: string[];
 };
 
+const LEGACY_PLATFORM_IDENTITY_FIELD_IDS = new Set(["field_name", "field_email", "field_phone"]);
+
 function isLegacyPlatformIdentityField(field: CampaignFieldConfig): boolean {
-  return (field.id === "field_name" && field.label === "Full Name" && field.type === "text")
-    || (field.id === "field_email" && field.label === "Email Address" && field.type === "email");
+  return LEGACY_PLATFORM_IDENTITY_FIELD_IDS.has(field.id);
 }
 
 function validateCampaignResponseFields(

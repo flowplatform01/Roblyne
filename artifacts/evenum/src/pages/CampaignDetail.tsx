@@ -43,6 +43,12 @@ type EditableCampaignField = {
   placeholder?: string;
 };
 
+const LEGACY_PLATFORM_IDENTITY_FIELD_IDS = new Set(["field_name", "field_email", "field_phone"]);
+
+function isLegacyPlatformIdentityField(field: { id: string }): boolean {
+  return LEGACY_PLATFORM_IDENTITY_FIELD_IDS.has(field.id);
+}
+
 export default function CampaignDetail() {
   const [match, params] = useRoute("/campaigns/:id");
   const campaignId = params?.id ? parseInt(params.id, 10) : 0;
@@ -106,8 +112,12 @@ export default function CampaignDetail() {
   };
 
   const canEditFormFields = campaign.status === "draft" && (campaign.submissionsCount ?? 0) === 0;
+  const configuredFields = (campaign.fields ?? []) as EditableCampaignField[];
+  const campaignSpecificFields = configuredFields.filter((field) => !isLegacyPlatformIdentityField(field));
+  const platformIdentityFields = configuredFields.filter(isLegacyPlatformIdentityField);
+  const isFinancialCampaign = campaign.type === "contribution" || campaign.type === "donation";
   const beginFormFieldEditing = () => {
-    setFormFieldsDraft(((campaign.fields ?? []) as EditableCampaignField[]).map((field) => ({ ...field })));
+    setFormFieldsDraft(campaignSpecificFields.map((field) => ({ ...field })));
     setIsEditingFields(true);
   };
   const addFormField = () => {
@@ -148,7 +158,7 @@ export default function CampaignDetail() {
       {
         campaignId,
         data: {
-          fields: formFieldsDraft.map((field) => ({
+          fields: [...platformIdentityFields, ...formFieldsDraft].map((field) => ({
             ...field,
             label: field.label.trim(),
             options: field.type === "select"
@@ -405,7 +415,7 @@ export default function CampaignDetail() {
                       </CardTitle>
                       <CardDescription className="mt-1">
                         {canEditFormFields
-                          ? "Edit the questions contributors answer when submitting this campaign form."
+                          ? "Edit the campaign-specific questions participants answer when submitting this form."
                           : "Form structure is locked after the campaign leaves draft or receives a submission."}
                       </CardDescription>
                     </div>
@@ -503,11 +513,11 @@ export default function CampaignDetail() {
                         </div>
                       </div>
                     </div>
-                  ) : !campaign.fields || campaign.fields.length === 0 ? (
-                    <div className="text-center p-8 text-muted-foreground">No fields configured.</div>
+                  ) : campaignSpecificFields.length === 0 ? (
+                    <div className="text-center p-8 text-muted-foreground">No campaign-specific questions configured.</div>
                   ) : (
                     <div className="space-y-4">
-                      {campaign.fields.map((field, i) => (
+                      {campaignSpecificFields.map((field, i) => (
                         <div key={field.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-muted/5">
                           <div>
                             <div className="flex items-center gap-2">
@@ -550,7 +560,7 @@ export default function CampaignDetail() {
                 )}
               </div>
 
-              {campaign.goalAmount && (
+              {isFinancialCampaign && campaign.goalAmount && (
                 <Card className="mb-6 border-border/60 shadow-sm">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg font-serif">Campaign Goal</CardTitle>

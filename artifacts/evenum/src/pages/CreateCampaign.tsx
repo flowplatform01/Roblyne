@@ -82,6 +82,8 @@ export default function CreateCampaign() {
   });
 
   const requiresPayment = form.watch("requiresPayment");
+  const campaignType = form.watch("type");
+  const supportsFundingGoal = campaignType === "contribution" || campaignType === "donation";
   const paymentAmount = Number(form.watch("paymentAmount") || 0);
   const campaignRate = commissionRates?.campaign;
   const estimatedReceipt = campaignRate == null ? null : Math.max(0, paymentAmount * (1 - campaignRate));
@@ -105,7 +107,7 @@ export default function CreateCampaign() {
           visibility: values.visibility,
           requiresPayment: values.requiresPayment,
           paymentAmount: values.requiresPayment && values.paymentAmount ? Number(values.paymentAmount) : undefined,
-          goalAmount: values.goalAmount ? Number(values.goalAmount) : undefined,
+          goalAmount: supportsFundingGoal && values.goalAmount ? Number(values.goalAmount) : undefined,
           startsAt: values.startsAt ? new Date(values.startsAt).toISOString() : undefined,
           endsAt: values.endsAt ? new Date(values.endsAt).toISOString() : undefined,
           fields: formattedFields,
@@ -200,6 +202,7 @@ export default function CreateCampaign() {
                             <SelectItem value="custom">Custom Form</SelectItem>
                             <SelectItem value="registration">Registration</SelectItem>
                             <SelectItem value="application">Application</SelectItem>
+                            <SelectItem value="contribution">Contribution</SelectItem>
                             <SelectItem value="donation">Donation</SelectItem>
                             <SelectItem value="membership">Membership</SelectItem>
                           </SelectContent>
@@ -285,8 +288,12 @@ export default function CreateCampaign() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Payment & Goals</CardTitle>
-                <CardDescription>Configure if this campaign requires a fee or has a target goal.</CardDescription>
+                <CardTitle>{supportsFundingGoal ? "Payment & Funding Goal" : "Payment Requirements"}</CardTitle>
+                <CardDescription>
+                  {supportsFundingGoal
+                    ? "Configure whether participation requires payment and set an optional contribution target."
+                    : "Configure whether participants must pay to submit this campaign."}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <FormField
@@ -322,7 +329,7 @@ export default function CreateCampaign() {
                   />
                 )}
 
-                <FormField
+                {supportsFundingGoal && <FormField
                   control={form.control}
                   name="goalAmount"
                   render={({ field }) => (
@@ -333,7 +340,7 @@ export default function CreateCampaign() {
                       <FormMessage />
                     </FormItem>
                   )}
-                />
+                />}
               </CardContent>
             </Card>
 
@@ -341,7 +348,9 @@ export default function CreateCampaign() {
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>Form Builder</CardTitle>
-                  <CardDescription>Define the fields participants will need to fill out.</CardDescription>
+                  <CardDescription>
+                    Add questions specific to this campaign. Name and email are collected separately; phone is requested for paid participation.
+                  </CardDescription>
                 </div>
                 <Button 
                   type="button" 
@@ -447,7 +456,7 @@ export default function CreateCampaign() {
                   ))}
                   {fields.length === 0 && (
                     <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-                      No fields added. Your campaign needs at least one field to collect data.
+                      No campaign-specific questions added yet. Participants will still provide the required contact details.
                     </div>
                   )}
                 </div>
