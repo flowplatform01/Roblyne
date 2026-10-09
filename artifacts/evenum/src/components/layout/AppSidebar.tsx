@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Building2, 
   Vote, 
@@ -7,7 +8,8 @@ import {
   Megaphone,
   ChevronDown,
   LayoutDashboard,
-  Settings
+  Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { useListOrganizations, Organization } from '@workspace/api-client-react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function AppSidebar({ orgId }: { orgId?: string }) {
+  const { user } = useAuth();
   const { data: organizations } = useListOrganizations();
   const [location] = useLocation();
   const { t } = useTranslation();
@@ -83,6 +86,16 @@ export function AppSidebar({ orgId }: { orgId?: string }) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {user?.isPlatformAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.startsWith('/admin')}>
+                    <Link href="/admin" onClick={closeMobile}>
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>{t('admin.platformWorkspace')}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {currentOrg && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location === `/organizations/${currentOrg.id}`}>

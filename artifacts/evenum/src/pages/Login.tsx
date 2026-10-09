@@ -30,7 +30,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const login = useLogin();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const loginSchema = z.object({
@@ -48,21 +48,21 @@ export default function Login() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/dashboard");
+      setLocation(user?.isPlatformAdmin ? "/admin" : "/dashboard");
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, user?.isPlatformAdmin, setLocation]);
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     login.mutate(
       { data: values },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        onSuccess: async (loggedInUser) => {
+          await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           toast({
              title: t("auth.welcomeBack"),
              description: t("auth.signInSuccess"),
           });
-          setLocation("/dashboard");
+          setLocation(loggedInUser.isPlatformAdmin ? "/admin" : "/dashboard");
         },
         onError: (error) => {
           toast({

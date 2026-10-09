@@ -4,6 +4,7 @@ import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { sql, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
+const PLATFORM_ADMIN_ROLE_LOCK_KEY = 4_533_326;
 
 /**
  * POST /api/admin/bootstrap
@@ -11,31 +12,44 @@ const router: IRouter = Router();
  * currently exists. Self-sealing: once one admin exists this endpoint returns 409.
  */
 router.post("/admin/bootstrap", async (req, res): Promise<void> => {
-  if (!req.session.userId) {
+  const sessionUserId = req.session.userId;
+  if (!sessionUserId) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
 
-  // The NOT EXISTS predicate is part of the UPDATE statement, so concurrent
-  // bootstrap requests cannot both pass a separate check.
-  const { rows: [user] } = await db.execute(sql`
-    UPDATE users
-    SET is_platform_admin = true
-    WHERE id = ${req.session.userId}
-      AND NOT EXISTS (SELECT 1 FROM users WHERE is_platform_admin = true)
-    RETURNING id, name, email
-  `);
-  if (!user) {
-    const { rows: [existing] } = await db.execute(
-      sql`SELECT id FROM users WHERE is_platform_admin = true LIMIT 1`
-    );
-    res.status(existing ? 409 : 404).json({
-      error: existing ? "A platform administrator already exists" : "User not found",
-    });
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PLATFORM_ADMIN_ROLE_LOCK_KEY}, 1)`);
+    const [user] = await tx.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+    }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1);
+    if (!user) return { type: "missing" as const };
+
+    const [existing] = await tx.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.isPlatformAdmin, true))
+      .limit(1);
+    if (existing) return { type: "exists" as const };
+
+    const [promoted] = await tx.update(usersTable)
+      .set({ isPlatformAdmin: true })
+      .where(eq(usersTable.id, user.id))
+      .returning({ id: usersTable.id, name: usersTable.name, email: usersTable.email });
+    return { type: "created" as const, user: promoted };
+  });
+
+  if (result.type === "missing") {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (result.type === "exists") {
+    res.status(409).json({ error: "A platform administrator already exists" });
     return;
   }
 
-  res.json({ message: "You are now the platform administrator", user });
+  res.json({ message: "You are now the platform administrator", user: result.user });
 });
 
 // Payment presentation is public because participants need it before payment.
@@ -168,30 +182,97 @@ router.get("/admin/organizations", async (_req, res): Promise<void> => {
 
 // PATCH /api/admin/users/:id/platform-admin — toggle platform admin flag
 router.patch("/admin/users/:id/platform-admin", async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.id);
-  const { isPlatformAdmin } = req.body as { isPlatformAdmin: boolean };
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const userId = Number.parseInt(rawId, 10);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+  const { isPlatformAdmin } = req.body && typeof req.body === "object"
+    ? req.body as { isPlatformAdmin?: unknown }
+    : {};
   if (typeof isPlatformAdmin !== "boolean") {
     res.status(400).json({ error: "isPlatformAdmin must be a boolean" });
     return;
   }
-  const [user] = await db
-    .update(usersTable)
-    .set({ isPlatformAdmin })
-    .where(eq(usersTable.id, userId))
-    .returning({ id: usersTable.id, name: usersTable.name, isPlatformAdmin: usersTable.isPlatformAdmin });
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  res.json(user);
+
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PLATFORM_ADMIN_ROLE_LOCK_KEY}, 1)`);
+    const [target] = await tx.select({
+      id: usersTable.id,
+      name: usersTable.name,
+      isPlatformAdmin: usersTable.isPlatformAdmin,
+    }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!target) return { type: "missing" as const };
+
+    if (!isPlatformAdmin && target.isPlatformAdmin) {
+      if (userId === req.session.userId) return { type: "self" as const };
+
+      const [{ adminCount }] = await tx.select({
+        adminCount: sql<number>`count(*)::int`,
+      }).from(usersTable).where(eq(usersTable.isPlatformAdmin, true));
+      if (adminCount <= 1) return { type: "last_admin" as const };
+    }
+
+    const [updated] = await tx.update(usersTable)
+      .set({ isPlatformAdmin })
+      .where(eq(usersTable.id, userId))
+      .returning({
+        id: usersTable.id,
+        name: usersTable.name,
+        isPlatformAdmin: usersTable.isPlatformAdmin,
+      });
+    return { type: "updated" as const, user: updated };
+  });
+
+  if (result.type === "missing") {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (result.type === "self") {
+    res.status(409).json({ error: "You cannot remove your own platform administrator access" });
+    return;
+  }
+  if (result.type === "last_admin") {
+    res.status(409).json({ error: "At least one platform administrator must remain" });
+    return;
+  }
+  res.json(result.user);
 });
 
 // DELETE /api/admin/users/:id
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
-  const userId = parseInt(req.params.id);
+  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const userId = Number.parseInt(rawId, 10);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
   // prevent self-deletion
   if (userId === (req as any).session.userId) {
     res.status(400).json({ error: "Cannot delete your own account" });
     return;
   }
-  await db.execute(sql`DELETE FROM users WHERE id = ${userId}`);
+
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${PLATFORM_ADMIN_ROLE_LOCK_KEY}, 1)`);
+    const [target] = await tx.select({
+      isPlatformAdmin: usersTable.isPlatformAdmin,
+    }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!target) return "missing" as const;
+    if (target.isPlatformAdmin) return "platform_admin" as const;
+    await tx.delete(usersTable).where(eq(usersTable.id, userId));
+    return "deleted" as const;
+  });
+
+  if (result === "missing") {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (result === "platform_admin") {
+    res.status(409).json({ error: "Remove platform administrator access before deleting this account" });
+    return;
+  }
   res.json({ message: "User deleted" });
 });
 

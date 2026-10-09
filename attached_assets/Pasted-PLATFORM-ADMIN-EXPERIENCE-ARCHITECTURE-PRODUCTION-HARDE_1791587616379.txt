@@ -1,0 +1,355 @@
+PLATFORM ADMIN — EXPERIENCE, ARCHITECTURE & PRODUCTION HARDENING AUDIT
+
+I want you to perform a focused audit of the PLATFORM ADMIN experience in EVENUM.
+
+This is NOT a request to invent a huge enterprise admin system, add dozens of modules, or redesign the application around hypothetical requirements.
+
+Do not over-engineer this.
+
+The goal is much simpler:
+
+Make Platform Admin feel like a genuine first-class control environment for operating EVENUM — not like a normal organization/user account that happens to have an additional “Platform Admin” page attached to it.
+
+IMPORTANT:
+You are the agent with access to and understanding of the actual EVENUM application. Inspect the existing implementation first. Do not assume what exists or impose a generic admin architecture.
+
+==================================================
+1. FIRST: UNDERSTAND HOW PLATFORM ADMIN ACTUALLY WORKS
+==================================================
+
+Trace the complete Platform Admin experience from the beginning:
+
+- How a Platform Admin account is created or assigned.
+- How the platform recognizes that account as a Platform Admin.
+- What happens immediately after login.
+- What the admin sees as their home/default experience.
+- How they access Platform Admin functionality.
+- How Platform Admin relates to the normal EVENUM user/organization experience.
+- What navigation, workspace, account, organization, or role assumptions are currently being reused.
+- How permissions are actually enforced.
+- What Platform Admin can currently see and control.
+- Which capabilities already exist elsewhere in the application.
+- Which admin features are isolated into a separate page despite logically belonging to the platform-level experience.
+
+Understand the current architecture before changing anything.
+
+==================================================
+2. THE CORE PROBLEM TO INVESTIGATE
+==================================================
+
+Currently, the experience feels too much like:
+
+“I'm a normal EVENUM organization/user, and because I have an admin role, there is an extra Platform Admin page somewhere.”
+
+That is not the feeling we want.
+
+A Platform Admin is fundamentally different from an organization administrator.
+
+An organization administrator operates THEIR organization.
+
+A Platform Admin operates and oversees EVENUM itself.
+
+The experience should communicate that difference naturally through:
+
+- navigation
+- information hierarchy
+- workspace structure
+- entry point
+- terminology
+- permissions
+- context
+- visual hierarchy
+- available actions
+- overall UX
+
+When a Platform Admin logs in, it should feel like:
+
+“This is my EVENUM control environment.”
+
+Not:
+
+“This is my organization account with an admin page attached.”
+
+==================================================
+3. DETERMINE THE RIGHT EXPERIENCE FROM THE EXISTING PRODUCT
+==================================================
+
+Do not blindly replace the current interface.
+
+Investigate what the most natural architecture is for EVENUM.
+
+For example, determine whether the current experience would be better served by:
+
+- a distinct Platform Admin workspace/shell,
+- a clearly separated platform-level context inside the existing shell,
+- a stronger Platform Admin home,
+- a dedicated platform navigation layer,
+- or another approach that fits the current architecture better.
+
+The important thing is not the specific implementation pattern.
+
+The important thing is that Platform Admin should feel intentionally designed as the environment used to operate EVENUM.
+
+The transition between:
+
+NORMAL EVENUM EXPERIENCE
+and
+PLATFORM ADMIN EXPERIENCE
+
+should be obvious, intentional, and understandable.
+
+At the same time, do not create unnecessary duplication or completely separate the application if the existing architecture can support this cleanly.
+
+==================================================
+4. AUDIT WHAT IS ALREADY THERE
+==================================================
+
+Thoroughly inspect the existing Platform Admin implementation.
+
+Identify:
+
+- capabilities that are already sufficient
+- capabilities that are present but difficult to discover
+- capabilities that are present but poorly organized
+- controls that belong in a stronger platform-level context
+- missing visibility that would genuinely matter in production
+- missing actions that would genuinely matter in production
+- weak permission boundaries
+- confusing role/context transitions
+- admin actions that are too hidden
+- unnecessary duplication with organization functionality
+- UI patterns that make Platform Admin feel like a normal organization
+- production gaps that could make operating EVENUM difficult
+
+Do NOT add something simply because it is common in enterprise dashboards.
+
+Only recommend or implement something when there is a real product, operational, security, support, financial, lifecycle, or production reason for it.
+
+==================================================
+5. NECESSARY VISIBILITY AND CONTROL
+==================================================
+
+As part of the audit, determine whether a Platform Admin currently has enough visibility and control to reasonably operate EVENUM.
+
+Think practically:
+
+If something goes wrong in production, can the Platform Admin actually understand what happened?
+
+If a user or organization has an issue, can the Platform Admin find the relevant context?
+
+If a platform-level setting or lifecycle issue occurs, can it be managed?
+
+If an existing feature requires platform-level intervention, is that intervention actually possible?
+
+If an important control is already implemented, is it discoverable and usable?
+
+If something important is missing, identify it based on the actual application.
+
+Do not create theoretical controls that EVENUM does not need.
+
+==================================================
+6. PLATFORM ADMIN AS A FIRST-CLASS EXPERIENCE
+==================================================
+
+Review the actual UX from the perspective of someone who operates EVENUM.
+
+Pay particular attention to:
+
+- login
+- landing/home experience
+- navigation
+- workspace/context switching
+- account/profile area
+- access to normal user functionality
+- access to Platform Admin
+- page hierarchy
+- breadcrumbs or contextual indicators where useful
+- terminology
+- visual distinction
+- responsive behavior
+- mobile experience
+- desktop experience
+- empty states
+- loading states
+- error states
+- confirmation flows
+- destructive/sensitive actions
+
+The experience should feel professional and intentional.
+
+It should be immediately clear:
+
+“I am operating the platform.”
+
+Avoid making it look like a generic SaaS admin template.
+
+Do not introduce unnecessary visual complexity.
+
+==================================================
+7. PLATFORM ADMIN ARCHITECTURE
+==================================================
+
+Inspect the underlying implementation as well.
+
+Verify that Platform Admin is not merely a frontend concept.
+
+Check:
+
+- authentication
+- authorization
+- role determination
+- route protection
+- API protection
+- server-side permission enforcement
+- organization-vs-platform scope separation
+- accidental privilege leakage
+- frontend assumptions about admin status
+- sensitive actions
+- persistence of admin state
+- navigation/context handling
+
+If the current implementation is already sound, preserve it.
+
+If there are genuine weaknesses, harden them.
+
+Do not redesign the entire authentication or authorization architecture unless the existing implementation genuinely requires it.
+
+==================================================
+8. DO NOT BREAK THE EXISTING PRODUCT
+==================================================
+
+This is a mature application.
+
+Do not treat this as a greenfield admin dashboard.
+
+Before modifying anything:
+
+- inspect existing patterns
+- understand dependencies
+- understand shared components
+- understand existing routing
+- understand existing permissions
+- understand existing organization workflows
+- identify reused components
+- identify anything that could be affected
+
+Preserve existing functionality.
+
+Do not remove working capabilities simply because you would structure them differently.
+
+Do not create duplicate systems when an existing system can be appropriately reused.
+
+Do not introduce unnecessary infrastructure.
+
+Do not create speculative enterprise features.
+
+Do not block or destabilize production development.
+
+==================================================
+9. USE REAL PRODUCT JUDGMENT
+==================================================
+
+Approach this as a senior product engineer responsible for an already-built production platform.
+
+You should independently determine:
+
+FOUND
+→ what is already good
+
+WEAK
+→ what exists but needs improvement
+
+MISSING
+→ what is genuinely necessary
+
+UNNECESSARY
+→ what might look impressive but should NOT be added
+
+RISK
+→ what could cause production, permission, financial, or operational problems
+
+IMPROVEMENT
+→ what should actually be changed
+
+Do not simply produce a checklist of generic admin features.
+
+==================================================
+10. IMPLEMENT ONLY WHAT IS JUSTIFIED
+==================================================
+
+After the audit, implement the improvements that are genuinely justified by the existing EVENUM product.
+
+Prioritize:
+
+1. Platform Admin identity/context
+2. Clear separation from organization administration
+3. Necessary production visibility
+4. Necessary platform-level controls
+5. Permission/security correctness
+6. Discoverability of existing controls
+7. Stronger UX and navigation
+8. Mobile/desktop usability
+9. Consistency with the existing EVENUM design system
+10. Production hardening
+
+Keep the scope disciplined.
+
+If something is already good, leave it alone.
+
+If something can be improved without architectural disruption, improve it.
+
+If something is genuinely missing and necessary, add it.
+
+If something is unnecessary, explicitly leave it out.
+
+==================================================
+11. VERIFY THE RESULT
+==================================================
+
+After implementation, test the complete Platform Admin journey.
+
+Test at minimum:
+
+- Platform Admin login
+- initial landing experience
+- navigation
+- entering/exiting Platform Admin context
+- access to existing admin capabilities
+- organization/user boundaries
+- permission enforcement
+- sensitive actions
+- mobile layout
+- desktop layout
+- refresh/deep-link behavior
+- loading/error states
+- normal organization-user experience after the changes
+
+Use browser/Playwright testing where appropriate.
+
+Do not stop at “the page renders.”
+
+Verify that the experience actually feels like a platform operating environment rather than an organization account with an admin page attached.
+
+==================================================
+FINAL PRINCIPLE
+==================================================
+
+Do not build the admin system you think EVENUM “should” have in theory.
+
+Build the Platform Admin experience that EVENUM actually needs after understanding the application that already exists.
+
+The objective is NOT:
+
+“more admin features.”
+
+The objective is:
+
+“A Platform Admin can enter EVENUM and immediately feel that this is the environment from which the platform itself is operated, while retaining the necessary existing functionality and without introducing unnecessary complexity.”
+
+Inspect first.
+Reason from the existing product.
+Identify real gaps.
+Harden what is weak.
+Improve what is awkward.
+Add only what is genuinely necessary.
+Preserve everything that already works.

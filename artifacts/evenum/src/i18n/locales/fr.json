@@ -674,6 +674,8 @@
     "platformAdmin": "Administration de la plateforme",
     "restricted": "Cette section est réservée aux administrateurs de la plateforme.",
     "platformOverview": "Visibilité opérationnelle sur toutes les organisations, tous les utilisateurs et tous les contenus",
+    "platformWorkspace": "Opérations de la plateforme",
+    "returnToWorkspace": "Espace des organisations",
     "organizations": "Organisations",
     "users": "Utilisateurs",
     "finance": "Finance",

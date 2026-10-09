@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import { 
   customFetch, 
   getGetMeQueryKey,
@@ -16,6 +17,8 @@ import {
   getGetAdminFinanceStatsQueryKey
 } from '@workspace/api-client-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Layout } from '@/components/layout/Layout';
+import { PlatformAdminLayout } from '@/components/layout/PlatformAdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,25 +46,35 @@ import { formatCurrency as formatCurrencyValue } from '@/lib/currency';
 import { AdminLoadingSkeleton } from '@/components/loading/LoadingStates';
 import { Skeleton } from '@/components/ui/skeleton';
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ADMIN_SECTIONS = ['organizations', 'users', 'finance', 'governance', 'operations'] as const;
+type AdminSection = (typeof ADMIN_SECTIONS)[number];
 
-function useAdminStats() {
+function readAdminSection(): AdminSection {
+  const value = new URLSearchParams(window.location.search).get('section');
+  return ADMIN_SECTIONS.includes(value as AdminSection) ? value as AdminSection : 'organizations';
+}
+
+function useAdminStats(enabled: boolean) {
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: () => customFetch<Record<string, number>>(`${API_BASE}/api/admin/stats`),
+    enabled,
   });
 }
 
-function useAdminUsers() {
+function useAdminUsers(enabled: boolean) {
   return useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => customFetch<any[]>(`${API_BASE}/api/admin/users`),
+    enabled,
   });
 }
 
-function useAdminOrgs() {
+function useAdminOrgs(enabled: boolean) {
   return useQuery({
     queryKey: ['admin', 'organizations'],
     queryFn: () => customFetch<any[]>(`${API_BASE}/api/admin/organizations`),
+    enabled,
   });
 }
 
@@ -70,13 +83,31 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const isPlatformAdmin = !!user?.isPlatformAdmin;
 
   const [orgSearch, setOrgSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [activeSection, setActiveSection] = useState<AdminSection>(readAdminSection);
 
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: users, isLoading: usersLoading } = useAdminUsers();
-  const { data: orgs, isLoading: orgsLoading } = useAdminOrgs();
+  const { data: stats, isLoading: statsLoading } = useAdminStats(isPlatformAdmin);
+  const { data: users, isLoading: usersLoading } = useAdminUsers(isPlatformAdmin);
+  const { data: orgs, isLoading: orgsLoading } = useAdminOrgs(isPlatformAdmin);
+
+  useEffect(() => {
+    const syncSectionFromHistory = () => setActiveSection(readAdminSection());
+    window.addEventListener('popstate', syncSectionFromHistory);
+    return () => window.removeEventListener('popstate', syncSectionFromHistory);
+  }, []);
+
+  const changeSection = (section: string) => {
+    if (!ADMIN_SECTIONS.includes(section as AdminSection)) return;
+    const nextSection = section as AdminSection;
+    setActiveSection(nextSection);
+    const url = new URL(window.location.href);
+    if (nextSection === 'organizations') url.searchParams.delete('section');
+    else url.searchParams.set('section', nextSection);
+    window.history.pushState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  };
 
   const filteredOrgs = useMemo(() => {
     if (!orgs) return [];
@@ -141,13 +172,28 @@ export default function AdminDashboard() {
 
   if (authLoading) {
     return (
-      <DashboardLayout>
+      <Layout>
         <AdminLoadingSkeleton />
-      </DashboardLayout>
+      </Layout>
     );
   }
 
-  if (isAuthenticated && !user?.isPlatformAdmin) {
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center px-4 text-center">
+          <ShieldCheck className="mb-4 h-10 w-10 text-primary" />
+          <h1 className="font-serif text-2xl font-bold">{t('admin.platformWorkspace')}</h1>
+          <p className="mt-2 text-muted-foreground">{t('admin.restricted')}</p>
+          <Button asChild className="mt-6">
+            <Link href="/login">{t('common.signIn')}</Link>
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isPlatformAdmin) {
     return (
       <DashboardLayout>
         <div className="max-w-lg mx-auto mt-24 text-center space-y-6 px-4">
@@ -249,8 +295,8 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-10">
+    <PlatformAdminLayout>
+      <div className="mx-auto max-w-6xl space-y-8">
 
         {/* Command center header */}
         <div className="flex items-start justify-between gap-4">
@@ -265,9 +311,7 @@ export default function AdminDashboard() {
                   {t("admin.commandCenter")}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Full operational visibility across all organizations, users, and content
-              </p>
+                <p className="text-sm text-muted-foreground">{t("admin.platformOverview")}</p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 border border-border/50 px-4 py-2 rounded-sm">
@@ -304,21 +348,21 @@ export default function AdminDashboard() {
         </div>
 
         {/* Data tables */}
-        <Tabs defaultValue="organizations">
+        <Tabs value={activeSection} onValueChange={changeSection}>
           <TabsList className="mb-1 w-full justify-start overflow-x-auto scrollbar-none flex-nowrap">
             <TabsTrigger value="organizations" className="gap-2">
               <Building2 className="h-3.5 w-3.5" />
-              Organizations
+              {t("admin.organizations")}
               {orgs && <span className="ml-1 text-xs opacity-60">({orgs.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-3.5 w-3.5" />
-              Users
+              {t("admin.users")}
               {users && <span className="ml-1 text-xs opacity-60">({users.length})</span>}
             </TabsTrigger>
             <TabsTrigger value="finance" className="gap-2">
               <Coins className="h-3.5 w-3.5" />
-              Finance
+              {t("admin.finance")}
             </TabsTrigger>
             <TabsTrigger value="governance" className="gap-2">
               <Settings className="h-3.5 w-3.5" />
@@ -414,7 +458,7 @@ export default function AdminDashboard() {
                             <div className="text-xs opacity-60">{formatDistanceToNow(new Date(org.created_at), { addSuffix: true })}</div>
                           </TableCell>
                           <TableCell>
-                            <AlertDialog>
+        <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
                                   <Trash2 className="h-4 w-4" />
@@ -549,16 +593,40 @@ export default function AdminDashboard() {
                           <TableCell>
                             {u.id !== user?.id && (
                               <div className="flex items-center gap-1 justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                   className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground hover:bg-muted' : 'text-muted-foreground/50 hover:text-primary dark:hover:text-white hover:bg-primary/10 dark:hover:bg-white/10'}`}
-                                  title={u.is_platform_admin ? 'Remove admin access' : 'Grant admin access'}
-                                  onClick={() => toggleAdmin.mutate({ id: u.id, isPlatformAdmin: !u.is_platform_admin })}
-                                  disabled={toggleAdmin.isPending}
-                                >
-                                  {u.is_platform_admin ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
-                                </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={`h-8 w-8 ${u.is_platform_admin ? 'text-primary hover:text-muted-foreground hover:bg-muted' : 'text-muted-foreground/50 hover:text-primary dark:hover:text-white hover:bg-primary/10 dark:hover:bg-white/10'}`}
+                                        title={u.is_platform_admin ? 'Remove admin access' : 'Grant admin access'}
+                                        aria-label={u.is_platform_admin ? `Remove platform administrator access from ${u.name}` : `Grant platform administrator access to ${u.name}`}
+                                        disabled={toggleAdmin.isPending}
+                                      >
+                                        {u.is_platform_admin ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                          {u.is_platform_admin ? 'Remove platform access?' : 'Grant platform access?'}
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          {u.is_platform_admin
+                                            ? `This removes ${u.name}'s ability to operate EVENUM platform controls. At least one platform administrator must remain.`
+                                            : `This gives ${u.name} access to all platform-wide user, organization, finance, and settings controls.`}
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => toggleAdmin.mutate({ id: u.id, isPlatformAdmin: !u.is_platform_admin })}
+                                        >
+                                          {u.is_platform_admin ? 'Remove access' : 'Grant access'}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10">
@@ -614,7 +682,7 @@ export default function AdminDashboard() {
           </span>
         </div>
       </div>
-    </DashboardLayout>
+    </PlatformAdminLayout>
   );
 }
 

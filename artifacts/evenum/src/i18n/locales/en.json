@@ -674,6 +674,8 @@
     "platformAdmin": "Platform Administration",
     "restricted": "This area is restricted to platform administrators.",
     "platformOverview": "Full operational visibility across all organizations, users, and content",
+    "platformWorkspace": "Platform operations",
+    "returnToWorkspace": "Organization workspace",
     "organizations": "Organizations",
     "users": "Users",
     "finance": "Finance",
