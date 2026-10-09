@@ -45,6 +45,11 @@ type CampaignFieldConfig = {
   options?: string[];
 };
 
+function isLegacyPlatformIdentityField(field: CampaignFieldConfig): boolean {
+  return (field.id === "field_name" && field.label === "Full Name" && field.type === "text")
+    || (field.id === "field_email" && field.label === "Email Address" && field.type === "email");
+}
+
 function validateCampaignResponseFields(
   configuredFields: unknown,
   data: Record<string, unknown>,
@@ -55,6 +60,9 @@ function validateCampaignResponseFields(
     if (!field || typeof field.id !== "string" || !field.id || typeof field.label !== "string") {
       return "This campaign form is not configured correctly";
     }
+    // Keep legacy campaign definitions and existing responses intact, but don't
+    // require platform-owned identity fields a second time on new submissions.
+    if (isLegacyPlatformIdentityField(field)) continue;
 
     const value = data[field.id];
     const empty = value === undefined || value === null

@@ -490,29 +490,29 @@ export default function EventDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 min-w-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-6 border-b rounded-none bg-transparent p-0 w-full justify-start h-auto overflow-x-auto scrollbar-none">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-0">
+            <TabsList className="mb-6 min-w-0 max-w-full border-b rounded-none bg-transparent p-0 w-full flex-nowrap justify-start h-auto overflow-x-auto overflow-y-hidden overscroll-x-contain scrollbar-none">
               <TabsTrigger 
                 value="tickets" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
+                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Ticket Types
               </TabsTrigger>
               <TabsTrigger 
                 value="attendees" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
+                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Attendees
               </TabsTrigger>
               <TabsTrigger 
                 value="analytics" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
+                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Analytics
               </TabsTrigger>
               <TabsTrigger 
                 value="branding" 
-                className="px-6 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0"
+                className="px-3 py-3 md:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none whitespace-nowrap shrink-0 transition-colors"
               >
                 Branding
               </TabsTrigger>

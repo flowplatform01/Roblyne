@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink } from "lucide-react";
+import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink, Bookmark, Download } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { useOrgBranding } from "@/lib/branding";
-import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { useCountdown } from "@/hooks/useLifecycle";
 import { useTranslation } from "react-i18next";
@@ -20,20 +19,14 @@ import { formatCurrency } from "@/lib/currency";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
 
-const FAQS = [
-  {
-    q: 'Will I receive a confirmation after registering?',
-    a: 'Yes. Your digital ticket is shown immediately after registration. Screenshot or save it for entry.',
-  },
-  {
-    q: 'Is my ticket transferable?',
-    a: 'Tickets are issued in your name and linked to the entry code on your ticket. Contact the organizer if you need a transfer.',
-  },
-  {
-    q: 'What is the cancellation policy?',
-    a: 'Cancellation terms are set by the organizing team. Reach out to them directly for refund or cancellation requests.',
-  },
-];
+type SavedEventTicket = {
+  eventId: number;
+  ticketCode: string;
+  attendeeName: string;
+  ticketTypeName: string;
+};
+
+const eventTicketStorageKey = (eventId: number) => `evenum:event-ticket:${eventId}`;
 
 function generateICS(event: any): string {
   const start = event.startsAt ? new Date(event.startsAt) : new Date();
@@ -71,6 +64,8 @@ export default function EventRegister() {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [ticketCode, setTicketCode] = useState('');
   const [ticketTypeName, setTicketTypeName] = useState('');
+  const [savedTicket, setSavedTicket] = useState<SavedEventTicket | null>(null);
+  const [ticketStorageError, setTicketStorageError] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
@@ -81,6 +76,65 @@ export default function EventRegister() {
   const countdown = useCountdown(event?.endsAt);
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
+
+  useEffect(() => {
+    setSelectedTicketId(null);
+    setFormData({ name: "", email: "", phone: "" });
+    setIsSuccess(false);
+    setPaymentId(null);
+    setPaymentStatusToken(null);
+    setPaymentPending(false);
+    setCheckoutUrl(null);
+    setTicketCode("");
+    setTicketTypeName("");
+    setTicketStorageError(false);
+    setSavedTicket(null);
+
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      setSavedTicket(null);
+      return;
+    }
+
+    try {
+      const storedTicket = window.localStorage.getItem(eventTicketStorageKey(eventId));
+      if (!storedTicket) {
+        setSavedTicket(null);
+        return;
+      }
+
+      const parsed = JSON.parse(storedTicket) as Partial<SavedEventTicket>;
+      if (
+        typeof parsed.ticketCode === "string"
+        && parsed.ticketCode.trim().length >= 6
+        && parsed.ticketCode.trim().length <= 128
+        && typeof parsed.attendeeName === "string"
+        && parsed.attendeeName.trim().length > 0
+        && parsed.attendeeName.length <= 200
+        && typeof parsed.ticketTypeName === "string"
+        && parsed.ticketTypeName.trim().length > 0
+        && parsed.ticketTypeName.length <= 100
+      ) {
+        setSavedTicket({
+          eventId,
+          ticketCode: parsed.ticketCode.trim(),
+          attendeeName: parsed.attendeeName.trim(),
+          ticketTypeName: parsed.ticketTypeName.trim(),
+        });
+      } else {
+        setSavedTicket(null);
+      }
+    } catch {
+      setSavedTicket(null);
+    }
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!savedTicket || savedTicket.eventId !== eventId || !event || (event.status === "published" && !countdown.expired)) return;
+    setTicketCode(savedTicket.ticketCode);
+    setTicketTypeName(savedTicket.ticketTypeName);
+    setFormData(current => ({ ...current, name: savedTicket.attendeeName }));
+    setIsSuccess(true);
+  }, [savedTicket, eventId, event, countdown.expired]);
 
   useEffect(() => {
     if (!paymentStatus || paymentId === null) return;
@@ -155,6 +209,53 @@ export default function EventRegister() {
     );
   };
 
+  const saveTicketOnDevice = () => {
+    const attendeeName = formData.name.trim();
+    if (!ticketCode || !attendeeName) {
+      setTicketStorageError(true);
+      return;
+    }
+
+    const ticket: SavedEventTicket = {
+      eventId,
+      ticketCode,
+      attendeeName,
+      ticketTypeName: ticketTypeName || "General Admission",
+    };
+    try {
+      window.localStorage.setItem(eventTicketStorageKey(eventId), JSON.stringify({
+        ticketCode: ticket.ticketCode,
+        attendeeName: ticket.attendeeName,
+        ticketTypeName: ticket.ticketTypeName,
+      }));
+      setSavedTicket(ticket);
+      setTicketStorageError(false);
+    } catch {
+      setTicketStorageError(true);
+    }
+  };
+
+  const openSavedTicket = () => {
+    if (!savedTicket || savedTicket.eventId !== eventId) return;
+    setFormData({ name: savedTicket.attendeeName, email: "", phone: "" });
+    setTicketCode(savedTicket.ticketCode);
+    setTicketTypeName(savedTicket.ticketTypeName);
+    setTicketStorageError(false);
+    setIsSuccess(true);
+  };
+
+  const removeSavedTicket = () => {
+    try {
+      window.localStorage.removeItem(eventTicketStorageKey(eventId));
+      setSavedTicket(null);
+      setTicketStorageError(false);
+    } catch {
+      setTicketStorageError(true);
+    }
+  };
+
+  const isTicketSaved = savedTicket?.eventId === eventId && savedTicket.ticketCode === ticketCode;
+
   const handleAddToCalendar = () => {
     if (!event) return;
     const ics = generateICS(event);
@@ -172,7 +273,7 @@ export default function EventRegister() {
   if (isEventLoading || isTicketTypesLoading) {
     return (
       <Layout>
-        <ParticipationLoadingSkeleton label="Loading event registration" />
+        <ParticipationLoadingSkeleton label={t("eventRegister.loadingRegistration")} />
       </Layout>
     );
   }
@@ -184,15 +285,15 @@ export default function EventRegister() {
   if (paymentPending) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-32 text-center max-w-xl">
-          <Loader2 className="h-12 w-12 animate-spin text-emerald-600/60 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
+        <div className="container mx-auto px-4 py-32 text-center max-w-xl" style={brandingStyle}>
+          <Loader2 className="h-12 w-12 animate-spin text-primary/60 mx-auto mb-8" />
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("eventRegister.paymentProcessing")}</h1>
           <p className="text-lg text-muted-foreground font-light">
-            Complete the payment checkout in the new tab. This page will update when your payment is confirmed.
+            {t("eventRegister.paymentProcessingDescription")}
           </p>
           {checkoutUrl && (
             <Button asChild variant="outline" className="mt-6">
-              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
+              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">{t("eventRegister.openPaymentCheckout")}</a>
             </Button>
           )}
         </div>
@@ -200,7 +301,7 @@ export default function EventRegister() {
     );
   }
 
-  if (event.status !== 'published') {
+  if (!isSuccess && event.status !== 'published') {
     const orgId = (event as any).orgId;
     const orgLogoUrl = (event as any).organizationLogoUrl;
     return (
@@ -227,7 +328,7 @@ export default function EventRegister() {
     );
   }
 
-  if (countdown.expired) {
+  if (!isSuccess && countdown.expired) {
     const orgId = (event as any).orgId;
     const orgLogoUrl = (event as any).organizationLogoUrl;
     return (
@@ -266,26 +367,50 @@ export default function EventRegister() {
   if (isSuccess) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-24 max-w-2xl animate-in zoom-in-95 fade-in duration-700">
+        <style>{`
+          @media print {
+            @page { margin: 14mm; }
+            body * { visibility: hidden !important; }
+            [data-event-ticket-print], [data-event-ticket-print] * { visibility: visible !important; }
+            [data-event-ticket-print] {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              animation: none !important;
+              transform: none !important;
+              background: #fff !important;
+              color: #111 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            [data-event-ticket-print] .bg-card { background: #fff !important; }
+          }
+        `}</style>
+        <div className="container mx-auto px-4 py-24 max-w-2xl animate-in zoom-in-95 fade-in duration-700" style={brandingStyle}>
           <div className="text-center mb-12">
-            <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+            <div className="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
               <CheckCircle2 className="h-12 w-12" />
             </div>
             <h1 className="text-5xl font-serif font-bold mb-4 tracking-tight">{t("eventRegister.youAreRegistered")}</h1>
             <p className="text-xl text-muted-foreground font-light leading-relaxed">
-              {t("eventRegister.registrationConfirmed", { email: formData.email })}
+              {t("eventRegister.registrationConfirmed")}
             </p>
           </div>
 
           {/* Ticket */}
-          <div className="border border-border/70 rounded-sm overflow-hidden shadow-2xl bg-card">
+          <div data-event-ticket-print data-testid="event-ticket" className="border border-border/70 rounded-sm overflow-hidden shadow-2xl bg-card">
+            <div className="h-1.5 w-full bg-primary" />
             {/* Header */}
             <div className="bg-[#0A1628] text-white px-8 py-6 relative overflow-hidden">
               <div className="absolute inset-0 opacity-5">
                 <Ticket className="absolute -right-4 -top-4 w-40 h-40 rotate-12" />
               </div>
               <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5" /> Official Ticket ·{' '}
+                <ShieldCheck className="w-3.5 h-3.5" /> {t("eventRegister.officialTicket")} ·{' '}
                 {(event as any).orgId ? (
                   <Link href={`/organizations/${(event as any).orgId}/public`} className="hover:text-white/90 transition-colors inline-flex items-center gap-1.5">
                     {(event as any).organizationLogoUrl && (
@@ -316,18 +441,18 @@ export default function EventRegister() {
             <div className="px-8 py-8 flex flex-col sm:flex-row gap-8 items-start bg-card">
               <div className="flex-1 space-y-5 min-w-0">
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Attendee</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.attendee")}</p>
                   <p className="font-serif font-bold text-xl">{formData.name}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.ticketType")}</p>
-                  <p className="font-medium text-lg text-emerald-600">{ticketTypeName}</p>
+                  <p className="font-medium text-lg text-primary">{ticketTypeName}</p>
                 </div>
                 {event.startsAt && (
                   <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.date")}</p>
-                    <p className="font-medium">{format(new Date(event.startsAt), 'MMMM d, yyyy')}</p>
-                    <p className="text-sm text-muted-foreground">{format(new Date(event.startsAt), 'h:mm a')}</p>
+                    <p className="font-medium">{new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(event.startsAt))}</p>
+                    <p className="text-sm text-muted-foreground">{new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(new Date(event.startsAt))}</p>
                   </div>
                 )}
                 <div>
@@ -335,7 +460,7 @@ export default function EventRegister() {
                   <p className="font-medium">{event.isOnline ? t("eventRegister.onlineEvent") : (event.location || t("eventRegister.locationTba"))}</p>
                 </div>
                 <div className="pt-4 border-t border-border/50">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Entry Code</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">{t("eventRegister.entryCode")}</p>
                   <p className="font-mono text-xl font-bold tracking-[0.2em]">{ticketCode}</p>
                 </div>
               </div>
@@ -351,11 +476,32 @@ export default function EventRegister() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
-              <Button variant="outline" className="h-12 px-8" onClick={handleAddToCalendar}>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center" data-event-ticket-actions>
+            <Button variant="default" className="h-12 px-8" onClick={() => window.print()} data-testid="print-event-ticket">
+              <Download className="mr-2 h-4 w-4" /> {t("eventRegister.printTicket")}
+            </Button>
+            <Button variant="outline" className="h-12 px-8" onClick={handleAddToCalendar}>
               <CalendarDays className="mr-2 h-4 w-4" /> {t("eventRegister.addToCalendar")}
             </Button>
+            <Button variant="outline" className="h-12 px-8" onClick={saveTicketOnDevice} data-testid="save-event-ticket">
+              {isTicketSaved ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Bookmark className="mr-2 h-4 w-4" />}
+              {t(isTicketSaved ? "eventRegister.ticketSavedOnDevice" : "eventRegister.saveTicketOnDevice")}
+            </Button>
           </div>
+          <p role={ticketStorageError ? "alert" : "status"} className="mt-4 text-center text-sm text-muted-foreground">
+            {ticketStorageError
+              ? t("eventRegister.ticketStorageError")
+              : isTicketSaved
+                ? t("eventRegister.ticketSavedHint")
+                : t("eventRegister.ticketSaveHint")}
+          </p>
+          {isTicketSaved && (
+            <div className="mt-2 text-center">
+              <Button variant="ghost" size="sm" onClick={removeSavedTicket} data-testid="remove-saved-event-ticket">
+                {t("eventRegister.removeSavedTicket")}
+              </Button>
+            </div>
+          )}
         </div>
       </Layout>
     );
@@ -384,7 +530,7 @@ export default function EventRegister() {
         />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-14 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
-            <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30 font-bold uppercase tracking-widest text-xs">
+            <Badge className="bg-primary/20 text-white border-primary/40 font-bold uppercase tracking-widest text-xs">
               {event.isOnline ? t("eventRegister.online") : t("eventRegister.inPerson")}
             </Badge>
             <Badge className="bg-white/10 text-white/70 border-white/20 font-bold uppercase tracking-widest text-xs capitalize">
@@ -409,15 +555,15 @@ export default function EventRegister() {
           <div className={`flex flex-wrap justify-center gap-6 text-sm font-medium mb-10 ${lightHero ? "text-muted-foreground" : "text-white/70"}`}>
             {event.startsAt && (
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-emerald-400" />
-                {format(new Date(event.startsAt), 'MMMM d, yyyy · h:mm a')}
+                <Clock className="h-4 w-4 text-primary" />
+                {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.startsAt))}
               </div>
             )}
             <div className="flex items-center gap-2">
               {event.isOnline ? (
-                <><Video className="h-4 w-4 text-emerald-400" /> Online Event</>
+                <><Video className="h-4 w-4 text-primary" /> {t("eventRegister.onlineEvent")}</>
               ) : (
-                <><MapPin className="h-4 w-4 text-emerald-400" /> {event.location || 'Location TBA'}</>
+                <><MapPin className="h-4 w-4 text-primary" /> {event.location || t("eventRegister.locationTba")}</>
               )}
             </div>
           </div>
@@ -456,7 +602,7 @@ export default function EventRegister() {
             {/* About */}
             <section>
               <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
-                <span className="w-6 h-0.5 bg-emerald-600 block" />
+                <span className="w-6 h-0.5 bg-primary block" />
                 {t("eventRegister.aboutEvent")}
               </h2>
               <div className="mt-5 text-foreground/80 font-light leading-relaxed">
@@ -471,79 +617,65 @@ export default function EventRegister() {
             {/* Venue */}
             <section>
               <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
-                <span className="w-6 h-0.5 bg-emerald-600 block" />
+                <span className="w-6 h-0.5 bg-primary block" />
                 {t("eventRegister.venue")}
               </h2>
               <div className="mt-5 bg-card border border-border/60 rounded-sm p-6 flex items-start gap-4">
                 {event.isOnline ? (
                   <>
-                    <Video className="h-6 w-6 text-emerald-600 shrink-0 mt-0.5" />
+                    <Video className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-lg">Online Event</p>
+                        <p className="font-bold text-lg">{t("eventRegister.onlineEvent")}</p>
                       <p className="text-muted-foreground text-sm mt-1 font-light">
-                        A participation link will be shared with registered attendees before the event.
+                        {t("eventRegister.onlineEventDetails")}
                       </p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <MapPin className="h-6 w-6 text-emerald-600 shrink-0 mt-0.5" />
+                    <MapPin className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-lg">{event.location || 'Location TBA'}</p>
-                      <p className="text-muted-foreground text-sm mt-1 font-light">Present your ticket QR code at the entrance.</p>
+                        <p className="font-bold text-lg">{event.location || t("eventRegister.locationTba")}</p>
+                      <p className="text-muted-foreground text-sm mt-1 font-light">{t("eventRegister.entryInstructions")}</p>
                     </div>
                   </>
                 )}
               </div>
             </section>
 
-            {/* FAQs */}
-            <section>
-              <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
-                <span className="w-6 h-0.5 bg-emerald-600 block" />
-                Frequently Asked
-              </h2>
-              <div className="mt-5 space-y-2">
-                {FAQS.map((faq, i) => (
-                  <div key={i} className="border border-border/60 rounded-sm overflow-hidden bg-card">
-                    <button
-                      className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/20 transition-colors"
-                      onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                    >
-                      <span className="font-medium">{faq.q}</span>
-                      {openFaq === i
-                        ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                        : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    </button>
-                    {openFaq === i && (
-                      <div className="px-6 pb-5 text-muted-foreground font-light text-sm leading-relaxed border-t border-border/50">
-                        <p className="pt-4">{faq.a}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
           </div>
 
           {/* Right: Sticky registration */}
           <div className="lg:col-span-2">
             <div className="sticky top-24 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-200">
               <Card className="shadow-2xl border-border rounded-sm overflow-hidden">
-                <div className="h-1.5 w-full bg-emerald-600" />
+                <div className="h-1.5 w-full bg-primary" />
                 <CardHeader className="px-8 pt-8 pb-5 border-b border-border/40">
                     <div className="flex items-center gap-3 mb-1">
-                    <Ticket className="h-5 w-5 text-emerald-600" />
+                    <Ticket className="h-5 w-5 text-primary" />
                     <CardTitle className="font-serif text-xl">{t("eventRegister.registration")}</CardTitle>
                   </div>
                   <CardDescription className="font-light">{t("eventRegister.enterDetails")}</CardDescription>
                 </CardHeader>
 
                 <CardContent className="p-8 space-y-6 bg-card">
+                  {savedTicket && (
+                    <div className="rounded-sm border border-primary/20 bg-primary/5 p-4 space-y-3" role="status" data-testid="saved-event-ticket">
+                      <p className="text-sm font-medium">{t("eventRegister.savedTicketAvailable")}</p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button variant="outline" size="sm" onClick={openSavedTicket} data-testid="view-saved-event-ticket">
+                          {t("eventRegister.viewSavedTicket")}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={removeSavedTicket} data-testid="remove-saved-event-ticket">
+                          {t("eventRegister.removeSavedTicket")}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {/* Ticket selection */}
                   {(!ticketTypes || ticketTypes.length === 0) ? (
                     <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-sm">
-                      No tickets available.
+                      {t("eventRegister.noTicketsAvailable")}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -563,10 +695,10 @@ export default function EventRegister() {
                             disabled={Boolean(unavailable)}
                             aria-pressed={isSelected}
                             onClick={() => !unavailable && setSelectedTicketId(ticket.id)}
-                            className={`w-full text-left flex items-center justify-between px-5 py-4 rounded-sm border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600
+                            className={`w-full text-left flex items-center justify-between px-5 py-4 rounded-sm border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
                               ${unavailable ? 'opacity-50 cursor-not-allowed border-border/30 bg-muted/40' :
-                                isSelected ? 'border-emerald-600 bg-emerald-50/50 cursor-pointer' :
-                                'border-border/60 bg-background hover:border-emerald-600/40 cursor-pointer'}`}
+                                isSelected ? 'border-primary bg-primary/5 cursor-pointer' :
+                                'border-border/60 bg-background hover:border-primary/40 cursor-pointer'}`}
                           >
                             <div className="flex-1 min-w-0 pr-4">
                               <p className="font-serif font-bold truncate">{ticket.name}</p>
@@ -575,7 +707,7 @@ export default function EventRegister() {
                               )}
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              <span className={`font-bold font-serif text-base ${isSelected ? 'text-emerald-700' : 'text-foreground'}`}>
+                              <span className={`font-bold font-serif text-base ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                                 {ticket.price === 0 ? t("eventRegister.free") : formatCurrency(ticket.price, ticket.currency || (event as any).currency || "XAF", locale)}
                               </span>
                               {isSoldOut ? (
@@ -586,7 +718,7 @@ export default function EventRegister() {
                                 <Badge variant="secondary" className="text-xs">{t("eventRegister.salesClosed")}</Badge>
                               ) : (
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                                  isSelected ? 'bg-emerald-600 border-emerald-600' : 'border-muted-foreground/30'
+                                  isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
                                 }`}>
                                   {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                                 </div>
@@ -601,13 +733,13 @@ export default function EventRegister() {
                   {/* Form fields */}
                   <form id="reg-form" onSubmit={handleRegister} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         {t("eventRegister.fullName")}
                       </Label>
                       <Input
                         id="name"
                         required
-                        placeholder="Jane Doe"
+                        placeholder={t("eventRegister.namePlaceholder")}
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
                         disabled={!selectedTicketId || registerMutation.isPending}
@@ -617,13 +749,13 @@ export default function EventRegister() {
                     {selectedTicket && selectedTicket.price > 0 && (
                       <div className="space-y-2">
                         <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                          Phone Number
+                          {t("eventRegister.phoneNumber")}
                         </Label>
                         <Input
                           id="phone"
                           type="tel"
                           required
-                          placeholder="+237 6XX XXX XXX"
+                          placeholder={t("eventRegister.phonePlaceholder")}
                           value={formData.phone}
                           onChange={e => setFormData({ ...formData, phone: e.target.value })}
                           disabled={!selectedTicketId || registerMutation.isPending}
@@ -639,7 +771,7 @@ export default function EventRegister() {
                         id="email"
                         type="email"
                         required
-                        placeholder="jane@example.com"
+                        placeholder={t("eventRegister.emailPlaceholder")}
                         value={formData.email}
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
                         disabled={!selectedTicketId || registerMutation.isPending}
@@ -653,7 +785,7 @@ export default function EventRegister() {
                   {/* Price summary */}
                   <div className="w-full flex items-center justify-between py-4 border-t border-border/40">
                     <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{t("eventRegister.total")}</span>
-                    <span className="text-2xl font-serif font-bold text-emerald-700">
+                    <span className="text-2xl font-serif font-bold text-primary">
                       {selectedTicket
                         ? selectedTicket.price === 0 ? t("eventRegister.free") : formatCurrency(selectedTicket.price, selectedTicket.currency || (event as any).currency || "XAF", locale)
                         : '—'}
@@ -663,7 +795,7 @@ export default function EventRegister() {
                   <Button
                     type="submit"
                     form="reg-form"
-                    className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm"
+                    className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-colors bg-primary hover:bg-primary/90 text-primary-foreground rounded-sm"
                      disabled={!selectedTicketId || selectedTicketUnavailable || !formData.name || !formData.email || (Boolean(selectedTicket && selectedTicket.price > 0) && !formData.phone) || countdown.expired || registerMutation.isPending}
                   >
                     {registerMutation.isPending ? (
@@ -682,6 +814,35 @@ export default function EventRegister() {
             </div>
           </div>
         </div>
+        <section className="mt-14 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-serif font-bold mb-1 flex items-center gap-4">
+            <span className="w-6 h-0.5 bg-primary block" />
+            {t("eventRegister.faqTitle")}
+          </h2>
+          <div className="mt-5 space-y-2">
+            {(t("eventRegister.faqs", { returnObjects: true }) as { q: string; a: string }[]).map((faq, i) => (
+              <div key={i} className="border border-border/60 rounded-sm overflow-hidden bg-card">
+                <button
+                  type="button"
+                  aria-expanded={openFaq === i}
+                  data-testid={`event-faq-toggle-${i}`}
+                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/20 transition-colors"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="font-medium">{faq.q}</span>
+                  {openFaq === i
+                    ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                    : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-5 text-muted-foreground font-light text-sm leading-relaxed border-t border-border/50">
+                    <p className="pt-4">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
       </div>
     </Layout>

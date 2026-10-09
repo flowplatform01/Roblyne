@@ -72,10 +72,7 @@ export default function CreateCampaign() {
       goalAmount: "",
       startsAt: "",
       endsAt: "",
-      fields: [
-        { id: "field_name", label: "Full Name", type: "text", required: true },
-        { id: "field_email", label: "Email Address", type: "email", required: true }
-      ]
+      fields: []
     },
   });
 

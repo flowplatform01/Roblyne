@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Loader2, AlertCircle, CheckCircle2, Lock, ArrowRight, ShieldCheck,
-  Users, Heart, TrendingUp, Target, Sparkles, CreditCard, Wallet, ArrowLeft, BadgeCheck,
+  Users, TrendingUp, Target, CreditCard, Wallet, ArrowLeft, BadgeCheck,
   Building2, ExternalLink,
 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
@@ -25,6 +25,11 @@ import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
+
+function isLegacyPlatformIdentityField(field: { id: string; label: string; type: string }): boolean {
+  return (field.id === "field_name" && field.label === "Full Name" && field.type === "text")
+    || (field.id === "field_email" && field.label === "Email Address" && field.type === "email");
+}
 
 export default function CampaignParticipate() {
   const [, params] = useRoute("/campaigns/:id/participate");
@@ -43,6 +48,8 @@ export default function CampaignParticipate() {
   const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+  const publicFields = campaign?.fields?.filter(field => !isLegacyPlatformIdentityField(field)) ?? [];
+  const requiresPayment = Boolean(campaign?.requiresPayment) && Number(campaign?.paymentAmount ?? 0) > 0;
   const countdown = useCountdown(campaign?.endsAt);
   const lifecycleState = getLifecycleState(campaign?.startsAt, campaign?.endsAt, countdown.now);
 
@@ -59,9 +66,13 @@ export default function CampaignParticipate() {
       setPaymentId(null);
       setPaymentStatusToken(null);
       setCheckoutUrl(null);
-      toast({ title: "Payment failed", description: "Your contribution was not completed. Please try again.", variant: "destructive" });
+      toast({
+        title: t("campaignParticipate.paymentFailed"),
+        description: t("campaignParticipate.paymentFailedDescription"),
+        variant: "destructive",
+      });
     }
-  }, [paymentStatus, paymentId, toast]);
+  }, [paymentStatus, paymentId, toast, t]);
 
   const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
 
@@ -92,6 +103,7 @@ export default function CampaignParticipate() {
 
     let isValid = true;
     campaign?.fields?.forEach(field => {
+      if (isLegacyPlatformIdentityField(field)) return;
       const value = formData[field.id];
       const isEmpty = value === undefined || value === null
         || (typeof value === "string" && value.trim() === "");
@@ -151,13 +163,13 @@ export default function CampaignParticipate() {
       <Layout>
         <div className="container mx-auto px-4 py-32 text-center max-w-xl">
           <Loader2 className="h-12 w-12 animate-spin text-amber-600/60 mx-auto mb-8" />
-          <h1 className="text-4xl font-serif font-bold mb-4">Payment processing</h1>
+          <h1 className="text-4xl font-serif font-bold mb-4">{t("campaignParticipate.paymentProcessing")}</h1>
           <p className="text-lg text-muted-foreground font-light">
-            Complete the payment checkout in the new tab. This page will update when your contribution is confirmed.
+            {t("campaignParticipate.paymentProcessingDescription")}
           </p>
           {checkoutUrl && (
             <Button asChild variant="outline" className="mt-6">
-              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
+              <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">{t("campaignParticipate.openPaymentCheckout")}</a>
             </Button>
           )}
         </div>
@@ -168,9 +180,32 @@ export default function CampaignParticipate() {
   const formatMoney = (amount: number | string | null | undefined) =>
     formatCurrency(amount, campaign.currency || "XAF", i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
 
-  const primaryStyle: React.CSSProperties = (campaign as any).accentColor
-    ? { "--primary": hexToHsl((campaign as any).accentColor) } as React.CSSProperties
-    : {};
+  const campaignType = (campaign.type || "custom").toLowerCase();
+  const campaignTypeLabelKeys: Record<string, string> = {
+    application: "typeApplication",
+    contribution: "typeContribution",
+    custom: "typeCustom",
+    donation: "typeDonation",
+    membership: "typeMembership",
+    merchandise: "typeMerchandise",
+    registration: "typeRegistration",
+  };
+  const campaignTypeLabel = t(`campaignParticipate.${campaignTypeLabelKeys[campaignType] || "typeCustom"}`);
+  const successType = ["application", "contribution", "donation", "membership", "registration"].includes(campaignType)
+    ? campaignType
+    : "submission";
+  const successTitle = t(`campaignParticipate.${successType}SuccessTitle`);
+  const successDescription = t(`campaignParticipate.${successType}SuccessDescription`, { title: campaign.title });
+  const submitActionKey = requiresPayment
+    ? "proceedToPayment"
+    : ({
+        application: "submitApplication",
+        registration: "submitRegistration",
+        membership: "requestMembership",
+      }[campaignType] || "submit");
+  const campaignAccentColor = (campaign as any).accentColor || "#D97706";
+  const primaryStyle: React.CSSProperties = { "--primary": hexToHsl(campaignAccentColor) } as React.CSSProperties;
+  const isFinancialCampaign = campaignType === "contribution" || campaignType === "donation";
 
   if (lifecycleState === "upcoming") {
     const orgId = (campaign as any).orgId;
@@ -241,38 +276,39 @@ export default function CampaignParticipate() {
   if (isSuccess) {
     return (
       <Layout>
-        <div className="min-h-[80vh] flex items-center justify-center">
+        <div className="min-h-[80vh] flex items-center justify-center" style={primaryStyle}>
           <div className="container mx-auto px-4 py-24 text-center max-w-xl animate-in zoom-in-95 fade-in duration-700">
             <div className="relative inline-flex mb-12 justify-center">
-              <div className="w-32 h-32 rounded-full border-4 border-amber-200 bg-amber-50 flex items-center justify-center">
-                <div className="w-24 h-24 rounded-full border-2 border-amber-300 bg-amber-100 flex items-center justify-center">
-                  <Heart className="h-12 w-12 text-amber-500 fill-amber-300" />
+              <div className="w-32 h-32 rounded-full border-4 border-primary/20 bg-primary/5 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full border-2 border-primary/30 bg-primary/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-12 w-12 text-primary" />
                 </div>
               </div>
             </div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-600 mb-6">
-              <Sparkles className="h-4 w-4" /> Contribution Recorded
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary mb-6">
+              {campaignTypeLabel}
             </div>
-            <h1 className="text-5xl font-serif font-bold mb-5 tracking-tight">Thank You</h1>
-            <p className="text-xl text-muted-foreground font-light mb-4 leading-relaxed">
-              Your contribution to{' '}
-              <span className="inline-flex items-center gap-1.5 font-medium text-foreground align-middle">
-                {(campaign as any).organizationLogoUrl && (
-                  <img
-                    src={(campaign as any).organizationLogoUrl}
-                    alt={campaign.organizationName || ''}
-                    className="w-5 h-5 rounded-full object-cover border border-amber-200 inline-block align-middle"
-                  />
-                )}
-                {(campaign as any).orgId
-                  ? <Link href={`/organizations/${(campaign as any).orgId}/public`} className="hover:text-amber-600 transition-colors">{campaign.organizationName || 'this campaign'}</Link>
-                  : (campaign.organizationName || 'this campaign')
-                }
-              </span>{' '}
-              has been recorded.
-            </p>
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold mb-5 tracking-tight">{successTitle}</h1>
+            <p className="text-xl text-muted-foreground font-light mb-4 leading-relaxed">{successDescription}</p>
+            {requiresPayment && (
+              <p className="text-sm font-medium text-primary mb-6">{t("campaignParticipate.paymentConfirmed")}</p>
+            )}
+            {(campaign as any).organizationLogoUrl && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-6">
+                <img
+                  src={(campaign as any).organizationLogoUrl}
+                  alt={campaign.organizationName || ""}
+                  className="w-6 h-6 rounded-full object-cover border border-border"
+                />
+                {(campaign as any).orgId ? (
+                  <Link href={`/organizations/${(campaign as any).orgId}/public`} className="hover:text-primary transition-colors">
+                    {campaign.organizationName}
+                  </Link>
+                ) : campaign.organizationName}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground mb-12">
-              A copy has been noted for <strong>{baseData.email}</strong>.
+              {t("campaignParticipate.submittedWith", { email: baseData.email })}
             </p>
             <Button
               size="lg"
@@ -284,7 +320,7 @@ export default function CampaignParticipate() {
                  setBaseData({ name: '', email: '', phone: '' });
               }}
             >
-              Submit Another Response
+              {t("campaignParticipate.submitAnother")}
             </Button>
           </div>
         </div>
@@ -363,7 +399,7 @@ export default function CampaignParticipate() {
   return (
     <Layout>
       {/* Campaign hero */}
-      <div className="relative bg-[#0A1628] text-white overflow-hidden">
+      <div className="relative bg-[#0A1628] text-white overflow-hidden" style={primaryStyle}>
         <PublicHeroBackdrop imageUrl={(campaign as any).heroImageUrl || campaign.coverImageUrl} />
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-3xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           {campaign.organizationName && (
@@ -383,8 +419,8 @@ export default function CampaignParticipate() {
             )
           )}
           <div className="flex justify-center mb-5">
-            <Badge className="bg-amber-500/20 text-amber-300 border-amber-400/30 font-bold uppercase tracking-widest text-xs capitalize">
-              {campaign.type?.replace('_', ' ')}
+            <Badge className="bg-primary/20 text-white border-primary/40 font-bold uppercase tracking-widest text-xs capitalize">
+              {campaignTypeLabel}
             </Badge>
           </div>
            <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-white mb-6">
@@ -408,9 +444,9 @@ export default function CampaignParticipate() {
           {/* Live participation stats */}
           {participantCount !== null && participantCount > 0 && (
              <div className="mt-10 inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-3.5 rounded-full">
-              <Users className="h-4 w-4 text-amber-400" />
+              <Users className="h-4 w-4 text-primary" />
                <span className="text-sm font-bold text-white">
-                <span className="text-amber-400 font-serif text-xl">{participantCount.toLocaleString()}</span>
+                <span className="text-primary font-serif text-xl">{participantCount.toLocaleString()}</span>
                 {' '}{t("campaignParticipate.peopleParticipated")}
               </span>
             </div>
@@ -419,21 +455,21 @@ export default function CampaignParticipate() {
       </div>
 
       {/* Goal progress */}
-      {hasGoal && (goalProgressPct !== null || totalRevenue !== null) && (
-        <div className="border-b border-border/50 bg-amber-50/30">
+      {isFinancialCampaign && hasGoal && (goalProgressPct !== null || totalRevenue !== null) && (
+        <div className="border-b border-border/50 bg-primary/5" style={primaryStyle}>
           <div className="container mx-auto px-4 py-10 max-w-3xl">
             <div className="flex items-center gap-3 mb-5">
-              <Target className="h-5 w-5 text-amber-600 shrink-0" />
+              <Target className="h-5 w-5 text-primary shrink-0" />
               <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{t("campaignParticipate.progress")}</h2>
               {goalProgressPct !== null && (
-                <span className="ml-auto text-2xl font-serif font-bold text-amber-700">{goalProgressPct}%</span>
+                <span className="ml-auto text-2xl font-serif font-bold text-primary">{goalProgressPct}%</span>
               )}
             </div>
 
             {goalProgressPct !== null && (
-              <div className="relative h-3 bg-amber-100 rounded-full overflow-hidden border border-amber-200/60 mb-4">
+              <div className="relative h-3 bg-primary/10 rounded-full overflow-hidden border border-primary/20 mb-4">
                 <div
-                  className="h-full bg-amber-500 rounded-full transition-all duration-1000 ease-out"
+                  className="h-full bg-primary rounded-full transition-colors duration-300"
                   style={{ width: `${goalProgressPct}%` }}
                 />
               </div>
@@ -442,9 +478,9 @@ export default function CampaignParticipate() {
             <div className="flex flex-wrap items-center gap-6 text-sm">
               {totalRevenue != null && (
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-amber-600" />
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground">{t("campaignParticipate.raised")}:</span>
-                  <span className="font-serif font-bold text-amber-700">{formatMoney(totalRevenue)}</span>
+                  <span className="font-serif font-bold text-primary">{formatMoney(totalRevenue)}</span>
                 </div>
               )}
               {campaign.goalAmount && (
@@ -461,25 +497,10 @@ export default function CampaignParticipate() {
 
       {/* Form section */}
       <div className="container mx-auto px-4 py-16 max-w-2xl" style={primaryStyle}>
-
-        {/* Why your participation matters */}
-        <div className="rounded-sm overflow-hidden border border-amber-200/60 mb-10">
-          <div className="bg-amber-600 px-6 py-3 flex items-center gap-2">
-            <Heart className="h-4 w-4 text-white/80 fill-white/30" />
-            <p className="text-xs font-bold uppercase tracking-widest text-white">{t("campaignParticipate.whyMatters")}</p>
-          </div>
-          <div className="bg-amber-50/60 px-6 py-5">
-            <p className="text-amber-900/80 text-sm font-light leading-relaxed">
-              {t("campaignParticipate.whyMattersDescription")}
-              {campaign.goalAmount && ` ${t("campaignParticipate.workingToward", { amount: formatMoney(campaign.goalAmount) })}`}
-            </p>
-          </div>
-        </div>
-
         <Card className="shadow-xl border-border/70 rounded-sm overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-          <div className="h-1.5 w-full bg-amber-500" />
+          <div className="h-1.5 w-full bg-primary" />
           <CardHeader className="px-8 pt-8 pb-5 border-b border-border/40">
-            <CardTitle className="font-serif text-2xl">{t("campaignParticipate.yourContribution")}</CardTitle>
+            <CardTitle className="font-serif text-2xl">{t("campaignParticipate.formTitle")}</CardTitle>
             <CardDescription className="font-light">{t("campaignParticipate.completeRequired")}</CardDescription>
           </CardHeader>
 
@@ -490,32 +511,34 @@ export default function CampaignParticipate() {
               <div className="space-y-5">
                 <div className="flex items-center gap-3">
                   <span className="h-px bg-border/50 flex-1" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Details</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("campaignParticipate.contactDetails")}</span>
                   <span className="h-px bg-border/50 flex-1" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="base-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Full Name <span className="text-destructive">*</span>
+                    {t("campaignParticipate.fullName")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="base-name"
                     required
-                    placeholder="Your full name"
+                    placeholder={t("campaignParticipate.namePlaceholder")}
+                    data-testid="campaign-name"
                     value={baseData.name}
                     onChange={e => setBaseData({ ...baseData, name: e.target.value })}
                     className="h-12 rounded-sm"
                   />
                 </div>
-                {campaign.requiresPayment && (
+                {requiresPayment && (
                   <div className="space-y-2">
                     <Label htmlFor="base-phone" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      Phone Number <span className="text-destructive">*</span>
+                      {t("campaignParticipate.phoneNumber")} <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="base-phone"
                       type="tel"
                       required
-                      placeholder="+237 6XX XXX XXX"
+                      placeholder={t("campaignParticipate.phonePlaceholder")}
+                      data-testid="campaign-phone"
                       value={baseData.phone}
                       onChange={e => setBaseData({ ...baseData, phone: e.target.value })}
                       className="h-12 rounded-sm"
@@ -524,13 +547,14 @@ export default function CampaignParticipate() {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="base-email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    Email Address <span className="text-destructive">*</span>
+                    {t("campaignParticipate.emailAddress")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="base-email"
                     type="email"
                     required
-                    placeholder="you@example.com"
+                    placeholder={t("campaignParticipate.emailPlaceholder")}
+                    data-testid="campaign-email"
                     value={baseData.email}
                     onChange={e => setBaseData({ ...baseData, email: e.target.value })}
                     className="h-12 rounded-sm"
@@ -539,14 +563,14 @@ export default function CampaignParticipate() {
               </div>
 
               {/* Campaign-specific fields */}
-              {campaign.fields && campaign.fields.length > 0 && (
+              {publicFields.length > 0 && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <span className="h-px bg-border/50 flex-1" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Campaign Questions</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("campaignParticipate.campaignQuestions")}</span>
                     <span className="h-px bg-border/50 flex-1" />
                   </div>
-                  {campaign.fields.map(field => (
+                  {publicFields.map(field => (
                     <div key={field.id} className="space-y-2">
                       {field.type !== 'checkbox' && (
                         <Label htmlFor={field.id} className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -563,20 +587,20 @@ export default function CampaignParticipate() {
 
           <CardFooter className="flex-col pt-0 pb-10 px-8 gap-6 bg-card">
             {/* Payment summary */}
-            {campaign.requiresPayment && campaign.paymentAmount && (
-              <div className="w-full p-6 rounded-sm bg-amber-50/50 border border-amber-200/60 flex flex-col sm:flex-row items-center justify-between gap-5">
+            {requiresPayment && (
+              <div className="w-full p-6 rounded-sm bg-primary/5 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-5">
                 <div className="flex items-start gap-4">
-                  <div className="p-2.5 bg-amber-100 rounded-sm border border-amber-200/60 shrink-0">
-                    <Lock className="h-5 w-5 text-amber-700" />
+                  <div className="p-2.5 bg-primary/10 rounded-sm border border-primary/20 shrink-0">
+                    <Lock className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-bold text-amber-900 mb-0.5">Secure Payment Required</p>
-                    <p className="text-amber-800/70 text-sm font-light">This campaign requires a financial contribution to participate.</p>
+                    <p className="font-bold mb-0.5">{t("campaignParticipate.securePayment")}</p>
+                    <p className="text-muted-foreground text-sm font-light">{t("campaignParticipate.paymentRequiredDescription")}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/60 mb-1">Amount</p>
-                  <span className="font-bold font-serif text-3xl text-amber-900">{formatMoney(campaign.paymentAmount)}</span>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{t("campaignParticipate.amount")}</p>
+                  <span className="font-bold font-serif text-3xl text-primary">{formatMoney(campaign.paymentAmount)}</span>
                 </div>
               </div>
             )}
@@ -584,17 +608,18 @@ export default function CampaignParticipate() {
             <Button
               type="submit"
               form="campaign-form"
-              className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-all bg-amber-600 hover:bg-amber-700 text-white rounded-sm"
-              disabled={submitMutation.isPending || lifecycleState !== "live" || (Boolean(campaign.requiresPayment) && !baseData.phone)}
+              className="w-full h-14 text-base font-bold shadow-lg hover:shadow-xl transition-colors bg-primary hover:bg-primary/90 text-primary-foreground rounded-sm"
+              disabled={submitMutation.isPending || lifecycleState !== "live" || (requiresPayment && !baseData.phone)}
+              data-testid="campaign-submit"
             >
               {submitMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-              {campaign.requiresPayment ? 'Proceed to Payment' : 'Submit My Response'}
+              {t(`campaignParticipate.${submitActionKey}`)}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
             <p className="text-[11px] text-center text-muted-foreground flex items-center gap-1.5 justify-center">
               <ShieldCheck className="h-3.5 w-3.5 opacity-50" />
-              Data securely processed for {campaign.organizationName || 'the organizer'}
+              {t("campaignParticipate.submissionOrganizerNote")}
             </p>
           </CardFooter>
         </Card>

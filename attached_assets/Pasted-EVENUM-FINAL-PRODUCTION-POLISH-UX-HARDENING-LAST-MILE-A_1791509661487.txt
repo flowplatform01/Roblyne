@@ -1,0 +1,583 @@
+EVENUM — FINAL PRODUCTION POLISH, UX HARDENING & LAST-MILE AUDIT
+
+This is the FINAL polish and hardening pass before we move EVENUM toward deployment/production hosting.
+
+Treat this as a finishing pass, not another feature-development phase.
+
+The application is already mature and substantially complete. Do NOT expand the product unnecessarily. Do NOT introduce new systems simply because something could theoretically be useful.
+
+Your job is to inspect the EXISTING implementation, understand how it currently works, then fix the specific issues below and identify any closely related last-mile problems that are genuinely necessary for production quality.
+
+Preserve existing architecture and functionality wherever possible.
+
+Do not redesign working areas.
+
+Do not create duplicate systems.
+
+Do not turn edge cases into large new features.
+
+==================================================
+1. GENERAL RULE FOR THIS FINAL PASS
+==================================================
+
+Before changing anything:
+
+- inspect the existing implementation
+- understand the relevant data flow
+- understand existing components and design patterns
+- determine whether the issue is frontend-only, backend/data-related, or both
+- fix the root cause rather than masking the symptom
+
+For every issue:
+
+FOUND → UNDERSTAND → FIX → VERIFY
+
+Do not assume.
+
+Do not blindly patch.
+
+Do not over-engineer.
+
+If something is already correct, leave it alone.
+
+If something is a legitimate future enhancement but is NOT necessary for production, do not implement it during this pass.
+
+The objective is:
+
+EVENUM should feel finished, coherent, reliable, intentional, and production-ready.
+
+==================================================
+2. CAMPAIGN TYPES — AUDIT THE MEANING AND USER EXPERIENCE
+==================================================
+
+Inspect the existing Campaign implementation and the different Campaign types currently available.
+
+There appear to be multiple campaign types, including things such as applications and contribution/donation-oriented campaigns.
+
+Determine from the actual implementation:
+
+- what each campaign type is intended to mean
+- whether the types genuinely produce different behavior/workflows
+- whether the differences are currently meaningful
+- whether the public experience appropriately reflects the selected type
+- whether terminology and calls-to-action adapt to the type
+- whether completion/success messaging adapts to the type
+- whether a user applying to something can accidentally receive language intended for a donation/contribution campaign
+- whether the current UI makes different campaign types unnecessarily confusing
+
+Do NOT invent new campaign types.
+
+Do NOT redesign Campaign.
+
+The objective is simply to ensure that the existing campaign types do not create a mismatched or awkward user experience.
+
+For example:
+
+An application campaign should not feel like a donation campaign.
+
+A contribution campaign should not use application-oriented language.
+
+A campaign involving a goal/contribution should not force that same language onto a completely different campaign type.
+
+Use the existing campaign model and architecture.
+
+If the types are currently functionally similar, do not artificially create complexity just to make them look different.
+
+Make only the distinctions that are already justified by their meaning and existing behavior.
+
+==================================================
+3. REMOVE HARD-CODED CAMPAIGN-SPECIFIC PUBLIC COPY
+==================================================
+
+Audit the public Campaign experience for hard-coded copy that assumes every campaign is about contributing money.
+
+There is currently wording along the lines of:
+
+“Why contribute to this campaign?”
+
+and explanatory text describing how:
+
+- every response shapes the outcome
+- contribution is recorded/counting/reviewed
+- the user's voice matters
+- participants are working toward a financial goal
+
+This is too specific to one campaign context.
+
+Do not simply rewrite this sentence with another hard-coded generic sentence.
+
+Instead, determine the correct source of truth.
+
+The Campaign creator/organization should be able to provide the appropriate public information where the product already supports descriptions/content.
+
+If an existing Campaign description/content field is appropriate for this purpose, use it rather than inventing another unnecessary content system.
+
+If the selected Campaign type genuinely requires different system-generated language, make that language contextual to the type.
+
+The public page must never communicate something that contradicts what the Campaign actually is.
+
+Examples:
+
+Application:
+- should feel like an application/application submission experience.
+
+Contribution/donation:
+- should feel like a contribution/donation experience.
+
+Other existing campaign types:
+- should use language appropriate to their actual purpose.
+
+Do not force donation-oriented language globally.
+
+==================================================
+4. CAMPAIGN IDENTITY INFORMATION — AVOID DUPLICATE FIELDS
+==================================================
+
+Audit the relationship between:
+
+A. EVENUM's standard participant information
+- Full name
+- Phone number
+- Email address
+
+and
+
+B. Campaign custom questions/forms.
+
+There is currently a potential duplication problem.
+
+The public Campaign experience already collects standard identity information.
+
+But Campaign setup also appears to automatically provide default Campaign questions such as:
+
+- Full name
+- Phone number
+- Email address
+
+If both systems are submitted, the user can be asked for the same information twice.
+
+This is poor UX.
+
+Determine the existing data model and correct flow.
+
+The intended behavior is:
+
+EVENUM's standard identity/contact information should be the platform-level standard.
+
+The public Campaign should collect that information through the normal EVENUM participant/registration information flow.
+
+Campaign-specific questions should be reserved for information that is actually specific to that Campaign.
+
+The platform-level standard fields should NOT be duplicated as editable custom questions simply because the Campaign question builder happens to contain them.
+
+If the current Campaign builder automatically creates Full Name, Phone Number, and Email as ordinary editable custom questions, correct this behavior.
+
+If these fields are required by EVENUM itself, represent them as platform-controlled fields rather than ordinary custom questions.
+
+They should not become removable/duplicated Campaign questions.
+
+Important:
+
+If an organization deliberately creates its own additional question that happens to duplicate a standard field, that is the organization's own configuration.
+
+EVENUM itself must not create the duplication by default.
+
+Also verify existing Campaigns so that this change does not break existing data or submissions.
+
+Do not destroy existing collected information.
+
+==================================================
+5. CAMPAIGN COMPLETION / SUCCESS EXPERIENCE
+==================================================
+
+Audit the final submission/success state for each existing Campaign type.
+
+Do not allow a generic message such as:
+
+“Congratulations, thanks for contributing...”
+
+to appear after an application or another non-contribution workflow.
+
+The final experience should reflect what the user actually did.
+
+Examples:
+
+Application:
+- application submitted / confirmation appropriate to the application.
+
+Contribution:
+- contribution/payment confirmation.
+
+Other existing types:
+- contextually appropriate completion.
+
+Do not over-design this.
+
+Use the existing EVENUM design language and existing completion infrastructure.
+
+==================================================
+6. EVENT PUBLIC PAGE — FAQ POSITION
+==================================================
+
+Audit the public Event page hierarchy.
+
+Currently the Event page has:
+
+- Event description/content
+- Frequently Asked Questions
+- ticket selection / registration information / required information
+- payment where applicable
+- ticket completion
+
+The primary objective of the page is to allow the visitor to understand the event and obtain a ticket.
+
+The FAQ should not unnecessarily push the main ticketing action far down the page.
+
+Refine the information hierarchy so that the primary ticket/registration action is easier to reach.
+
+The intended hierarchy should be closer to:
+
+Event information
+→ ticket/registration action
+→ FAQ / additional information
+
+rather than forcing users to pass through a long FAQ section before reaching the actual ticketing flow.
+
+Preserve the existing Event description and FAQ functionality.
+
+Do not remove FAQs.
+
+Do not unnecessarily redesign the Event page.
+
+Fix the hierarchy and discoverability.
+
+Verify on mobile and desktop.
+
+==================================================
+7. EVENT NAVIGATION — FIX JIGGLING / DANCING TABS
+==================================================
+
+There is a navigation/tab bar within the Organization/Event experience where the tabs visually behave incorrectly.
+
+When the user touches, drags, or interacts with the tab area, the tabs appear to:
+
+- jiggle
+- shake
+- move excessively
+- feel like they are floating inside another scrollable area
+- behave like a playground instead of stable application navigation
+
+This is not acceptable for a production interface.
+
+Investigate the actual cause.
+
+Check for issues involving:
+
+- nested horizontal scrolling
+- touch handling
+- overflow behavior
+- drag/scroll physics
+- flex sizing
+- sticky positioning
+- rerendering
+- width calculation
+- scroll containers
+- mobile touch interaction
+
+The tab bar should feel stable and natural.
+
+Users should be able to tap and horizontally scroll where scrolling is genuinely necessary, but the navigation must not visually “dance” or behave unpredictably.
+
+Do not simply disable all scrolling if the number of tabs genuinely requires horizontal scrolling.
+
+Fix the underlying interaction/rendering issue.
+
+==================================================
+8. EVENT TAB SPACING — IMPROVE INFORMATION DENSITY
+==================================================
+
+There is another tab/navigation bar within the Event area where the spacing between tab labels is unnecessarily large.
+
+This causes:
+
+- excessive horizontal width
+- unnecessary scrolling
+- later tabs becoming hidden
+- reduced discoverability
+- users potentially not realizing additional tabs exist
+
+Audit the actual tab bar and refine its spacing.
+
+Make the tabs compact enough that more of the navigation is visible naturally.
+
+Do not make the tabs cramped.
+
+Do not remove horizontal scrolling if future/extra tabs require it.
+
+The goal is:
+
+compact + readable + touch-friendly + discoverable.
+
+The user should naturally see that more tabs exist when they do.
+
+Use the existing design system.
+
+==================================================
+9. ELECTION FEE INPUT — FIX XAF/CURRENCY OVERLAP
+==================================================
+
+In the Election setup/configuration area where a voting fee is entered, there is a UI defect involving the XAF currency indicator and the amount input.
+
+The currency indicator and the beginning of the entered amount overlap or visually collide.
+
+This produces malformed/twisted text and looks unfinished.
+
+Fix the input properly.
+
+Check:
+
+- currency prefix/suffix positioning
+- input padding
+- text alignment
+- responsive width
+- mobile rendering
+- focus state
+- placeholder/value rendering
+- different number lengths
+
+Do not merely move the text a few pixels until it looks correct at one screen width.
+
+Make the component robust across supported viewport sizes.
+
+Verify with realistic XAF amounts.
+
+==================================================
+10. TICKET DESIGN / TICKET ACCESS
+==================================================
+
+Audit the existing generated ticket experience.
+
+There should be a clear and reliable way for a ticket holder to access their ticket after successful issuance.
+
+Inspect whether the current ticket can be:
+
+- viewed
+- accessed again after leaving the page
+- downloaded where appropriate
+- saved/shared in a practical way
+
+If ticket download is genuinely missing from the current implementation, determine the smallest production-appropriate solution using the existing ticket architecture.
+
+Do NOT build an elaborate ticket designer or document-generation platform.
+
+Do NOT introduce unnecessary ticket formats.
+
+The goal is simply to ensure a user who successfully obtains a ticket has a practical way to retain/access it.
+
+Also inspect the existing ticket branding.
+
+If EVENUM already supports organization/event branding, verify that the generated/public ticket actually reflects the appropriate branding.
+
+Do not invent another branding system.
+
+==================================================
+11. TICKET QUANTITY — DO NOT TURN THIS INTO A FEATURE PROJECT
+==================================================
+
+There may be a future need for users to obtain multiple tickets in one purchase/session.
+
+Acknowledge this only as a potential future product consideration.
+
+DO NOT implement a ticket quantity system during this final polish unless the current architecture already supports it and the missing behavior is clearly a production correctness issue.
+
+Do not expand scope because of this observation.
+
+==================================================
+12. EVENT PAYMENT / ORGANIZER AMOUNT — VERIFY EXISTING BEHAVIOR
+==================================================
+
+Audit the Event payment flow and organizer-facing financial information.
+
+Verify that when a user pays for a ticket:
+
+- the amount charged to the user is correct
+- applicable platform/provider fees are handled according to the existing financial model
+- the amount attributable to the organization/event is correctly represented where the product already exposes it
+- no misleading amount is shown to organizers
+- calculations are server-authoritative
+- public UI and organizer UI are consistent with the actual transaction
+
+Do not invent a new fee model.
+
+Do not change existing financial policy.
+
+This is a correctness audit of the existing implementation.
+
+If the backend calculation is already correct but the UI fails to communicate it properly, fix the UI.
+
+If the UI is correct but the underlying calculation has a real defect, fix the root cause.
+
+==================================================
+13. EVENT / ELECTION / CAMPAIGN BRANDING
+==================================================
+
+Perform a final consistency audit of branding across:
+
+- Events
+- Elections
+- Campaigns
+- public pages
+- tickets
+- confirmation/success states
+- shareable/public experiences
+
+Where organizations are already allowed to provide branding, ensure that the correct branding is actually reflected where expected.
+
+Do not create another branding system.
+
+Do not force branding where it does not belong.
+
+The goal is consistency between configured branding and what users actually see.
+
+==================================================
+14. FINAL PUBLIC EXPERIENCE AUDIT
+==================================================
+
+Perform one final pass through the public-facing experiences of:
+
+- Events
+- Elections
+- Campaigns
+
+Look specifically for the same class of problems identified above:
+
+- incorrect wording
+- hard-coded context
+- duplicated fields
+- broken hierarchy
+- hidden actions
+- awkward spacing
+- unstable interaction
+- incorrect currency display
+- broken responsive behavior
+- inconsistent branding
+- misleading success states
+- broken or missing access to issued artifacts
+- unnecessary scrolling
+- mobile-specific defects
+
+Do NOT turn this into a massive redesign.
+
+Only fix issues that are clearly inconsistent, broken, misleading, or materially harmful to production UX.
+
+==================================================
+15. RESPONSIVE AND DEVICE VERIFICATION
+==================================================
+
+Verify all affected areas on:
+
+- mobile-sized viewport
+- desktop-sized viewport
+- touch interaction
+- mouse interaction where applicable
+
+Pay particular attention to:
+
+- tab bars
+- inputs
+- currency fields
+- ticket views
+- public pages
+- campaign forms
+- event registration
+- success states
+
+The application must behave naturally rather than simply technically fitting the screen.
+
+==================================================
+16. REGRESSION PROTECTION
+==================================================
+
+Do not break existing functionality while making these changes.
+
+After implementation, verify:
+
+- Event creation
+- Event publishing
+- Event public page
+- Ticket selection
+- Event registration
+- Payment where applicable
+- Ticket issuance
+- Ticket access/download where supported
+- Election setup
+- Election voting fee configuration
+- Campaign creation
+- Campaign configuration
+- Campaign custom questions
+- Campaign submission
+- Campaign payment/contribution where applicable
+- Campaign completion states
+- Organization navigation
+- Existing branding
+- English/French localization
+- mobile and desktop layouts
+
+Use Playwright/browser testing where appropriate.
+
+==================================================
+17. FINAL SCOPE CONTROL
+==================================================
+
+This is the FINAL production polish pass.
+
+Do NOT:
+
+- invent new pillars
+- introduce new product concepts
+- create a new form platform
+- merge Events and Campaigns
+- redesign Elections
+- redesign the payment architecture
+- create unnecessary admin systems
+- introduce speculative features
+- add infrastructure without a demonstrated need
+- refactor working architecture merely for preference
+- expand scope because something “could be useful later”
+
+If you identify something that is genuinely worth considering later but is not necessary for production, leave it out and clearly distinguish it from the work completed.
+
+==================================================
+FINAL ACCEPTANCE CRITERIA
+==================================================
+
+When finished, EVENUM should feel like a product that is ready to leave the development phase.
+
+The final result should have:
+
+- coherent Campaign experiences
+- no contextually incorrect hard-coded Campaign language
+- no platform-created duplicate identity fields
+- appropriate Campaign completion messaging
+- stronger Event information hierarchy
+- stable, non-jittery navigation
+- sensible tab spacing and discoverability
+- correct XAF input rendering
+- reliable ticket access
+- consistent existing branding
+- correct existing financial behavior
+- strong mobile and desktop behavior
+- no obvious last-mile UI defects in the affected areas
+
+Most importantly:
+
+DO NOT keep adding things.
+
+Inspect.
+Fix.
+Harden.
+Verify.
+Polish.
+Stop.
+
+This is the final finishing pass before production deployment.

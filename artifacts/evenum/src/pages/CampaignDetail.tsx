@@ -287,7 +287,7 @@ export default function CampaignDetail() {
             <AlertDialogTitle>{pendingStatus === "active" ? "Start this campaign?" : "End this campaign?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingStatus === "active"
-                ? "The public form will open and people can begin submitting responses or contributions."
+                ? "The public form will open and people can begin submitting responses."
                 : "New responses will stop. Existing submissions and financial records will be preserved, and an ended campaign cannot be reopened."}
             </AlertDialogDescription>
           </AlertDialogHeader>

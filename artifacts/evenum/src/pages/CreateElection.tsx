@@ -355,14 +355,19 @@ export default function CreateElection() {
                               <FormItem>
                                 <FormLabel>Fee Amount</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                     placeholder="e.g. 200"
-                                    className="h-11"
-                                    {...field}
-                                  />
+                                  <div className="flex h-11 min-w-0 w-full items-center overflow-hidden rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                                    <span className="shrink-0 border-r border-input px-3 text-sm font-medium text-muted-foreground" aria-hidden="true">XAF</span>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      placeholder="e.g. 200"
+                                      className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                      aria-label="Election fee amount in XAF"
+                                      data-testid="election-fee-amount"
+                                      {...field}
+                                    />
+                                  </div>
                                 </FormControl>
                                  <FormDescription>Amount each voter must pay in XAF</FormDescription>
                                 <FormMessage />
