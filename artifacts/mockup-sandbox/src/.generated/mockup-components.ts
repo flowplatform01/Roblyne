@@ -5,5 +5,7 @@ export const modules: ModuleMap = {
   "./components/mockups/brand/BrandOverview.tsx": () => import("../components/mockups/brand/BrandOverview.tsx"),
   "./components/mockups/brand/ColorSystem.tsx": () => import("../components/mockups/brand/ColorSystem.tsx"),
   "./components/mockups/brand/LogoConcepts.tsx": () => import("../components/mockups/brand/LogoConcepts.tsx"),
-  "./components/mockups/brand/Typography.tsx": () => import("../components/mockups/brand/Typography.tsx")
+  "./components/mockups/brand/Typography.tsx": () => import("../components/mockups/brand/Typography.tsx"),
+  "./components/mockups/finance/CurrentFinance.tsx": () => import("../components/mockups/finance/CurrentFinance.tsx"),
+  "./components/mockups/finance/FinanceWorkspace.tsx": () => import("../components/mockups/finance/FinanceWorkspace.tsx")
 };

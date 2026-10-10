@@ -853,10 +853,49 @@ function PlatformSupportSection() {
   );
 }
 
+type FinanceView = 'overview' | 'settlements' | 'balances' | 'transactions' | 'commissions';
+
+function FinancePagination({
+  page,
+  pageCount,
+  total,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  pageCount: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const first = total === 0 ? 0 : page * pageSize + 1;
+  const last = Math.min((page + 1) * pageSize, total);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
+      <span>{total === 0 ? 'No records' : `Showing ${first}–${last} of ${total}`}</span>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" className="h-8" disabled={page <= 0} onClick={() => onPageChange(page - 1)}>
+          Previous
+        </Button>
+        <span className="min-w-16 text-center tabular-nums">{pageCount === 0 ? 0 : page + 1} / {pageCount}</span>
+        <Button size="sm" variant="outline" className="h-8" disabled={page + 1 >= pageCount} onClick={() => onPageChange(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function FinanceAdminSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
+  const [financeView, setFinanceView] = useState<FinanceView>('overview');
+  const [settlementsPage, setSettlementsPage] = useState(0);
+  const [balancesPage, setBalancesPage] = useState(0);
+  const [transactionsPage, setTransactionsPage] = useState(0);
+  const pageSize = 10;
 
   const { data: stats, isLoading: isLoadingStats } = useGetAdminFinanceStats({ query: { queryKey: getGetAdminFinanceStatsQueryKey() } });
   
@@ -887,6 +926,18 @@ function FinanceAdminSection() {
   const pendingSettlementRows = (stats?.pendingSettlements ?? []) as any[];
   const availableOrgBalances = ((orgBalances ?? []) as any[])
     .filter((balance) => Number(balance.available_balance) > 0);
+  const settlementRows = (settlements ?? []) as any[];
+  const balanceRows = ((orgBalances ?? []) as any[]).slice(0, 15);
+  const transactionRows = ((transactionsData?.transactions ?? []) as any[]);
+  const settlementPageCount = Math.max(1, Math.ceil(settlementRows.length / pageSize));
+  const balancePageCount = Math.max(1, Math.ceil(balanceRows.length / pageSize));
+  const transactionPageCount = Math.max(1, Math.ceil(transactionRows.length / pageSize));
+  const currentSettlementsPage = Math.min(settlementsPage, settlementPageCount - 1);
+  const currentBalancesPage = Math.min(balancesPage, balancePageCount - 1);
+  const currentTransactionsPage = Math.min(transactionsPage, transactionPageCount - 1);
+  const visibleSettlements = settlementRows.slice(currentSettlementsPage * pageSize, (currentSettlementsPage + 1) * pageSize);
+  const visibleBalances = balanceRows.slice(currentBalancesPage * pageSize, (currentBalancesPage + 1) * pageSize);
+  const visibleTransactions = transactionRows.slice(currentTransactionsPage * pageSize, (currentTransactionsPage + 1) * pageSize);
 
   const getSettlementBadge = (status: string) => {
     switch(status) {
@@ -965,24 +1016,33 @@ function FinanceAdminSection() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Revenue KPI Cards */}
-      <div className="flex items-center justify-between gap-4">
-        <div />
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-serif text-xl font-semibold">Platform finance</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Revenue, payouts, and organization balances in one place.</p>
+        </div>
         <Button onClick={handleAdminExport} variant="outline" size="sm" className="gap-2">
           <ArrowRight className="h-3.5 w-3.5" /> Export All Transactions
         </Button>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div role="group" aria-label="Finance sections" className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" variant={financeView === 'overview' ? 'default' : 'outline'} aria-pressed={financeView === 'overview'} onClick={() => setFinanceView('overview')} className="gap-2"><BarChart3 className="h-4 w-4" />Overview</Button>
+        <Button type="button" size="sm" variant={financeView === 'settlements' ? 'default' : 'outline'} aria-pressed={financeView === 'settlements'} onClick={() => setFinanceView('settlements')} className="gap-2"><Coins className="h-4 w-4" />Settlements</Button>
+        <Button type="button" size="sm" variant={financeView === 'balances' ? 'default' : 'outline'} aria-pressed={financeView === 'balances'} onClick={() => setFinanceView('balances')} className="gap-2"><Wallet className="h-4 w-4" />Balances</Button>
+        <Button type="button" size="sm" variant={financeView === 'transactions' ? 'default' : 'outline'} aria-pressed={financeView === 'transactions'} onClick={() => setFinanceView('transactions')} className="gap-2"><Receipt className="h-4 w-4" />Transactions</Button>
+        <Button type="button" size="sm" variant={financeView === 'commissions' ? 'default' : 'outline'} aria-pressed={financeView === 'commissions'} onClick={() => setFinanceView('commissions')} className="gap-2"><Settings className="h-4 w-4" />Commission rates</Button>
+      </div>
+      <div hidden={financeView !== 'overview'} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {kpis.map((kpi, idx) => (
           <Card key={idx} className="border-border/50 shadow-sm">
-            <CardHeader className="pb-2 pt-5">
-              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+            <CardHeader className="pb-1 pt-3">
+              <CardTitle className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
                 {kpi.label} <kpi.icon className={`h-4 w-4 ${kpi.accent}`} />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1 text-lg font-serif font-bold tabular-nums">
+              <div className="space-y-1 text-base font-serif font-bold tabular-nums">
                 {isLoadingStats ? <Skeleton className="h-8 w-20" /> : kpi.isCount ? kpi.value : (
                   adminCurrencyStats.length > 0
                     ? adminCurrencyStats.map((item) => (
@@ -996,9 +1056,14 @@ function FinanceAdminSection() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div
+        hidden={financeView !== 'overview' && financeView !== 'commissions'}
+        aria-label={financeView === 'overview' ? 'Finance overview' : 'Commission rate settings'}
+        role="region"
+        className={`grid grid-cols-1 gap-5 ${financeView === 'overview' ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}
+      >
         {/* Revenue by Pillar */}
-        <div className="col-span-1 lg:col-span-2 space-y-6">
+        <div hidden={financeView !== 'overview'} className="col-span-1 space-y-5 lg:col-span-2">
           <Card className="border-border/50 shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-base font-serif">Revenue Trend (30 Days)</CardTitle>
@@ -1087,8 +1152,8 @@ function FinanceAdminSection() {
         </div>
 
         {/* Commission Configs & Pending Settlements Summary */}
-        <div className="space-y-6">
-          <Card className="border-primary/20 shadow-sm bg-primary/5 dark:border-white/20 dark:bg-white/5">
+        <div className="space-y-5">
+          <Card hidden={financeView !== 'overview'} className="border-primary/20 bg-primary/5 shadow-sm dark:border-white/20 dark:bg-white/5">
             <CardHeader className="pb-3 pt-5 px-5">
               <CardTitle className="text-base font-serif flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-primary" /> Pending Settlements
@@ -1104,7 +1169,7 @@ function FinanceAdminSection() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 shadow-sm">
+          <Card hidden={financeView !== 'commissions'} className="border-border/50 shadow-sm">
             <CardHeader className="pb-3 pt-5 px-5">
               <CardTitle className="text-base font-serif flex items-center gap-2">
                 <Settings className="h-4 w-4" /> Commission Rates
@@ -1174,7 +1239,7 @@ function FinanceAdminSection() {
       </div>
 
       {/* Settlements Table */}
-      <Card className="border-border/50 shadow-sm">
+      <Card hidden={financeView !== 'settlements'} aria-label="Settlements" role="region" className="border-border/50 shadow-sm">
         <CardHeader className="pb-3 border-b border-border/40">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -1182,7 +1247,7 @@ function FinanceAdminSection() {
               <CardDescription className="mt-0.5">Manage payouts to organizations</CardDescription>
             </div>
             <div className="flex items-center gap-3">
-              <Select value={settlementFilter} onValueChange={setSettlementFilter}>
+              <Select value={settlementFilter} onValueChange={(value) => { setSettlementFilter(value); setSettlementsPage(0); }}>
                 <SelectTrigger className="w-40 h-9">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
@@ -1264,7 +1329,7 @@ function FinanceAdminSection() {
                 ))
               ) : !settlements?.length ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No settlements found</TableCell></TableRow>
-              ) : settlements.map((s: any) => (
+              ) : visibleSettlements.map((s: any) => (
                 <TableRow key={s.id} className="hover:bg-muted/20 transition-colors">
                   <TableCell className="text-center font-mono text-xs text-muted-foreground">#{s.id}</TableCell>
                   <TableCell className="font-medium">
@@ -1289,11 +1354,23 @@ function FinanceAdminSection() {
             </TableBody>
           </Table>
         </CardContent>
+        <FinancePagination
+          page={currentSettlementsPage}
+          pageCount={settlementPageCount}
+          total={settlementRows.length}
+          pageSize={pageSize}
+          onPageChange={setSettlementsPage}
+        />
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div
+        hidden={financeView !== 'balances' && financeView !== 'transactions'}
+        aria-label={financeView === 'balances' ? 'Organization balances' : 'Recent transactions'}
+        role="region"
+        className="grid grid-cols-1 gap-5"
+      >
         {/* Organization Balances */}
-        <Card className="border-border/50 shadow-sm">
+        <Card hidden={financeView !== 'balances'} aria-label="Organization balances" className="border-border/50 shadow-sm">
           <CardHeader className="pb-3 border-b border-border/40">
             <CardTitle className="text-base font-serif">Organization Balances</CardTitle>
           </CardHeader>
@@ -1317,7 +1394,7 @@ function FinanceAdminSection() {
                       ))}
                     </TableRow>
                   ))
-                ) : orgBalances?.slice(0, 15).map((ob: any) => (
+                ) : visibleBalances.map((ob: any) => (
                   <TableRow key={`${ob.org_id}-${ob.currency}`} className="hover:bg-muted/20">
                     <TableCell className="font-medium text-sm">{ob.org_name}</TableCell>
                     <TableCell className="text-right text-sm text-primary">{formatCurrency(ob.total_earnings || 0, ob.currency)}</TableCell>
@@ -1329,13 +1406,20 @@ function FinanceAdminSection() {
               </TableBody>
             </Table>
           </CardContent>
+          <FinancePagination
+            page={currentBalancesPage}
+            pageCount={balancePageCount}
+            total={balanceRows.length}
+            pageSize={pageSize}
+            onPageChange={setBalancesPage}
+          />
         </Card>
 
         {/* Global Transaction Log */}
-        <Card className="border-border/50 shadow-sm">
+        <Card hidden={financeView !== 'transactions'} aria-label="Recent transactions" className="border-border/50 shadow-sm">
           <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-serif">Recent Transactions</CardTitle>
-            <Select value={pillarFilter} onValueChange={setPillarFilter}>
+              <Select value={pillarFilter} onValueChange={(value) => { setPillarFilter(value); setTransactionsPage(0); }}>
               <SelectTrigger className="w-32 h-8 text-xs">
                 <SelectValue placeholder="All Pillars" />
               </SelectTrigger>
@@ -1369,7 +1453,7 @@ function FinanceAdminSection() {
                   ))
                 ) : !transactionsData?.transactions?.length ? (
                   <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No transactions</TableCell></TableRow>
-                ) : transactionsData.transactions.slice(0, 15).map((tx: any) => (
+                ) : visibleTransactions.map((tx: any) => (
                   <TableRow key={tx.id} className="hover:bg-muted/20">
                     <TableCell>
                       <div className="font-medium text-sm truncate max-w-[120px]" title={tx.organizationName}>{tx.organizationName}</div>
@@ -1386,6 +1470,13 @@ function FinanceAdminSection() {
               </TableBody>
             </Table>
           </CardContent>
+          <FinancePagination
+            page={currentTransactionsPage}
+            pageCount={transactionPageCount}
+            total={transactionRows.length}
+            pageSize={pageSize}
+            onPageChange={setTransactionsPage}
+          />
         </Card>
       </div>
     </div>
