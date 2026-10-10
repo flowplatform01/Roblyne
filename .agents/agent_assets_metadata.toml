@@ -42,3 +42,17 @@ mtime_ms = 1789930767146
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:63e01428-b1b3-4879-afef-dbda5cd80e75/8024473d-2d93-48e2-b5bf-0cae99285750/1bb40b30-3f67-40dc-b069-2e4c08a4cdf5"
 storage_version_token = "1789930783729760"
 content_type = "image/png"
+
+[[outputs]]
+id = "FS_-8diJJI46urvqMTAnx"
+uri = "file://docs/EVENUM_FOUNDER_ASSESSMENT.md"
+type = "text"
+title = "EVENUM Founder Assessment"
+description = "Read-only product, engineering, market, and pre-launch assessment dated October 10, 2026."
+logical_id = "014a74fc-7416-4da2-8726-a0e94cb66cb4"
+content_hash = "sha256:c42a1cc069d8ba140695ff1ce2a7a5c30f012b7a50e44c387452a5caffa0ce31"
+size = 42560
+mtime_ms = 1791637351647
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:9cad2d0b-5333-4d7a-9b1d-d1680a4eb862/014a74fc-7416-4da2-8726-a0e94cb66cb4/2e48d5c2-beba-48e7-973f-636326524f53"
+storage_version_token = "1791637383998107"
+content_type = "text/markdown"
