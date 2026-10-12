@@ -9,6 +9,11 @@ import { apiLimiter, authLimiter, writeLimiter, searchLimiter } from "./middlewa
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordRequest } from "./lib/metrics";
+import {
+  isCorsOriginAllowed,
+  isWriteRequestOriginAllowed,
+  parseCorsAllowedOrigins,
+} from "./lib/origin-policy";
 
 const PgSession = connectPgSimple(session);
 
@@ -68,10 +73,28 @@ app.use((req, res, next) => {
   next();
 });
 
+const corsAllowedOrigins = parseCorsAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
 app.use(cors({
-  origin: true,
+  origin(origin, callback) {
+    callback(null, isCorsOriginAllowed(origin, corsAllowedOrigins));
+  },
   credentials: true,
 }));
+app.use("/api", (req, res, next) => {
+  const host = req.get("host");
+  const requestOrigin = host ? `${req.protocol}://${host}` : undefined;
+  if (!isWriteRequestOriginAllowed({
+    method: req.method,
+    origin: req.get("origin"),
+    requestOrigin,
+    secFetchSite: req.get("sec-fetch-site"),
+    allowedOrigins: corsAllowedOrigins,
+  })) {
+    res.status(403).json({ error: "Cross-origin request blocked" });
+    return;
+  }
+  next();
+});
 app.use(express.json({
   limit: "10mb",
   verify: (req, _res, buf) => {
@@ -104,7 +127,8 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      // The frontend and API share the same origin in the artifact router.
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   }),

@@ -152,11 +152,18 @@ Important runtime configuration:
 
 - `DATABASE_URL` is required by the database package and session store.
 - `SESSION_SECRET` is required for a secure production session configuration.
+- `CORS_ALLOWED_ORIGINS` is optional and accepts a comma-separated list of
+  exact HTTP(S) origins for explicitly approved cross-origin requests. Leave it
+  empty for the default same-origin `/api` setup. Session-authenticated browser
+  clients should remain same-site; a cross-site deployment needs a separate
+  cookie and CSRF review.
 - `PORT` is required by both application servers.
 - `BASE_PATH` is required by the Vite frontend.
 
 The API also applies proxy-aware settings for Replit, HTTP security headers,
-request IDs, JSON/body limits, rate limits, and a final JSON error handler.
+same-origin checks on writes, request IDs, JSON/body limits, rate limits, and a
+final JSON error handler. Session cookies are HTTP-only, secure in production,
+and use `SameSite=Lax`.
 
 ## Payments
 

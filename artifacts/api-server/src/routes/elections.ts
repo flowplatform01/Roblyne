@@ -22,6 +22,7 @@ import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middl
 import { getPlatformCurrency, isPlatformCurrencySupported, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
+import { canViewElectionResults } from "../lib/election-access";
 
 const router: IRouter = Router();
 
@@ -761,6 +762,8 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
 
   if (isPaid) {
+    // Fast optimistic check only. The same condition is checked again while
+    // holding the election row lock to serialize concurrent payment attempts.
     const pendingResult = await db.execute(sql`
       SELECT id
       FROM payment_intents
@@ -790,6 +793,26 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
       }
       if (lockedElection.endsAt && lockedElection.endsAt <= lockedNow) {
         return { error: "election_closed" as const };
+      }
+
+      // The row lock serializes vote and payment-intent creation for this
+      // election. Recheck here so a concurrent request cannot create a second
+      // chargeable intent for a voter after both passed the optimistic checks.
+      const [existingVote] = await tx.select({ id: votesTable.id }).from(votesTable)
+        .where(and(eq(votesTable.electionId, electionId), eq(votesTable.voterIdentifier, voterIdentifier))).limit(1);
+      if (existingVote) return { error: "already_voted" as const };
+
+      if (isPaid) {
+        const pendingResult = await tx.execute(sql`
+          SELECT id
+          FROM payment_intents
+          WHERE pillar = 'election'
+            AND entity_id = ${electionId}
+            AND status IN ('initializing', 'pending', 'processing')
+            AND payload->'election'->>'voterIdentifier' = ${voterIdentifier}
+          LIMIT 1
+        `);
+        if (pendingResult.rows.length > 0) return { error: "payment_in_progress" as const };
       }
 
       // Candidate deletion uses the same election-row lock. Re-read the ballot
@@ -873,6 +896,10 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
         res.status(404).json({ error: "Election not found" });
       } else if (voteOrPayment.error === "election_not_open") {
         res.status(403).json({ error: "This election has not opened for voting yet" });
+      } else if (voteOrPayment.error === "already_voted") {
+        res.status(403).json({ error: "You have already participated in this election" });
+      } else if (voteOrPayment.error === "payment_in_progress") {
+        res.status(409).json({ error: "A payment for this ballot is already in progress" });
       } else if (voteOrPayment.error === "ballot_structure_changed") {
         res.status(409).json({ error: "The ballot changed while you were submitting. Please review your selections and try again." });
       } else {
@@ -1002,7 +1029,12 @@ router.get("/elections/:electionId/results", async (req, res): Promise<void> => 
 
   const [election] = await db.select().from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
   if (!election) { res.status(404).json({ error: "Not found" }); return; }
-  if (election.visibility !== "public" && !req.session?.userId) {
+
+  const needsOrganizationAccess = election.visibility !== "public" || election.status === "draft";
+  const viewerRole = needsOrganizationAccess && req.session?.userId
+    ? await getOrgRole(election.orgId, req.session.userId)
+    : null;
+  if (!canViewElectionResults(election.visibility, election.status, Boolean(viewerRole))) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
