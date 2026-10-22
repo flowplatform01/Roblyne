@@ -8,6 +8,13 @@
       "when": 1784688670455,
       "tag": "0000_normal_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792678151492,
+      "tag": "0001_complete-current-schema",
+      "breakpoints": true
     }
   ]
 }

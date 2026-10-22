@@ -4,6 +4,7 @@ import { pool } from "@workspace/db";
 import { getPrometheusMetrics } from "../lib/metrics";
 import { pingRedis } from "../lib/redis";
 import { queueInfrastructureStatus } from "../lib/jobs";
+import { isQueueReady } from "../lib/queue-readiness";
 
 const router: IRouter = Router();
 
@@ -42,7 +43,7 @@ router.get("/readyz", async (_req, res): Promise<void> => {
   }
 
   const queueRequired = process.env.QUEUE_REQUIRED === "true";
-  if (queueRequired && queue.enabled && queue.workerHealthy === false) {
+  if (!isQueueReady({ required: queueRequired, ...queue })) {
     res.status(503).json({
       status: "not_ready",
       database: databaseOk,
