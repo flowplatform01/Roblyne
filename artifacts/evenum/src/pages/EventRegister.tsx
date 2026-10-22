@@ -104,6 +104,7 @@ export default function EventRegister() {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<number | null>(null);
   const [paymentStatusToken, setPaymentStatusToken] = useState<string | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
@@ -219,6 +220,7 @@ export default function EventRegister() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicketId || !formData.name || !formData.email) return;
+    setRegistrationError(null);
 
     const selectedTicket = ticketTypes?.find(t => t.id === selectedTicketId);
     const now = countdown.now;
@@ -242,6 +244,7 @@ export default function EventRegister() {
         onSuccess: (result) => {
           if ("paymentRequired" in result) {
             if (!result.checkoutUrl) {
+              setRegistrationError(t("eventRegister.paymentCheckoutUnavailable"));
               registerMutation.reset();
               return;
             }
@@ -252,11 +255,15 @@ export default function EventRegister() {
             window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
             return;
           }
+          setRegistrationError(null);
           setIsSuccess(true);
           setTicketCode(result.ticketCode);
           setTicketTypeName(selectedTicket?.name || 'General Admission');
         },
-        onError: () => setPaymentPending(false),
+        onError: (error: any) => {
+          setPaymentPending(false);
+          setRegistrationError(error?.data?.error || `${t("eventRegister.registrationFailed")}. ${t("eventRegister.registrationError")}`);
+        },
       }
     );
   };
@@ -909,6 +916,15 @@ export default function EventRegister() {
                   )}
 
                   {/* Form fields */}
+                  {registrationError && (
+                    <div
+                      role="alert"
+                      data-testid="event-registration-error"
+                      className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                    >
+                      {registrationError}
+                    </div>
+                  )}
                   <form id="reg-form" onSubmit={handleRegister} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">

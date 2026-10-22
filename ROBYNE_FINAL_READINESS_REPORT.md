@@ -118,14 +118,15 @@ The web pages identify these records as development samples; the application cam
 ### Passed
 
 - `pnpm run typecheck` — passed across shared libraries, API server, web app, mockup sandbox, and scripts.
-- `pnpm --filter @workspace/api-server run test` — **17 passed, 0 failed**. Includes result visibility, origin policy, bootstrap-code validation, and withdrawal allocation tests.
+- `pnpm --filter @workspace/api-server run test` — **20 passed, 0 failed**. Includes event-registration lifecycle, result visibility, origin policy, bootstrap-code validation, and withdrawal allocation tests.
 - `cd artifacts/evenum && node --experimental-strip-types --test src/hooks/useLifecycle.test.mjs` — **3 passed, 0 failed**.
 - `PORT=22244 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/evenum run build` — passed; PWA service worker and manifest generated.
 - `pnpm --filter @workspace/api-server run build` — passed.
 - Routed API smoke checks returned **200** for the upcoming election, live and ended election results, sample event/ticket types, and both sample campaigns.
 - Browser previews checked the homepage on mobile, upcoming election on mobile, active results on desktop and mobile, ended results on mobile, public event registration, both campaign participation flows, and the public organization profile.
-- Continuation verification on 22 October 2026 reran the workspace type check, all API tests (**17 passed**), lifecycle tests (**3 passed**), and both production builds successfully. Fresh public requests returned **200** for health, upcoming election detail/positions, active election detail/results, ended results, both sample events and ticket types, both sample campaigns, and the public organization profile. Desktop and mobile screenshots of the active results page showed the closing countdown and readable results. The anonymous browser's 401 responses were limited to authentication/protected requests.
+- Continuation verification on 22 October 2026 reran the workspace type check, all API tests (**20 passed**), lifecycle tests (**3 passed**), and both production builds successfully. Fresh public requests returned **200** for health, upcoming election detail/positions, active election detail/results, ended results, both sample events and ticket types, both sample campaigns, and the public organization profile. Desktop and mobile screenshots of the active results page showed the closing countdown and readable results. The anonymous browser's 401 responses were limited to authentication/protected requests.
 - ROBLYNE spelling correction verification: regenerated the API client from the updated OpenAPI description; reran `pnpm run typecheck`, the API and lifecycle tests, and the production web build successfully. The built manifest and HTML contain ROBLYNE, the homepage and mobile results preview display ROBLYNE, and the seven development sample titles use ROBLYNE with no old-spelling title remaining.
+- Event-registration regression: a future-dated published sample event with an open ticket sale was rejected before this fix because `startsAt` was treated as the registration opening. Registration now uses event status, the event end deadline, and each ticket tier's sale window. A safe request with a nonexistent ticket type passed the lifecycle gate and returned the expected **404** without creating a ticket; attendee count remained zero.
 
 ### Not run or not verified
 

@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getPlatformCurrency, isPlatformCurrencySupported } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
+import { getEventRegistrationBlockReason } from "../lib/event-registration-lifecycle";
 
 const router: IRouter = Router();
 
@@ -421,7 +422,11 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
   }
 
   // ── Lifecycle enforcement ─────────────────────────────────────────────
-  if (event.status !== "published") {
+  // startsAt is the event's scheduled start. Ticket sale windows determine
+  // when registration opens; endsAt remains the hard registration cutoff.
+  const now = new Date();
+  const registrationBlock = getEventRegistrationBlockReason(event.status, event.endsAt, now);
+  if (registrationBlock === "unavailable") {
     const reason =
       event.status === "cancelled" ? "This event has been cancelled" :
       event.status === "completed" ? "This event has already concluded" :
@@ -429,14 +434,8 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     res.status(403).json({ error: reason });
     return;
   }
-
-  const now = new Date();
-  if (event.endsAt && new Date(event.endsAt) <= now) {
+  if (registrationBlock === "closed") {
     res.status(403).json({ error: "Registration for this event has closed" });
-    return;
-  }
-  if (event.startsAt && new Date(event.startsAt) > now) {
-    res.status(403).json({ error: "Registration for this event has not opened yet" });
     return;
   }
 
@@ -472,19 +471,17 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     const paymentOrTicket = await db.transaction(async (tx) => {
       // Lock the ticket type row to prevent concurrent oversells
       const [lockedEvent] = (await tx.execute(
-        sql`SELECT id, status, starts_at, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
+        sql`SELECT id, status, ends_at, capacity FROM events WHERE id = ${paramParsed.data.eventId} FOR UPDATE`
       )).rows as any[];
       if (!lockedEvent) {
         throw Object.assign(new Error("Event not found"), { code: "EVENT_NOT_FOUND" });
       }
-      if (lockedEvent.status !== "published") {
+      const lockedRegistrationBlock = getEventRegistrationBlockReason(lockedEvent.status, lockedEvent.ends_at);
+      if (lockedRegistrationBlock === "unavailable") {
         throw Object.assign(new Error("Event unavailable"), { code: "EVENT_UNAVAILABLE" });
       }
-      if (lockedEvent.ends_at && new Date(lockedEvent.ends_at) <= new Date()) {
+      if (lockedRegistrationBlock === "closed") {
         throw Object.assign(new Error("Registration closed"), { code: "REGISTRATION_CLOSED" });
-      }
-      if (lockedEvent.starts_at && new Date(lockedEvent.starts_at) > new Date()) {
-        throw Object.assign(new Error("Registration not started"), { code: "REGISTRATION_NOT_STARTED" });
       }
       if (lockedEvent.capacity !== null) {
         const capacityResult = await tx.execute(
@@ -602,10 +599,6 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
       res.status(403).json({ error: err.code === "REGISTRATION_CLOSED" ? "Registration for this event has closed" : "This event is not currently open for registration" });
       return;
     }
-     if (err?.code === "REGISTRATION_NOT_STARTED") {
-       res.status(403).json({ error: "Registration for this event has not opened yet" });
-       return;
-     }
      if (err?.code === "TICKET_SALE_NOT_STARTED" || err?.code === "TICKET_SALE_ENDED") {
       res.status(403).json({ error: err.code === "TICKET_SALE_NOT_STARTED" ? "Ticket sales for this tier have not started yet" : "Ticket sales for this tier have ended" });
       return;

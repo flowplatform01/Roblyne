@@ -7,7 +7,7 @@ description: Lifecycle enforcement architecture across all three public pillars 
 
 ### Server-side enforcement (authoritative)
 - **Elections** (`POST /elections/:id/vote`): checks `status === "active"`, then `startsAt > now` (not-yet-open), then `endsAt <= now` (expired). All three gates use `<=` for the expiry boundary (not `<`).
-- **Events** (`POST /events/:id/register`): outer checks for `status !== "published"` and `endsAt <= now` before entering the transaction. Inside the Drizzle transaction the event row is re-locked with `FOR UPDATE` to atomically guard status, endsAt, and the event-level `capacity` field (ticket count vs `events.capacity`). Ticket-type `FOR UPDATE` lock also re-checks `sale_starts_at`/`sale_ends_at` windows inside the same transaction.
+- **Events** (`POST /events/:id/register`): outer checks for `status !== "published"` and `endsAt <= now` before entering the transaction; `startsAt` is the scheduled event time, not the registration opening. Inside the Drizzle transaction the event row is re-locked with `FOR UPDATE` to atomically guard status, endsAt, and the event-level `capacity` field (ticket count vs `events.capacity`). Ticket-type `FOR UPDATE` lock also re-checks `sale_starts_at`/`sale_ends_at` windows inside the same transaction.
 - **Campaigns** (`POST /campaigns/:id/submit`): checks `status === "active"`, `endsAt <= now`, and `startsAt > now`. All use `<=` boundary.
 - **Lifecycle sweeper**: runs every 30 s in `artifacts/api-server/src/index.ts`, calling `sweepExpiredLifecycles()` from `artifacts/api-server/src/lib/lifecycle.ts`. Transitions active → ended for elections and campaigns, published → completed for events.
 
@@ -36,4 +36,4 @@ description: Lifecycle enforcement architecture across all three public pillars 
 
 **Why:** Without the `startsAt` check an election that hasn't opened accepts votes if status was set to `active` early. Without the atomic capacity lock, events could oversell when concurrent registrations pass the pre-transaction count. Without expiry guards in delayed flows a voter who lingers on the payment screen past `endsAt` could still cast a ballot.
 
-**How to apply:** Any new public submission endpoint must perform (1) status gate, (2) `startsAt > now` gate, (3) `endsAt <= now` gate, all with `<=` on the expiry boundary. Transactional atomic checks must be re-evaluated inside `FOR UPDATE` locks for any quantity-limited resource.
+**How to apply:** Enforce lifecycle semantics according to the product: elections and campaigns require their start and end gates, while event registration opens through ticket-tier sale windows and closes at the event deadline. Use `<=` at expiry boundaries. Re-evaluate transactional gates inside `FOR UPDATE` locks for quantity-limited resources.
