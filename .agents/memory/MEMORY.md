@@ -22,3 +22,4 @@
 - [Evenum loading UX](evenum-loading-ux.md) — use structural skeletons for initial reads; reserve spinners/progress for mutations and indeterminate operations
 - [Payment status access and retained history](evenum-payment-status-retention.md) — public status polling needs a capability token; organization deletion must preserve transaction and participant history
 - [Platform-admin finance UX feedback](evenum-platform-finance-ux.md) — founder reports finance feels overly long, scroll-heavy, and cluttered; account for this in future admin-finance work
+- [Workspace Zod peer alignment](workspace-zod-peer-alignment.md) — align Zod versions resolved by forms and their resolver before adding casts or changing schemas
