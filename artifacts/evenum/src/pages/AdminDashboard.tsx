@@ -636,7 +636,7 @@ export default function AdminDashboard() {
                                         </AlertDialogTitle>
                                         <AlertDialogDescription>
                                           {u.is_platform_admin
-                                            ? `This removes ${u.name}'s ability to operate EVENUM platform controls. At least one platform administrator must remain.`
+                                            ? `This removes ${u.name}'s ability to operate ROBYNE platform controls. At least one platform administrator must remain.`
                                             : `This gives ${u.name} access to all platform-wide user, organization, finance, and settings controls.`}
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
@@ -1244,7 +1244,9 @@ function FinanceAdminSection() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <CardTitle className="text-base font-serif">Settlements</CardTitle>
-              <CardDescription className="mt-0.5">Manage payouts to organizations</CardDescription>
+              <CardDescription className="mt-0.5">
+                Track manual payouts. This screen does not transfer funds; confirm an off-platform transfer before marking it complete.
+              </CardDescription>
             </div>
             <div className="flex items-center gap-3">
               <Select value={settlementFilter} onValueChange={(value) => { setSettlementFilter(value); setSettlementsPage(0); }}>
@@ -1267,7 +1269,9 @@ function FinanceAdminSection() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Settlement</DialogTitle>
-                    <DialogDescription>Initiate a payout for an organization’s available balance in a selected currency. Payouts include the full available balance for that currency.</DialogDescription>
+                    <DialogDescription>
+                      Create a payout request for an organization’s available balance in one currency. This records the request; it does not send funds.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="py-4">
                     <Select value={createSettlementSelection} onValueChange={setCreateSettlementSelection}>
@@ -1346,8 +1350,8 @@ function FinanceAdminSection() {
                   <TableCell>{getSettlementBadge(s.status)}</TableCell>
                   <TableCell className="text-right">
                     {s.status === 'pending_settlement' && <Button size="sm" variant="outline" className="text-xs h-7" disabled={updateSettlement.isPending} onClick={() => updateSettlement.mutate({ id: s.id, status: 'ready' })}>Mark Ready</Button>}
-                    {s.status === 'ready' && <Button size="sm" variant="default" className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white" disabled={updateSettlement.isPending} onClick={() => updateSettlement.mutate({ id: s.id, status: 'released' })}>Release</Button>}
-                    {s.status === 'released' && <Button size="sm" variant="default" className="text-xs h-7 bg-emerald-500 hover:bg-emerald-600 text-white" disabled={updateSettlement.isPending} onClick={() => updateSettlement.mutate({ id: s.id, status: 'completed' })}>Complete</Button>}
+                    {s.status === 'ready' && <Button size="sm" variant="default" className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white" disabled={updateSettlement.isPending} onClick={() => updateSettlement.mutate({ id: s.id, status: 'released' })}>Record release</Button>}
+                    {s.status === 'released' && <Button size="sm" variant="default" className="text-xs h-7 bg-emerald-500 hover:bg-emerald-600 text-white" disabled={updateSettlement.isPending} onClick={() => updateSettlement.mutate({ id: s.id, status: 'completed' })}>Confirm completed</Button>}
                   </TableCell>
                 </TableRow>
               ))}

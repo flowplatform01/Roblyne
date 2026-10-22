@@ -1,6 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" aria-label="Evenum mark">
-  <!-- The Ascent: three ascending bars representing Elections, Events, Campaigns -->
-  <rect x="6" y="65" width="23" height="29" rx="2.5"/>
-  <rect x="38.5" y="40" width="23" height="54" rx="2.5"/>
-  <rect x="71" y="8" width="23" height="86" rx="2.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-label="ROBYNE mark">
+  <path d="M19 50V14h15a11 11 0 0 1 0 22H19" stroke="#09263E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8 19h7M8 45h7" stroke="#62D9B8" stroke-width="4" stroke-linecap="round"/>
+  <path d="m33 36 17 15" stroke="#62D9B8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -966,7 +966,7 @@ function EventBrandingSection({ event, eventId }: { event: any; eventId: number 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="evenum">Evenum (Dark Blue)</SelectItem>
+                <SelectItem value="evenum">ROBYNE (Dark Blue)</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
                 <SelectItem value="light">Light</SelectItem>
               </SelectContent>

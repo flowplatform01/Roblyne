@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#003785"/>
-  <!-- Ascent mark in white, scaled to 32px -->
-  <rect x="2" y="20" width="7" height="9" rx="1" fill="white"/>
-  <rect x="12.5" y="12" width="7" height="17" rx="1" fill="white"/>
-  <rect x="23" y="3" width="7" height="26" rx="1" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>ROBYNE</title>
+  <rect width="64" height="64" rx="14" fill="#09263E"/>
+  <path d="M19 50V14h15a11 11 0 0 1 0 22H19" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8 19h7M8 45h7" fill="none" stroke="#62D9B8" stroke-width="4" stroke-linecap="round"/>
+  <path d="m33 36 17 15" fill="none" stroke="#62D9B8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

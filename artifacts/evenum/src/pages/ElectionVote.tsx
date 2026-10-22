@@ -21,23 +21,13 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
+import { ElectionCountdown } from "@/components/elections/ElectionCountdown";
 import { hexToHsl } from "@/lib/branding";
-import { getLifecycleState, useCountdown } from "@/hooks/useLifecycle";
+import { useElectionLifecycle } from "@/hooks/useLifecycle";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { BallotLoadingSkeleton } from "@/components/loading/LoadingStates";
-
-function CountdownBlock({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-sm px-5 py-3.5 min-w-[72px]">
-      <span className="text-3xl font-serif font-bold tabular-nums leading-none mb-1 text-white">
-        {String(value).padStart(2, '0')}
-      </span>
-      <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{label}</span>
-    </div>
-  );
-}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -65,7 +55,7 @@ export default function ElectionVote() {
 
   usePageMeta(election ? {
     title: `Vote Now — ${election.title}`,
-    description: election.description || `Cast your vote in ${election.title}. Participate securely on Evenum.`,
+    description: election.description || `Cast your vote in ${election.title}. Participate securely on ROBYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
     url: `${window.location.origin}/elections/${electionId}/vote`,
   } : null);
@@ -140,8 +130,11 @@ export default function ElectionVote() {
     }
   }, [positions, directPositionId, directCandidateId]);
 
-  const countdown = useCountdown(election?.endsAt);
-  const lifecycleState = getLifecycleState(election?.startsAt, election?.endsAt, countdown.now);
+  const electionClock = useElectionLifecycle(election?.startsAt, election?.endsAt);
+  const countdown = electionClock.countdown;
+  const lifecycleState = election?.status === "ended"
+    ? "ended"
+    : electionClock.lifecycleState;
   const shareUrl = `${window.location.origin}/elections/${electionId}/vote`;
 
   // ── Selection logic ───────────────────────────────────────────────────────
@@ -481,7 +474,7 @@ export default function ElectionVote() {
 
             {/* Sparkle accent */}
             <p className="text-xs text-muted-foreground/50 mt-10 flex items-center justify-center gap-1.5">
-              <Sparkles className="h-3 w-3" /> Powered by Evenum — Organized Participation
+              <Sparkles className="h-3 w-3" /> Powered by ROBYNE — Organized Participation
             </p>
           </div>
         </div>
@@ -682,18 +675,10 @@ export default function ElectionVote() {
               />
             </div>
 
-            {/* Countdown */}
-            {election.endsAt && !countdown.expired && (
-              <div className="mb-10">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-4">Polls close in</p>
-                <div className="flex items-center justify-center gap-2">
-                  <CountdownBlock value={countdown.days} label="Days" />
-                  <CountdownBlock value={countdown.hours} label="Hours" />
-                  <CountdownBlock value={countdown.minutes} label="Min" />
-                  <CountdownBlock value={countdown.seconds} label="Sec" />
-                </div>
-              </div>
-            )}
+            {/* Shared timing context also appears on the public results page. */}
+            <div className="mb-10">
+              <ElectionCountdown lifecycleState={lifecycleState} countdown={countdown} />
+            </div>
 
             {/* Dates */}
             <div className="flex flex-wrap items-center justify-center gap-6 text-white/40 text-sm mb-4">

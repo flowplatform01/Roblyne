@@ -55,7 +55,7 @@ export default function DevPaymentSimulator() {
             </Badge>
             <CardTitle>Simulate payment</CardTitle>
             <CardDescription>
-              This test checkout does not contact FlowPay or move real money. Choose an outcome to test the full Evenum payment flow.
+              This test checkout does not contact FlowPay or move real money. Choose an outcome to test the full ROBYNE payment flow.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

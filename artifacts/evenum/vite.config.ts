@@ -56,10 +56,10 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Evenum',
-        short_name: 'Evenum',
+        name: 'ROBYNE',
+        short_name: 'ROBYNE',
         description: 'The professional platform for elections, events, and campaigns.',
-        theme_color: '#003785',
+        theme_color: '#09263E',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',

@@ -8,6 +8,7 @@ export interface CountdownValue {
   minutes: number;
   seconds: number;
   expired: boolean;
+  hasTarget: boolean;
   now: number;
 }
 
@@ -43,10 +44,13 @@ export function useLifecycleClock(): number {
   return now;
 }
 
-export function useCountdown(targetDate: string | null | undefined): CountdownValue {
-  const now = useLifecycleClock();
+export function getCountdownValue(
+  targetDate: string | null | undefined,
+  now: number,
+): CountdownValue {
   const target = targetDate ? Date.parse(targetDate) : Number.NaN;
-  const diff = Number.isFinite(target) ? target - now : 0;
+  const hasTarget = Number.isFinite(target);
+  const diff = hasTarget ? target - now : 0;
   const remaining = Math.max(0, diff);
 
   return {
@@ -55,6 +59,40 @@ export function useCountdown(targetDate: string | null | undefined): CountdownVa
     minutes: Math.floor((remaining % 3_600_000) / 60_000),
     seconds: Math.floor((remaining % 60_000) / 1_000),
     expired: Boolean(targetDate) && (!Number.isFinite(target) || diff <= 0),
+    hasTarget,
     now,
   };
+}
+
+export function getElectionCountdown(
+  startsAt: string | null | undefined,
+  endsAt: string | null | undefined,
+  now = Date.now(),
+) {
+  const lifecycleState = getLifecycleState(startsAt, endsAt, now);
+  const targetDate = lifecycleState === "upcoming"
+    ? startsAt
+    : lifecycleState === "live"
+      ? endsAt
+      : undefined;
+
+  return {
+    lifecycleState,
+    targetDate,
+    countdown: getCountdownValue(targetDate, now),
+    now,
+  };
+}
+
+export function useElectionLifecycle(
+  startsAt: string | null | undefined,
+  endsAt: string | null | undefined,
+) {
+  const now = useLifecycleClock();
+  return getElectionCountdown(startsAt, endsAt, now);
+}
+
+export function useCountdown(targetDate: string | null | undefined): CountdownValue {
+  const now = useLifecycleClock();
+  return getCountdownValue(targetDate, now);
 }

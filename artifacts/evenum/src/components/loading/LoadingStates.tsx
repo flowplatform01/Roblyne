@@ -144,7 +144,7 @@ export function AuthLoadingShell() {
       </div>
       <main
         aria-busy="true"
-        aria-label="Preparing Evenum"
+        aria-label="Preparing ROBYNE"
         aria-live="polite"
         className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-16"
         role="status"
@@ -168,7 +168,7 @@ export function AuthLoadingShell() {
               <Skeleton className="h-12 w-full" />
             </div>
           </div>
-          <span className="sr-only">Preparing Evenum</span>
+          <span className="sr-only">Preparing ROBYNE</span>
         </div>
       </main>
     </div>

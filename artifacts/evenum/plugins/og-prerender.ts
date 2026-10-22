@@ -107,7 +107,7 @@ function buildHtml(og: OgData): string {
   <meta property="og:description"      content="${esc(og.description)}" />
   <meta property="og:url"              content="${esc(og.canonicalUrl)}" />
   <meta property="og:type"             content="${og.type ?? "website"}" />
-  <meta property="og:site_name"        content="Evenum" />
+  <meta property="og:site_name"        content="ROBYNE" />
 ${imgTags}  <meta name="twitter:card"            content="${og.image ? "summary_large_image" : "summary"}" />
   <meta name="twitter:title"           content="${esc(og.title)}" />
   <meta name="twitter:description"     content="${esc(og.description)}" />
@@ -115,7 +115,7 @@ ${imgTags}  <meta name="twitter:card"            content="${og.image ? "summary_
 </head>
 <body>
   <script>window.location.replace(${JSON.stringify(og.canonicalUrl)});</script>
-  <noscript><a href="${esc(og.canonicalUrl)}">Open on Evenum →</a></noscript>
+  <noscript><a href="${esc(og.canonicalUrl)}">Open on ROBYNE →</a></noscript>
 </body>
 </html>`;
 }
@@ -137,9 +137,9 @@ async function resolveOgData(route: RouteKind, origin: string): Promise<OgData |
         "election-results": `/elections/${route.id}/results`,
       };
       const ctaMap: Record<string, string> = {
-        "election":         "View this election on Evenum.",
-        "election-vote":    "Cast your vote now on Evenum.",
-        "election-results": `View the official results for ${election.title} on Evenum.`,
+        "election":         "View this election on ROBYNE.",
+        "election-vote":    "Cast your vote now on ROBYNE.",
+        "election-results": `View the official results for ${election.title} on ROBYNE.`,
       };
       const statusLabel =
         election.status === "active" ? " · Now Open" :
@@ -165,7 +165,7 @@ async function resolveOgData(route: RouteKind, origin: string): Promise<OgData |
       const path = route.kind === "event-register" ? `/events/${route.id}/register` : `/events/${route.id}`;
       return {
         title:        event.title,
-        description:  trunc(subtitle || event.description || `Register for this event on Evenum.`),
+        description:  trunc(subtitle || event.description || `Register for this event on ROBYNE.`),
         image:        event.heroImageUrl || event.coverImageUrl || null,
         canonicalUrl: spaUrl(path),
       };
@@ -185,7 +185,7 @@ async function resolveOgData(route: RouteKind, origin: string): Promise<OgData |
         : `/campaigns/${route.id}`;
       return {
         title:        `${campaign.title}${orgSuffix}`,
-        description:  trunc(campaign.description || `Join this ${typeLabel[campaign.type] ?? "campaign"} on Evenum.`),
+        description:  trunc(campaign.description || `Join this ${typeLabel[campaign.type] ?? "campaign"} on ROBYNE.`),
         image:        campaign.heroImageUrl || campaign.coverImageUrl || null,
         canonicalUrl: spaUrl(path),
       };
@@ -204,7 +204,7 @@ async function resolveOgData(route: RouteKind, origin: string): Promise<OgData |
       const electionSuffix = election ? ` · ${election.title}` : "";
       return {
         title:        `${candidate.name}${positionSuffix}${electionSuffix}`,
-        description:  trunc(candidate.bio || `Meet ${candidate.name} — a candidate on Evenum. View their profile and platform.`),
+        description:  trunc(candidate.bio || `Meet ${candidate.name} — a candidate on ROBYNE. View their profile and platform.`),
         image:        candidate.photoUrl || null,
         type:         "profile",
         canonicalUrl: spaUrl(`/candidates/${route.electionId}/${route.candidateId}`),
@@ -215,8 +215,8 @@ async function resolveOgData(route: RouteKind, origin: string): Promise<OgData |
       const org: any = await apiFetch(`/organizations/${route.id}/public`);
       if (!org) return null;
       return {
-        title:        `${org.name} · Evenum`,
-        description:  trunc(org.description || `${org.name} uses Evenum to run elections, events, and campaigns.`),
+        title:        `${org.name} · ROBYNE`,
+        description:  trunc(org.description || `${org.name} uses ROBYNE to run elections, events, and campaigns.`),
         image:        org.logoUrl || null,
         canonicalUrl: spaUrl(`/organizations/${route.id}/public`),
       };

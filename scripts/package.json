@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./seed-demo.ts",
+    "seed:robyne-samples": "tsx ./seed-robyne-samples.ts",
     "seed:branding": "tsx ./seed-branding.ts",
     "migrate:election-monetization": "tsx ./migrate-election-monetization.ts",
     "perf:baseline": "tsx ./perf-baseline.ts",

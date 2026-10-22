@@ -12,7 +12,7 @@ import { requireAuth } from "../middlewares/auth";
 import { requireOrgRole } from "../middlewares/orgAccess";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
-import { getAvailableSettlementAmount, planSettlementAllocations } from "../lib/settlement-allocation";
+import { getAvailableSettlementAmount, isFullySettled, planSettlementAllocations } from "../lib/settlement-allocation";
 
 const router: IRouter = Router();
 
@@ -525,11 +525,47 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
       .set(updateData)
       .where(and(eq(settlementsTable.id, id), eq(settlementsTable.status, current.status)))
       .returning();
+    if (!updated) {
+      throw Object.assign(new Error("Settlement changed while this update was being saved"), { code: "SETTLEMENT_CONCURRENT_UPDATE" });
+    }
     if (nextStatus === "completed") {
-      await tx
-        .update(financialTransactionsTable)
-        .set({ settlementStatus: "completed" })
-        .where(eq(financialTransactionsTable.settlementId, id));
+      const allocatedRows = await tx.execute(sql`
+        SELECT
+          ft.id,
+          ft.org_earnings::text AS org_earnings,
+          COALESCE(SUM(all_allocations.amount) FILTER (WHERE completed_settlements.status = 'completed'), 0)::text AS completed_amount
+        FROM settlement_allocations target_allocations
+        INNER JOIN financial_transactions ft
+          ON ft.id = target_allocations.financial_transaction_id
+        LEFT JOIN settlement_allocations all_allocations
+          ON all_allocations.financial_transaction_id = ft.id
+        LEFT JOIN settlements completed_settlements
+          ON completed_settlements.id = all_allocations.settlement_id
+        WHERE target_allocations.settlement_id = ${id}
+        GROUP BY ft.id, ft.org_earnings
+      `);
+      const ledgerRows = allocatedRows.rows as Array<{
+        id: number | string;
+        org_earnings: string;
+        completed_amount: string;
+      }>;
+      const fullySettledIds = ledgerRows
+        .filter((row) => isFullySettled(row.org_earnings, row.completed_amount))
+        .map((row) => Number(row.id));
+      const partiallySettledIds = ledgerRows
+        .filter((row) => !isFullySettled(row.org_earnings, row.completed_amount))
+        .map((row) => Number(row.id));
+
+      if (fullySettledIds.length > 0) {
+        await tx.update(financialTransactionsTable)
+          .set({ settlementStatus: "completed" })
+          .where(inArray(financialTransactionsTable.id, fullySettledIds));
+      }
+      if (partiallySettledIds.length > 0) {
+        await tx.update(financialTransactionsTable)
+          .set({ settlementStatus: "pending" })
+          .where(inArray(financialTransactionsTable.id, partiallySettledIds));
+      }
     }
     return updated;
     });
@@ -538,6 +574,10 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
   } catch (err: any) {
     if (err?.code === "INVALID_SETTLEMENT_TRANSITION") {
       res.status(409).json({ error: "Settlement status cannot move backward or skip a stage" });
+      return;
+    }
+    if (err?.code === "SETTLEMENT_CONCURRENT_UPDATE") {
+      res.status(409).json({ error: "This settlement changed while you were updating it. Refresh and try again." });
       return;
     }
     throw err;

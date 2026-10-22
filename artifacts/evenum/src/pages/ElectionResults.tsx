@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
+import { ElectionCountdown } from "@/components/elections/ElectionCountdown";
 import { hexToHsl } from "@/lib/branding";
+import { useElectionLifecycle } from "@/hooks/useLifecycle";
 import { format } from 'date-fns';
 import { ResultsLoadingSkeleton } from "@/components/loading/LoadingStates";
 
@@ -20,6 +22,7 @@ export default function ElectionResults() {
   const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
   const { data: results, isLoading: isResultsLoading } = useGetElectionResults(electionId);
   const { data: analytics } = useGetElectionAnalytics(electionId);
+  const { countdown, lifecycleState } = useElectionLifecycle(election?.startsAt, election?.endsAt);
 
   useEffect(() => {
     const t = setTimeout(() => setBarsVisible(true), 400);
@@ -30,7 +33,7 @@ export default function ElectionResults() {
 
   usePageMeta(election ? {
     title: `${election.title} — Official Results`,
-    description: `View the official results for ${election.title}. Powered by Evenum.`,
+    description: `View the official results for ${election.title}. Powered by ROBYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
     url: shareUrl,
   } : null);
@@ -48,6 +51,10 @@ export default function ElectionResults() {
 
   const turnoutPct = analytics?.turnoutRate != null ? Math.round(analytics.turnoutRate * 100) : null;
   const isEnded = election.status === 'ended';
+  const electionHasEnded = isEnded || lifecycleState === "ended";
+  const validEndDate = election.endsAt && Number.isFinite(Date.parse(election.endsAt))
+    ? new Date(election.endsAt)
+    : null;
 
   // Branding
   const heroImageUrl = (election as any).heroImageUrl || election.coverImageUrl;
@@ -67,7 +74,13 @@ export default function ElectionResults() {
         <div className="relative z-10 container mx-auto px-4 pt-20 pb-16 max-w-4xl text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="inline-flex items-center gap-2 bg-background/10 backdrop-blur-md border border-background/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            {isEnded ? 'Official Results' : 'Live Results'}
+            {isEnded
+              ? 'Official Results'
+              : lifecycleState === "upcoming"
+                ? 'Election Opens Soon'
+                : electionHasEnded
+                  ? 'Election Period Ended'
+                  : 'Live Results'}
           </div>
           <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight leading-tight text-white mb-4">
             {election.title}
@@ -93,10 +106,16 @@ export default function ElectionResults() {
               );
             })()
           )}
-          {election.endsAt && isEnded && (
+          {validEndDate && isEnded && (
             <p className="text-white/30 text-sm mb-10">
-              Concluded {format(new Date(election.endsAt), "MMMM d, yyyy 'at' h:mm a")}
+              Concluded {format(validEndDate, "MMMM d, yyyy 'at' h:mm a")}
             </p>
+          )}
+
+          {!electionHasEnded && (
+            <div className="mb-10">
+              <ElectionCountdown lifecycleState={lifecycleState} countdown={countdown} />
+            </div>
           )}
 
           {/* Key metrics */}
@@ -382,7 +401,7 @@ export default function ElectionResults() {
         )}
 
         {/* CTA if still active */}
-        {election.status === 'active' && (
+        {election.status === 'active' && lifecycleState === "live" && (
           <div className="pt-4 text-center">
             <p className="text-muted-foreground font-light mb-6">Polls are still open — every vote matters.</p>
             <Button asChild size="lg" className="h-14 px-10 rounded-sm shadow-lg">

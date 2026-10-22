@@ -1,0 +1,1228 @@
+ROBYNE — FINAL PRODUCTION HARDENING, FINANCIAL AUDIT, REBRANDING & REALISTIC PLATFORM POPULATION
+
+1. MISSION AND CONTEXT
+
+We are approaching the final hardening and readiness stage of ROBYNE.
+
+The application has already undergone substantial development and refinement. Its primary pillars and normal operational workflows are implemented, and the current product is considerably beyond an initial prototype in terms of functionality.
+
+The immediate objective is NOT to rebuild the application, introduce another architecture, or start adding unrelated features.
+
+The objective is to perform a disciplined final pass that verifies the existing implementation, closes any genuine gaps, corrects remaining inconsistencies, strengthens financial and operational reliability, updates the official branding, and creates realistic sample activities across the platform.
+
+I intend to move the application from the current Replit development environment into my local development environment soon. There, I will continue testing and connect or verify the real external services required for production.
+
+Therefore, the current task must prepare the existing application for that transition while making its present behavior, limitations, and readiness clear.
+
+Treat this as a mature product approaching deployment, not as an MVP that needs to be redesigned from scratch.
+
+You have access to the existing codebase and development environment. Investigate the implementation directly rather than relying on assumptions, previous reports, or the apparent quality of the user interface.
+
+Use your engineering judgment to identify and fix genuine issues.
+
+This is an execution task, not merely an audit report. Inspect, implement necessary corrections, test the results, populate the application, and produce a final evidence-based readiness report.
+
+However, do not introduce unnecessary changes just to demonstrate activity.
+
+⸻
+
+2. WORKSTREAM ONE: OFFICIAL REBRANDING — EVENUM TO ROBYNE
+
+Our official product name has changed.
+
+The previous name was EVENUM.
+
+The new and official product name is:
+
+ROBYNE
+
+The exact spelling is R-O-B-Y-N-E.
+
+This is the name to use throughout the product’s customer-facing experience.
+
+The change is intentional and should be treated as an official brand update, not a temporary label or experimental name.
+
+2.1 Conduct a complete branding inventory
+
+Search the entire relevant codebase and inspect all locations where the previous name appears.
+
+Do not limit this investigation to the homepage.
+
+Inspect, where applicable:
+
+* Public landing pages.
+* Application navigation and headers.
+* Organization workspaces.
+* Events.
+* Elections and voting.
+* Campaigns.
+* Platform administration.
+* Login, registration, onboarding, and account settings.
+* Browser titles and metadata.
+* Page descriptions and SEO metadata.
+* PWA manifests and application names.
+* Mobile home-screen installation labels.
+* Icons, logos, favicons, and splash screens.
+* Open Graph and social-sharing metadata.
+* Email templates and notifications.
+* Receipts and payment-related customer communications.
+* Help pages, documentation, and public-facing support content.
+* Footer text and copyright notices.
+* Empty states, loading screens, and error pages.
+* Configuration and environment-dependent branding.
+* Any other customer-facing location that displays the old name.
+
+Search for relevant capitalization and spelling variants, including EVENUM, Evenum, and evenum.
+
+Inspect actual occurrences before changing them.
+
+2.2 Replace the old brand consistently
+
+Update the previous product name to ROBYNE wherever it represents the product’s official identity.
+
+Do not merely replace the text on the homepage while leaving the old identity elsewhere.
+
+The finished application should present one coherent brand.
+
+At the same time, distinguish between customer-facing branding and internal technical identifiers.
+
+Do not blindly rename:
+
+* Database tables or columns.
+* Existing API identifiers.
+* Environment variable names.
+* Internal module names.
+* Historical records.
+* Migration identifiers.
+* Third-party integration identifiers.
+* Stable technical identifiers used by existing code.
+
+Change those only when a genuine technical requirement exists and the migration is safe.
+
+The objective is to update the product’s identity without breaking functionality or introducing unnecessary migration risk.
+
+2.3 Verify the completed rebrand
+
+After implementing the changes:
+
+1. Search again for all variations of the previous name.
+2. Inspect every remaining occurrence.
+3. Correct any unintended customer-facing references.
+4. Document any legitimate historical or internal occurrences that remain.
+5. Verify that the application consistently displays ROBYNE across its major surfaces.
+
+Do not claim the rebrand is complete without performing this verification.
+
+⸻
+
+3. WORKSTREAM TWO: CREATE A DISTINCTIVE ROBYNE BRAND IDENTITY
+
+The previous logo and branding were associated with the old name.
+
+We now need a suitable visual identity for ROBYNE.
+
+This should be a deliberate branding task, not an arbitrary replacement of the old text with a new word.
+
+3.1 Use Canva as a creative resource
+
+Use the available Canva integration or connected Canva capabilities, if accessible, to explore appropriate visual directions and create a suitable logo.
+
+If Canva is unavailable in the current environment, do not pretend that it was used. Use the best available design workflow and report the limitation.
+
+Do not allow the logo task to block the rest of the hardening work.
+
+3.2 Logo design requirements
+
+Create a distinctive, professional logo suitable for a modern software platform.
+
+Avoid generic visual solutions such as:
+
+* An ordinary letter R inside a generic circle without meaningful design.
+* Random geometric shapes that have no coherent relationship to the brand.
+* Generic event tickets as the central symbol.
+* A ballot box or voting checkmark that makes the entire brand appear to be only a voting application.
+* A calendar icon that makes the brand appear to be only an event-management tool.
+* Overused gradients, excessive decorative elements, or childish visual styling.
+* A design that looks like an automatically generated template with the product name inserted.
+
+The logo should represent ROBYNE as a broad, unified platform.
+
+A strong wordmark, a carefully considered symbol, or a combination of both may be appropriate.
+
+Explore the visual possibilities before settling on a direction.
+
+The objective is not to make the logo complicated. It is to make it recognizable, balanced, and suitable for long-term use.
+
+3.3 Brand asset requirements
+
+Create the appropriate assets for the existing application, based on its actual requirements.
+
+These may include:
+
+* Primary logo.
+* Logo variation suitable for dark backgrounds, if required.
+* Logo variation suitable for light backgrounds, if required.
+* Standalone application icon.
+* Favicon.
+* PWA icons.
+* Any required splash-screen or installation assets.
+
+Preserve the application’s established design quality.
+
+Do not redesign the entire interface simply because the logo has changed.
+
+3.4 Integrate the branding properly
+
+Replace the old logo wherever it appears, including the application header, navigation, login screens, public pages, PWA identity, and other relevant surfaces.
+
+Verify that the new assets render correctly at desktop and mobile sizes.
+
+Ensure that the icon remains recognizable at small sizes.
+
+Avoid stretching, cropping, inconsistent sizing, or unnecessary duplication of the brand name beside a logo that already contains it.
+
+If the existing application supports light and dark themes, verify both.
+
+At the end, report which assets were created, which were integrated, and whether any remaining branding assets require manual attention.
+
+⸻
+
+4. WORKSTREAM THREE: PUBLIC ELECTION RESULTS — COUNTDOWN VISIBILITY
+
+There is one specific user-experience improvement I want implemented in the voting and election pillar.
+
+On the public entry page for an election, there is already a countdown showing the relevant timing information.
+
+However, when someone navigates to view that election’s public results, the same contextual countdown is not consistently available.
+
+I want the countdown to appear on the public results view as well.
+
+This matters because people may access, share, revisit, or take screenshots of the results page independently of the original election entry page.
+
+The results view should therefore retain the relevant timing context.
+
+4.1 Inspect the existing implementation
+
+Find:
+
+* The public election entry page.
+* The existing countdown component and its source of timing information.
+* The public election results page.
+* The election’s configured start time, end time, or other relevant timing fields.
+* The existing election status and lifecycle rules.
+
+Reuse the existing countdown component and authoritative timing logic wherever appropriate.
+
+Do not create a second independent countdown implementation with potentially different behavior.
+
+4.2 Implement consistent results-page behavior
+
+Display the countdown in an appropriate location on the public results page.
+
+The presentation should be consistent with the existing election page.
+
+It must be responsive and should not obscure the election results, charts, candidate information, or other important content.
+
+The countdown must reflect the actual election configuration.
+
+Handle the relevant lifecycle states correctly, including upcoming, active, ended, and any other supported states.
+
+Do not invent a countdown or continue counting toward an invalid target.
+
+If an election has ended, follow the application’s established status-display conventions instead of showing a misleading negative countdown.
+
+If the existing application has different rules for preliminary, live, or finalized results, preserve those rules.
+
+Do not expose private election information or bypass existing result-visibility restrictions simply to display the countdown.
+
+4.3 Test the complete behavior
+
+Verify the countdown on both the election entry page and the results page.
+
+Test the relevant lifecycle states and confirm that:
+
+* Both pages use consistent timing information.
+* The countdown behaves correctly on mobile and desktop.
+* Results remain readable.
+* The display updates appropriately.
+* Invalid or missing timing data does not break the page.
+* Existing public-access and result-visibility rules remain intact.
+
+Keep this change focused. Do not redesign the voting pillar unnecessarily.
+
+⸻
+
+5. WORKSTREAM FOUR: COMPREHENSIVE FINANCIAL-FLOW AUDIT
+
+This is one of the most important parts of the entire task.
+
+I want a thorough, implementation-level audit of how money is handled across ROBYNE.
+
+I do not currently have evidence that the financial system is broken. This is a preventive audit because I want to understand and verify its behavior before moving toward production.
+
+Do not interpret this instruction as proof of an existing financial defect.
+
+Equally, do not assume everything is correct merely because transactions appear to work in a development environment.
+
+Audit the actual financial implementation and prove the important invariants wherever possible.
+
+The scope is broader than payment collection.
+
+It includes collection, transaction processing, fees, allocation, accumulation, ledger records, balances, settlement, withdrawals, reconciliation, and the relationship between these operations.
+
+5.1 Map the complete financial architecture
+
+First, understand the existing implementation.
+
+Identify:
+
+* All financial models and database tables.
+* Transaction records and statuses.
+* Payment provider adapters and integrations.
+* Webhook handlers.
+* Payment verification logic.
+* Fees and commission calculations.
+* Event ticket-payment flows.
+* Election-related financial flows, if supported.
+* Campaign contributions and fundraising flows, where supported.
+* Organization balances and financial records.
+* Revenue and platform-fee records.
+* Withdrawal requests and processing.
+* Refunds, reversals, cancellations, and chargebacks, where implemented.
+* Administrative financial controls.
+* Background jobs and asynchronous processing.
+* Reconciliation mechanisms.
+* Relevant permissions and audit logs.
+* Any internal balance, ledger, wallet, or settlement mechanisms.
+
+Trace the actual flow through the code.
+
+Do not infer financial behavior from a dashboard, a database field name, or a successful user-interface interaction.
+
+Produce an accurate map of the implemented financial paths before deciding what needs to change.
+
+5.2 Audit payment collection
+
+For each supported financial workflow, verify the full transaction lifecycle.
+
+Investigate:
+
+1. How a payment is initiated.
+2. How the amount and currency are determined.
+3. How the correct event, election, campaign, organization, or other business context is associated with the transaction.
+4. How payment providers are selected.
+5. How the application receives provider responses.
+6. How webhook signatures and authenticity are verified, where applicable.
+7. How payment completion is independently verified.
+8. How pending, successful, failed, expired, cancelled, and unknown outcomes are represented.
+9. How duplicate requests and repeated callbacks are handled.
+10. How the application prevents a transaction from being credited or fulfilled more than once.
+11. How payment records are associated with the correct customer and organization.
+12. How provider fees, platform fees, taxes, and other configured deductions are calculated.
+13. How the final amount is allocated and recorded.
+14. What happens when a provider succeeds but the application fails to persist the result.
+15. What happens when the application receives contradictory or delayed provider notifications.
+
+Check that the application does not treat an unverified browser redirect, client-side success message, or untrusted callback as sufficient proof of payment.
+
+Use the application’s real provider contracts and documented behavior when evaluating integrations.
+
+Do not fabricate successful provider behavior if credentials are unavailable.
+
+5.3 Audit withdrawal flows in particular
+
+Withdrawal processing is a priority.
+
+Trace the full withdrawal lifecycle from the point at which a user or organization requests a withdrawal to its final disposition.
+
+Determine:
+
+* Who is permitted to request a withdrawal.
+* Which balances are eligible for withdrawal.
+* How available balances are calculated.
+* Whether pending payments, unsettled funds, reserved amounts, or other restrictions affect eligibility.
+* Whether fees or minimum withdrawal amounts apply.
+* How the requested amount is validated.
+* How the destination account or payment details are validated.
+* Whether ownership and permissions are checked appropriately.
+* How withdrawal requests are recorded.
+* How duplicate withdrawal requests are prevented.
+* How concurrent requests are handled.
+* How funds are reserved or debited.
+* When a withdrawal becomes pending, approved, processing, successful, failed, rejected, or cancelled.
+* Whether these states accurately reflect the actual implementation.
+* How administrative approval works, if required.
+* How the withdrawal is sent to the relevant provider or processed operationally.
+* How provider responses and webhooks affect the withdrawal record.
+* How failed withdrawals are handled.
+* How reserved funds are released or restored after failure.
+* How retries avoid sending money twice.
+* How completed withdrawals are reconciled against the internal records.
+* How users and administrators can inspect the outcome.
+* How all changes are recorded for auditing.
+
+Use the actual supported states and workflows found in the codebase. Do not add unnecessary statuses merely to make the system look more sophisticated.
+
+Pay particular attention to the difference between:
+
+* A withdrawal being requested.
+* A withdrawal being approved.
+* A withdrawal being submitted to a provider.
+* A provider accepting the request.
+* A withdrawal actually completing.
+* A withdrawal failing and funds being restored.
+
+These are not necessarily equivalent events.
+
+Ensure the application does not mark money as successfully withdrawn simply because an API request was submitted or an administrator clicked an approval button.
+
+Where a provider cannot guarantee an immediate final outcome, the application must represent that uncertainty accurately.
+
+5.4 Verify balance and ledger correctness
+
+Inspect the source of truth for financial balances.
+
+Determine whether the system uses a ledger, derived balances, balance snapshots, cached values, or another existing model.
+
+Do not assume that a particular architecture exists before inspecting the implementation.
+
+Where financial ledgers or equivalent records exist, verify that:
+
+* Each financial operation produces the appropriate records.
+* Records are associated with the correct account, organization, and transaction.
+* Amounts and currencies are consistent.
+* Fees and deductions are traceable.
+* Available, pending, reserved, and settled amounts are not incorrectly conflated.
+* Repeated processing cannot create duplicate credits or debits.
+* Failed operations are handled consistently.
+* Refunds and reversals have appropriate accounting treatment.
+* Balance calculations agree with the underlying records.
+* Administrative changes are auditable.
+* Historical transactions are not silently overwritten.
+* Reconciliation can identify discrepancies.
+
+If the application uses derived balances, verify their calculations and the mechanisms that keep them consistent.
+
+Do not introduce a new ledger architecture simply because another design might be theoretically preferable. First determine whether the existing implementation is correct and adequate.
+
+5.5 Audit fees, commissions, and revenue
+
+Inspect how the application calculates and records:
+
+* Ticket prices.
+* Campaign contributions.
+* Other supported collection amounts.
+* Platform fees.
+* Provider fees.
+* Organization revenue.
+* Withdrawal fees.
+* Refund amounts.
+* Net settlement amounts.
+* Any other financial deductions or allocations.
+
+Verify that the actual amounts charged and recorded follow the configured business rules.
+
+Pay particular attention to:
+
+* Integer and decimal precision.
+* Currency handling.
+* Rounding behavior.
+* Fee calculation order.
+* Minimum and maximum amounts.
+* Zero or negative values.
+* Boundary conditions.
+* Percentage calculations.
+* Fee changes over time.
+* Whether historical transactions retain their original recorded financial details.
+
+Do not assume all financial workflows use the same fee model.
+
+Inspect the rules for each pillar and explain any intentional differences.
+
+Where the implementation’s intended business rules are ambiguous, identify the ambiguity rather than inventing a policy.
+
+5.6 Audit administrative financial operations
+
+Inspect the platform administration interface and its underlying server-side permissions.
+
+Verify that authorized administrators can perform the financial operations that the current product actually supports.
+
+Check that:
+
+* Financial records are accessible to the appropriate roles.
+* Sensitive actions are protected by server-side authorization.
+* Administrative actions are auditable.
+* Approval actions cannot bypass balance restrictions.
+* Withdrawal statuses cannot be manipulated through unauthorized requests.
+* Sensitive provider credentials are not exposed.
+* Financial summaries agree with the underlying records.
+* Any manual reconciliation or correction process is appropriately controlled.
+
+Do not add dangerous administrative shortcuts or pretend that a manual action is equivalent to a provider-confirmed financial operation.
+
+5.7 Test financial failure and concurrency scenarios
+
+Where feasible, write or run automated tests covering scenarios such as:
+
+* A payment callback being delivered multiple times.
+* Two requests attempting to process the same transaction.
+* A provider timeout after a request has been submitted.
+* A successful provider payment followed by a database failure.
+* An invalid or unverifiable callback.
+* Two withdrawal requests attempting to consume the same available balance.
+* An administrative approval being repeated.
+* A withdrawal provider request timing out.
+* A withdrawal failing after funds have been reserved.
+* A refund being processed more than once.
+* A user attempting to access another organization’s financial records.
+* Invalid amounts, currencies, and destinations.
+* A financial operation being interrupted partway through processing.
+
+These are test scenarios, not claims that such defects currently exist.
+
+Adapt the tests to the architecture actually present.
+
+Use isolated test data, mocks, provider sandboxes, or controlled test environments as appropriate.
+
+Never initiate real money movement, make real withdrawals, or submit live financial transactions merely to test this task.
+
+Do not use real customer funds or mutate production financial records.
+
+5.8 Financial audit deliverable
+
+Document the findings clearly.
+
+For each major financial flow, report:
+
+* The flow’s purpose.
+* Its actual implementation path.
+* The source of truth for its state and balance.
+* The key calculations involved.
+* The relevant security and idempotency controls.
+* The tests performed.
+* Any defects found.
+* Any corrections implemented.
+* Any unresolved limitations.
+
+Classify findings as:
+
+* Verified correct.
+* Corrected and retested.
+* Partially verified.
+* Not verified because of an environmental or integration limitation.
+* Defect requiring further work.
+
+Do not give a blanket statement that the financial system is correct without supporting evidence.
+
+⸻
+
+6. WORKSTREAM FIVE: VERIFY THE COMPLETE OPERATIONAL EXPERIENCE OF EVERY PILLAR
+
+The financial audit must be accompanied by a practical audit of normal product operations.
+
+I believe the main workflows are functioning, but I want the final pass to identify remaining gaps rather than assume they do not exist.
+
+Inspect the actual application and exercise the major user journeys.
+
+6.1 Events
+
+Review the end-to-end event lifecycle, including:
+
+* Event creation.
+* Event editing.
+* Publication and visibility.
+* Public event pages.
+* Event status and timing.
+* Registration.
+* Ticket types and pricing.
+* Ticket purchasing and payment-state handling.
+* Ticket access and retrieval.
+* Ticket validation or scanning, if implemented.
+* Relevant organizer controls.
+* Relevant financial records.
+* Cancellation, refund, or other supported lifecycle operations.
+* Mobile and desktop usability.
+
+Confirm that the event experience works coherently for both the organizer and the attendee.
+
+6.2 Elections and voting
+
+Review:
+
+* Election creation and configuration.
+* Candidate creation and management.
+* Election timing.
+* Publication and access restrictions.
+* Voter eligibility and permissions, according to the existing model.
+* Voting interactions.
+* Prevention of duplicate voting, where the election configuration requires it.
+* Vote persistence and integrity.
+* Result visibility and publication rules.
+* Public results presentation.
+* The countdown consistency improvement described in Workstream Three.
+* Relevant administrative controls.
+* Relevant financial behavior, if applicable.
+
+Preserve the existing election rules.
+
+Do not expose private ballots, confidential voter information, or restricted results through test data or public pages.
+
+6.3 Campaigns
+
+Review the campaign workflows that are actually supported.
+
+Depending on campaign configuration, these may include:
+
+* Campaign creation and publication.
+* Public campaign pages.
+* Questions and forms.
+* Applications or submissions.
+* Contributions or fundraising.
+* Participation and submission records.
+* Organizer review and management.
+* Financial records and withdrawals, where applicable.
+* Campaign status and lifecycle transitions.
+* Mobile and desktop usability.
+
+Do not assume every campaign supports every feature. Test the behavior appropriate to each supported campaign type.
+
+6.4 Organizations and platform administration
+
+Verify the relevant organization and administrative workflows.
+
+Check that:
+
+* Organizations and workspaces are associated with the correct accounts.
+* Permissions are respected.
+* User-facing actions behave consistently.
+* Platform administrators have appropriate controls.
+* Financial access is properly restricted.
+* Existing administrative functionality remains intact.
+* Errors are handled gracefully.
+* Important operations provide clear feedback.
+
+Do not introduce unrelated features or expand the administrative surface without a demonstrated need.
+
+6.5 Fix what the audit proves is wrong
+
+This is not a request to redesign every screen.
+
+Fix genuine defects, missing actions, broken transitions, inconsistent data, misleading statuses, and material usability problems that you identify.
+
+Preserve established working behavior.
+
+Do not change business rules simply because another workflow would be more convenient.
+
+Where a business decision is required, document the question and its implications instead of silently inventing a policy.
+
+⸻
+
+7. WORKSTREAM SIX: REALISTIC PLATFORM POPULATION FOR HANDS-ON TESTING
+
+This is a major deliverable.
+
+I want the populated application to feel like a realistic environment in which real organizations are already using ROBYNE.
+
+I do not want a dashboard full of generic placeholders, repetitive records, meaningless titles, or artificial-looking content.
+
+I want to be able to open the application after this task and personally explore realistic examples across every major pillar.
+
+The purpose is to let me understand and experience how the platform behaves under believable real-world conditions before moving to my local environment for additional testing.
+
+This is a controlled development and testing exercise.
+
+It is not permission to create real public campaigns, conduct actual elections, charge real customers, or initiate real financial transactions.
+
+7.1 Inspect the existing data before populating
+
+First, inspect the current database and existing development records.
+
+Determine:
+
+* What realistic data already exists.
+* Which records should be preserved.
+* Which records are clearly test fixtures or development examples.
+* How organizations, users, events, elections, campaigns, transactions, and other entities relate to one another.
+* Which fields are required for records to behave correctly.
+* Which workflows require associated records or state transitions.
+
+Do not delete the existing database and start again.
+
+Do not erase working accounts, existing development work, or useful records merely to obtain a clean demonstration environment.
+
+Prefer adding or updating clearly identified sample data.
+
+If existing records can be safely enriched, do that rather than creating unnecessary duplicates.
+
+7.2 Create a coherent sample environment
+
+Create a realistic, varied set of sample activities for each major pillar.
+
+As a starting target, aim for at least two meaningfully different scenarios per pillar, with enough supporting records to make each scenario usable.
+
+Use more where necessary to cover materially different workflows.
+
+The target is coverage and realism, not a particular record count.
+
+For each scenario, provide the supporting data needed for a complete experience.
+
+A public event should not exist without its relevant event details.
+
+An election should not exist without the appropriate candidates and configuration.
+
+A campaign should not exist without content and supporting records appropriate to its campaign type.
+
+Where the application requires an organization, organizer, user, ticket type, candidate, application, contribution record, or other related entity, create the necessary relationships.
+
+The data should be internally consistent and should obey the application’s actual business rules.
+
+7.3 Events: create believable event scenarios
+
+Populate the Events pillar with varied, realistic examples.
+
+Possible scenarios include:
+
+* A university technology conference.
+* A student association event.
+* A professional networking event.
+* A music or cultural event.
+* A business workshop or training session.
+* A community event.
+
+You do not need to use every example.
+
+Choose a suitable combination that covers different event configurations and attendee experiences.
+
+Include appropriate information such as:
+
+* Event title.
+* Description.
+* Organizer.
+* Location or delivery format.
+* Start and end dates.
+* Publication and event status.
+* Registration configuration.
+* Ticket types.
+* Pricing where applicable.
+* Relevant event imagery.
+* Any supporting details required by the existing implementation.
+
+Use a variety of configurations rather than producing several events that differ only by title.
+
+Where supported, include examples with different ticket types or pricing arrangements, different lifecycle states, and different registration requirements.
+
+Make the event pages look like real activities that someone might encounter in Cameroon or another relevant market.
+
+Avoid fake claims involving real institutions, celebrities, sponsors, or partners.
+
+Use fictional organizations and organizers where appropriate.
+
+7.4 Elections: create varied, realistic voting scenarios
+
+Populate the Elections pillar with a range of believable election scenarios.
+
+For example:
+
+* A university student association election.
+* A departmental representative election.
+* An organization leadership election.
+* A community committee election.
+
+Select at least two scenarios that exercise different aspects of the existing election functionality.
+
+Provide realistic:
+
+* Election titles and descriptions.
+* Organizations and organizers.
+* Candidate profiles.
+* Candidate names and biographies.
+* Appropriate candidate photographs or avatars.
+* Election start and end times.
+* Election statuses.
+* Other required configuration.
+* Results or vote-related records where the existing implementation supports them.
+
+Where safe and supported, include examples representing different lifecycle stages, such as upcoming, active, and completed elections.
+
+Do not fabricate production election results or imply that fictional candidates represent real people.
+
+Do not create records that violate the election’s voting rules merely to make the dashboard appear populated.
+
+If the application requires actual voter records or ballots to exercise a workflow, use clearly fictional test identities and controlled test data.
+
+Preserve confidentiality and election-integrity protections.
+
+7.5 Campaigns: create varied, realistic campaign scenarios
+
+Populate the Campaigns pillar with a variety of meaningful examples.
+
+Possible scenarios include:
+
+* A community fundraising initiative.
+* A scholarship or opportunity application campaign.
+* A public-interest initiative.
+* A community development project.
+* An organizational participation campaign.
+
+Choose scenarios that cover different campaign types and configuration options supported by the existing application.
+
+Where applicable, include:
+
+* Campaign title and description.
+* Organizer or organization.
+* Public campaign content.
+* Relevant imagery.
+* Configured questions and forms.
+* Submission or application records.
+* Participation records.
+* Contribution records.
+* Campaign status and timing.
+* Any other records necessary to exercise the workflow.
+
+Do not force every campaign to use fundraising if the application supports other forms of participation.
+
+The examples should demonstrate the flexibility of the existing campaign model.
+
+Where financial contributions are represented, use safe development records and do not imply that real money was received.
+
+7.6 Populate supporting organization and account data
+
+Where required to make the examples coherent, create or enrich appropriate fictional organizations and associated development accounts.
+
+Give them meaningful names, profiles, and relationships.
+
+Ensure that the records are consistent with the existing account and organization model.
+
+Do not create duplicate identities or weaken access controls to make the examples easier to populate.
+
+If the application distinguishes between platform administrators, organization owners, organizers, and ordinary participants, preserve those distinctions.
+
+Use existing development accounts when appropriate and document how I can access the sample experiences.
+
+Do not invent or disclose passwords for real accounts.
+
+If new test accounts must be created, use the application’s normal development workflow and document the account setup safely.
+
+7.7 Use suitable images and visual assets
+
+I specifically want the populated environment to use appropriate, real-looking visual assets rather than blank image boxes or repetitive generic placeholders.
+
+Use high-quality images relevant to each scenario, such as:
+
+* Conference and venue photography.
+* Professional workshops.
+* Cultural events.
+* Community activities.
+* Suitable fictional candidate portraits or avatars.
+* Campaign-related imagery.
+
+Use image assets only where they make sense for the content.
+
+Prefer assets that are legally usable for the intended development and demonstration purpose.
+
+Use existing asset infrastructure where appropriate.
+
+If images must be downloaded or imported, make sure the resulting application can actually load them in the current environment.
+
+Do not leave behind broken external image URLs or assets that disappear when the development environment restarts.
+
+Do not use real people’s photographs in a misleading way or suggest that real organizations endorse fictional campaigns.
+
+7.8 Make the data functionally useful
+
+This is not just a visual population exercise.
+
+The sample data must allow me to explore the application.
+
+Where the existing implementation supports it, I should be able to:
+
+* Open public event pages.
+* Inspect event details.
+* Explore available tickets and registration flows.
+* Inspect election entry pages.
+* View election countdowns.
+* Explore candidate profiles.
+* Open public results where permitted.
+* Browse campaign pages.
+* Inspect campaign forms and configured questions.
+* Explore organization workspaces.
+* View appropriate administrative records.
+* Follow relevant financial workflows using safe development data.
+
+Use valid relationships and state transitions.
+
+Do not populate the database with fabricated records that make the interface look active but fail when opened.
+
+7.9 Keep the sample data safe and maintainable
+
+Clearly distinguish development fixtures and sample content from genuine business records.
+
+Use an appropriate mechanism based on the existing architecture, such as a development seed script, controlled fixture process, or explicitly labelled sample records.
+
+Prefer a repeatable process that can be rerun safely without creating duplicate data.
+
+If an existing seed mechanism is available, inspect and reuse it where appropriate.
+
+Do not build a large new data-generation framework if a small, safe extension of the existing mechanism is sufficient.
+
+Do not disable financial controls, authentication, or permissions to simplify population.
+
+Never create real financial settlements, real withdrawals, actual provider-side charges, or live election operations as part of this task.
+
+If the current environment connects to real services, verify the relevant configuration and use an isolated testing approach.
+
+The objective is a convincing, interactive development environment—not fake production activity.
+
+7.10 Report the populated environment
+
+At completion, provide a concise inventory showing:
+
+* What sample organizations were created or enriched.
+* What event scenarios were added.
+* What election scenarios were added.
+* What campaign scenarios were added.
+* Which lifecycle states are represented.
+* Which workflows can be explored.
+* Which records are development-only.
+* How the population can be repeated or safely reset, if supported.
+* Any limitations caused by missing integrations or unavailable data.
+
+Include the relevant public or development routes where useful.
+
+Do not claim that every scenario is interactive if some of its workflows remain unimplemented or require additional setup.
+
+⸻
+
+8. WORKSTREAM SEVEN: APPLICATION HARDENING AND SECURITY REVIEW
+
+Conduct a focused hardening pass across the existing application.
+
+Inspect the codebase and test results to determine which risks are relevant to the current implementation.
+
+At minimum, investigate the following categories.
+
+8.1 Authentication and authorization
+
+* Protected routes and APIs.
+* Server-side permission enforcement.
+* Organization isolation.
+* Administrative access.
+* Financial permissions.
+* Public-resource access.
+* Election and campaign access rules.
+
+8.2 Data integrity
+
+* Required fields and validation.
+* Relationships and foreign keys.
+* Invalid state transitions.
+* Concurrent updates.
+* Duplicate submissions.
+* Database transactions.
+* Error handling and partial failures.
+
+8.3 Application security
+
+* Input validation.
+* Output encoding where relevant.
+* Injection risks.
+* Sensitive information exposure.
+* File and image upload handling.
+* Rate limiting where justified.
+* Session and token handling.
+* Secret management.
+* Webhook validation.
+* Security-sensitive logging.
+
+8.4 Reliability
+
+* Background jobs.
+* Retry behavior.
+* Timeout handling.
+* Error boundaries.
+* Database connection behavior.
+* Failed external-service calls.
+* Recovery from interrupted operations.
+* Important user-visible failure states.
+
+8.5 Preserve the existing product
+
+Do not use this as an excuse to replace working components or redesign the architecture.
+
+Address material risks and genuine defects.
+
+For lower-priority improvements, document the finding and its justification rather than expanding the scope indefinitely.
+
+Do not introduce additional infrastructure solely because it is common in other production systems.
+
+⸻
+
+9. WORKSTREAM EIGHT: VERIFY PRODUCTION-READINESS FOR THE NEXT DEVELOPMENT STAGE
+
+I want to be able to move the application from Replit to my local development environment and continue with real-service integration and further testing.
+
+This means the application should be prepared for that transition, but the current environment’s limitations must be distinguished from actual product defects.
+
+9.1 Verify the application can be operated reproducibly
+
+Inspect:
+
+* Build and startup commands.
+* Dependency installation.
+* Required environment variables.
+* Database configuration.
+* Database migrations.
+* Seed-data behavior.
+* File and image storage.
+* Background workers and scheduled jobs.
+* External-service configuration.
+* Development versus production configuration.
+* Error reporting and logging.
+* Any deployment or runtime assumptions that would affect local operation.
+
+Ensure the existing application has a clear, reproducible setup path appropriate to its current architecture.
+
+Do not assume that the local environment is identical to Replit.
+
+Identify any environment-dependent requirements that must be addressed during the transfer.
+
+9.2 Separate application readiness from provider readiness
+
+Some real-service integrations may require credentials, provider-side configuration, account approval, callback URLs, production endpoints, or other external prerequisites.
+
+Do not falsely claim these integrations are fully production-ready merely because their configuration fields exist.
+
+For each relevant integration, distinguish between:
+
+* Implemented and tested in the current environment.
+* Tested using mocks or isolated development fixtures.
+* Tested against a provider sandbox.
+* Requires real credentials or provider-side configuration.
+* Requires testing after transfer to the local environment.
+* Requires additional work before live use.
+
+This distinction is particularly important for payment collection and withdrawal operations.
+
+9.3 Run the available tests
+
+Run the relevant existing test suites and add focused tests for material defects or financial risks identified during the audit.
+
+Where practical, also run:
+
+* Production build checks.
+* Static analysis or type checks supported by the project.
+* Database migration checks.
+* API-level tests.
+* Browser-based functional tests.
+* Responsive UI checks.
+* Regression tests for the affected workflows.
+
+Use the existing testing infrastructure where possible.
+
+Do not report tests as passing if they were not executed.
+
+If a test cannot run, explain why and identify the appropriate next step.
+
+9.4 Verify important user journeys in the browser
+
+Where browser automation or Playwright is available, test the major user journeys through the actual interface.
+
+At minimum, verify representative flows across:
+
+* Events.
+* Elections and voting.
+* Public election results and countdown.
+* Campaigns.
+* Organization workspaces.
+* Platform administration.
+* Relevant financial interfaces.
+* The new ROBYNE branding.
+
+Test mobile and desktop layouts where practical.
+
+Look for actual failures, not just visual inconsistencies.
+
+Correct any material regression introduced by the changes.
+
+⸻
+
+10. IMPLEMENTATION RULES
+
+The following constraints apply throughout the task.
+
+Rule 1: Inspect before modifying
+
+Understand the existing implementation before changing it.
+
+Rule 2: Preserve working functionality
+
+Do not break existing workflows to make the requested changes easier.
+
+Rule 3: Avoid unnecessary refactoring
+
+Make targeted, well-supported changes.
+
+Rule 4: No speculative features
+
+Do not invent new product requirements, payment policies, financial rules, or organizational workflows.
+
+Rule 5: No fake verification
+
+Distinguish between code inspection, automated tests, browser testing, sandbox testing, and real provider verification.
+
+Rule 6: No unsafe financial testing
+
+Do not use real money or initiate live financial operations.
+
+Rule 7: Protect existing data
+
+Inspect the current database before adding, updating, or removing records.
+
+Do not wipe the database or overwrite useful data without a specific, justified requirement.
+
+Rule 8: Keep sample data coherent
+
+Use realistic scenarios with valid relationships and working navigation.
+
+Rule 9: Maintain the product’s quality
+
+Preserve the established visual quality and mature product behavior.
+
+Rule 10: Report limitations honestly
+
+If something cannot be verified or completed, state exactly what remains and why.
+
+Rule 11: Do not stop at recommendations
+
+Implement the safe, in-scope corrections that the audit identifies.
+
+Rule 12: Avoid endless hardening
+
+This is a final readiness pass, not a reason to perpetually redesign the application.
+
+Prioritize critical and high-impact defects, complete the specified branding and countdown changes, perform the financial audit, populate the environment, and provide an evidence-based final assessment.
+
+⸻
+
+11. REQUIRED FINAL REPORT
+
+After implementation and testing, produce a report titled:
+
+ROBYNE_FINAL_READINESS_REPORT.md
+
+The report must contain the following sections.
+
+A. Executive Summary
+
+Explain what was inspected, what changed, and the overall readiness assessment.
+
+B. Rebranding
+
+List the important customer-facing locations updated from EVENUM to ROBYNE.
+
+Identify any remaining legitimate internal or historical references.
+
+List the new logo and branding assets created and integrated.
+
+Explain whether Canva was used or whether an alternative design process was necessary.
+
+C. Election Countdown
+
+Describe the results-page implementation and its behavior across relevant election states.
+
+Document the tests performed.
+
+D. Financial-Flow Audit
+
+Map the actual collection, processing, allocation, balance, fee, withdrawal, and reconciliation workflows.
+
+Summarize the key controls and test results.
+
+List every material defect discovered and the correction implemented, if any.
+
+Clearly identify any unverified financial behavior.
+
+E. Pillar-by-Pillar Functional Audit
+
+Summarize the findings for Events, Elections, Campaigns, Organizations, and Platform Administration.
+
+Identify the important workflows exercised and any remaining issues.
+
+F. Realistic Sample Data
+
+List the scenarios populated for each pillar.
+
+Identify the supporting records, images, organizations, and workflows available for exploration.
+
+Explain how the development data is distinguished from genuine business records.
+
+G. Security and Reliability
+
+Summarize the important checks performed, findings, fixes, and outstanding risks.
+
+H. Testing Evidence
+
+List the actual commands, test suites, build checks, browser journeys, and financial test scenarios executed.
+
+Include the results.
+
+Distinguish tests that passed from those that failed, were skipped, or could not run.
+
+I. Local Transition Readiness
+
+Document the configuration and setup requirements for moving the application to the local environment.
+
+Identify the external-service integrations that still require credentials, configuration, or additional verification.
+
+J. Outstanding Issues
+
+Classify remaining issues by severity:
+
+* Critical.
+* High.
+* Medium.
+* Low.
+* External dependency or verification required.
+
+Do not hide unresolved issues simply to obtain a positive readiness verdict.
+
+K. Final Readiness Verdict
+
+Provide a reasoned conclusion based on the evidence.
+
+Choose the most appropriate assessment:
+
+* Ready for local transition and further integration testing.
+* Ready with clearly documented limitations.
+* Not ready until specific blocking issues are resolved.
+
+If the application is ready for the next development stage but not yet verified for live financial operations, state that distinction explicitly.
+
+The goal is a truthful readiness assessment, not a perfect score.
+
+⸻
+
+12. DEFINITION OF DONE
+
+This task is complete when:
+
+1. The previous customer-facing brand has been consistently replaced with ROBYNE.
+2. A suitable ROBYNE logo and corresponding required branding assets have been created and integrated.
+3. The public election results page displays the appropriate countdown using the existing authoritative timing logic.
+4. The complete financial implementation has been audited, with particular attention to withdrawals, balance correctness, transaction states, fees, failure handling, and reconciliation.
+5. Material defects discovered during the audit have been corrected and retested where possible.
+6. The main operational workflows across Events, Elections, Campaigns, Organizations, and Platform Administration have been inspected.
+7. The application has been populated with realistic, varied, internally consistent development scenarios across its major pillars.
+8. The sample activities include appropriate supporting records and visual assets and can be explored through the application.
+9. Existing data and working functionality have been preserved.
+10. Relevant automated tests and browser-based checks have been executed where available.
+11. The remaining local-transition and external-integration requirements are documented.
+12. ROBYNE_FINAL_READINESS_REPORT.md has been created with evidence-based findings and an honest readiness verdict.
+
+Proceed methodically.
+
+Start by inspecting the actual codebase, database structure, existing financial workflows, branding references, election countdown implementation, available testing tools, and current development data.
+
+Then implement the necessary changes, populate the development environment, run the appropriate tests, and produce the final report.
+
+The desired outcome is a polished, consistently branded, thoroughly audited, realistically populated application that is ready for the next stage of local integration and testing—with its verified capabilities and remaining limitations clearly understood.

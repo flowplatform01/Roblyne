@@ -1,6 +1,6 @@
-# Evenum
+# ROBYNE
 
-Evenum is a bilingual participation platform for organizations to run elections, events, ticketing, and campaigns.
+ROBYNE is a bilingual participation platform for organizations to run elections, events, ticketing, and campaigns.
 
 ## Run & Operate
 
@@ -9,6 +9,7 @@ Evenum is a bilingual participation platform for organizations to run elections,
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `ROBYNE_SEED_TARGET=development ROBYNE_SEED_SAMPLES=1 pnpm --filter @workspace/scripts run seed:robyne-samples` — add clearly labeled, non-destructive preview fixtures to the development database
 - Required env: `DATABASE_URL` — Postgres connection string
 - Optional env: `REDIS_URL` — enables shared rate limiting, discovery caching, and the maintenance queue
 - Optional env: `REDIS_REQUIRED=true` — makes readiness fail when Redis is unavailable

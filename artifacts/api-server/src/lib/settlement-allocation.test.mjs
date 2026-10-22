@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { planSettlementAllocations } from "./settlement-allocation.ts";
+import { isFullySettled, planSettlementAllocations } from "./settlement-allocation.ts";
 
 test("allocates partial withdrawals oldest-first and preserves unclaimed earnings", () => {
   const allocations = planSettlementAllocations([
@@ -41,4 +41,10 @@ test("rejects zero, negative, non-finite, and fractional-cent requests", () => {
       { transactionId: 11, orgEarnings: "20.00", allocatedAmount: "0.00" },
     ], amount));
   }
+});
+
+test("a partial completed payout leaves the remaining transaction earnings unsettled", () => {
+  assert.equal(isFullySettled("100.00", "40.00"), false);
+  assert.equal(isFullySettled("100.00", "100.00"), true);
+  assert.equal(isFullySettled("100.00", "100.01"), true);
 });

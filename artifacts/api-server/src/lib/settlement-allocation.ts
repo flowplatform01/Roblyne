@@ -32,6 +32,10 @@ export function getAvailableSettlementAmount(rows: SettlementEarningRow[]): numb
   return availableMinorUnits / 100;
 }
 
+export function isFullySettled(orgEarnings: string | number, completedAllocations: string | number): boolean {
+  return toMinorUnits(completedAllocations) >= toMinorUnits(orgEarnings);
+}
+
 /**
  * Allocates a requested payout across ledger transactions in their input order.
  * Input rows should be ordered oldest-first to keep allocations deterministic.
