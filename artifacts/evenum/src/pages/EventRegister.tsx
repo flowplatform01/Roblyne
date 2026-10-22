@@ -39,7 +39,7 @@ function generateICS(event: any): string {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//ROBYNE//EN',
+    'PRODID:-//ROBLYNE//EN',
     'BEGIN:VEVENT',
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,
@@ -211,7 +211,7 @@ export default function EventRegister() {
 
   usePageMeta(event ? {
     title: event.title,
-    description: event.description || `Register for ${event.title} — secure your spot on ROBYNE.`,
+    description: event.description || `Register for ${event.title} — secure your spot on ROBLYNE.`,
     image: (event as any).heroImageUrl || event.coverImageUrl || null,
     url: shareUrl,
   } : null);
@@ -336,7 +336,7 @@ export default function EventRegister() {
       pdf.setTextColor(220, 227, 238);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-      pdf.text(`${t("eventRegister.officialTicket").toLocaleUpperCase(locale)} · ${event.organizationName || "ROBYNE"}`, 14, 13);
+      pdf.text(`${t("eventRegister.officialTicket").toLocaleUpperCase(locale)} · ${event.organizationName || "ROBLYNE"}`, 14, 13);
 
       const title = String(event.title || "Event");
       let titleSize = 23;
@@ -580,14 +580,14 @@ export default function EventRegister() {
                     {(event as any).organizationLogoUrl && (
                       <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-white/20 inline-block shrink-0" />
                     )}
-                    {event.organizationName || 'ROBYNE'}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                    {event.organizationName || 'ROBLYNE'}<ExternalLink className="w-2.5 h-2.5 opacity-50" />
                   </Link>
                 ) : (
                   <span className="inline-flex items-center gap-1.5">
                     {(event as any).organizationLogoUrl && (
                       <img src={(event as any).organizationLogoUrl} alt={event.organizationName || ''} className="w-4 h-4 rounded object-cover border border-white/20 inline-block shrink-0" />
                     )}
-                    {event.organizationName || 'ROBYNE'}
+                    {event.organizationName || 'ROBLYNE'}
                   </span>
                 )}
               </p>

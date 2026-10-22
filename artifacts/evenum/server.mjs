@@ -99,7 +99,7 @@ async function resolveOgData(route, origin) {
       : `/elections/${route.id}/${route.kind === "election-vote" ? "vote" : "results"}`;
     return {
       title: `${election.title}${suffix}${orgSuffix}`,
-      description: truncate(election.description || "View this election on ROBYNE."),
+      description: truncate(election.description || "View this election on ROBLYNE."),
       image: imageUrl(election.heroImageUrl || election.coverImageUrl),
       canonicalUrl: `${origin}${routePath}`,
     };
@@ -116,7 +116,7 @@ async function resolveOgData(route, origin) {
     const routePath = route.kind === "event-register" ? `/events/${route.id}/register` : `/events/${route.id}`;
     return {
       title: event.title,
-      description: truncate(subtitle || event.description || "Register for this event on ROBYNE."),
+      description: truncate(subtitle || event.description || "Register for this event on ROBLYNE."),
       image: imageUrl(event.heroImageUrl || event.coverImageUrl),
       canonicalUrl: `${origin}${routePath}`,
     };
@@ -131,7 +131,7 @@ async function resolveOgData(route, origin) {
       : `/campaigns/${route.id}`;
     return {
       title: `${campaign.title}${orgSuffix}`,
-      description: truncate(campaign.description || "Join this campaign on ROBYNE."),
+      description: truncate(campaign.description || "Join this campaign on ROBLYNE."),
       image: imageUrl(campaign.heroImageUrl || campaign.coverImageUrl),
       canonicalUrl: `${origin}${routePath}`,
     };
@@ -147,7 +147,7 @@ async function resolveOgData(route, origin) {
     const position = Array.isArray(positions) ? positions.find((item) => item.id === candidate.positionId) : null;
     return {
       title: `${candidate.name}${position ? ` — ${position.title}` : ""}${election ? ` · ${election.title}` : ""}`,
-      description: truncate(candidate.bio || `Meet ${candidate.name} — a candidate on ROBYNE.`),
+      description: truncate(candidate.bio || `Meet ${candidate.name} — a candidate on ROBLYNE.`),
       image: imageUrl(candidate.photoUrl),
       type: "profile",
       canonicalUrl: `${origin}/candidates/${route.electionId}/${route.candidateId}`,
@@ -158,8 +158,8 @@ async function resolveOgData(route, origin) {
     const organization = await apiFetch(`/organizations/${route.id}/public`, origin);
     if (!organization) return null;
     return {
-      title: `${organization.name} · ROBYNE`,
-      description: truncate(organization.description || `${organization.name} uses ROBYNE to run elections, events, and campaigns.`),
+      title: `${organization.name} · ROBLYNE`,
+      description: truncate(organization.description || `${organization.name} uses ROBLYNE to run elections, events, and campaigns.`),
       image: imageUrl(organization.logoUrl),
       canonicalUrl: `${origin}/organizations/${route.id}/public`,
     };
@@ -186,7 +186,7 @@ function buildOgHtml(data) {
   <meta property="og:description" content="${escapeHtml(data.description)}" />
   <meta property="og:url" content="${escapeHtml(data.canonicalUrl)}" />
   <meta property="og:type" content="${data.type ?? "website"}" />
-  <meta property="og:site_name" content="ROBYNE" />
+  <meta property="og:site_name" content="ROBLYNE" />
 ${imageTags}
   <meta name="twitter:card" content="${data.image ? "summary_large_image" : "summary"}" />
   <meta name="twitter:title" content="${escapeHtml(data.title)}" />
@@ -194,7 +194,7 @@ ${imageTags}
   <link rel="canonical" href="${escapeHtml(data.canonicalUrl)}" />
 </head><body>
   <script>window.location.replace(${JSON.stringify(data.canonicalUrl)});</script>
-  <noscript><a href="${escapeHtml(data.canonicalUrl)}">Open on ROBYNE</a></noscript>
+  <noscript><a href="${escapeHtml(data.canonicalUrl)}">Open on ROBLYNE</a></noscript>
 </body></html>`;
 }
 

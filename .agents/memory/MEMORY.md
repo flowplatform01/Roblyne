@@ -1,3 +1,4 @@
+- [ROBLYNE official spelling](roblyne-official-spelling.md) — use ROBLYNE in current product branding; older ROBYNE prompt wording is superseded while compatibility identifiers remain.
 - [Evenum production review](evenum-production-review.md) — comprehensive audit and fixes applied; key stubs resolved, terminology cleaned, settings/upload UX added
 - [Evenum voting pillar](evenum-voting-pillar.md) — UX architecture, state machine, auto-deselect, sticky nav, position chips, grid layout, org discoverability patterns
 - [Evenum production hardening](evenum-production-hardening.md) — full N+1 elimination (elections/orgs/financial), concurrency locks, session secret guard, search rate limit, lazy loading, QueryClient tuning, ErrorBoundary

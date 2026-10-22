@@ -647,7 +647,7 @@ function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="evenum">ROBYNE (Dark Blue)</SelectItem>
+                <SelectItem value="evenum">ROBLYNE (Dark Blue)</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
                 <SelectItem value="light">Light</SelectItem>
               </SelectContent>
@@ -1422,7 +1422,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            ROBYNE records payout requests but does not transfer funds from this screen. Provider fees, if any, are handled separately by your bank or mobile-money provider.
+            ROBLYNE records payout requests but does not transfer funds from this screen. Provider fees, if any, are handled separately by your bank or mobile-money provider.
           </p>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={requestWithdrawal.isPending}>Back to form</AlertDialogCancel>

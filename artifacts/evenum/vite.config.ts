@@ -56,8 +56,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'ROBYNE',
-        short_name: 'ROBYNE',
+        name: 'ROBLYNE',
+        short_name: 'ROBLYNE',
         description: 'The professional platform for elections, events, and campaigns.',
         theme_color: '#09263E',
         background_color: '#ffffff',

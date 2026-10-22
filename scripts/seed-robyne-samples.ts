@@ -1,5 +1,5 @@
 /**
- * Additive, repeatable ROBYNE preview fixtures.
+ * Additive, repeatable ROBLYNE preview fixtures.
  *
  * Run only against the development database:
  * ROBYNE_SEED_TARGET=development ROBYNE_SEED_SAMPLES=1 pnpm --filter @workspace/scripts run seed:robyne-samples
@@ -92,7 +92,7 @@ async function seedEvents(orgs: Awaited<ReturnType<typeof getSampleOrganizations
   const eventScenarios = [
     {
       orgId: orgs.get("greentech-hub")!.id,
-      title: "Buea Civic Technology Forum · ROBYNE sample",
+      title: "Buea Civic Technology Forum · ROBLYNE sample",
       description: `${sampleDisclosure} A one-day forum for local teams exploring accessible public-service technology. In-person in Buea, with general admission and a limited workshop tier.`,
       image: images.bueaForum,
       location: "Buea, South-West Region",
@@ -108,7 +108,7 @@ async function seedEvents(orgs: Awaited<ReturnType<typeof getSampleOrganizations
     },
     {
       orgId: orgs.get("city-council-d7")!.id,
-      title: "Limbe Coastal Skills Workshop · ROBYNE sample",
+      title: "Limbe Coastal Skills Workshop · ROBLYNE sample",
       description: `${sampleDisclosure} A small-group skills workshop for community and climate projects. This fictional preview is scheduled online; the example meeting link is intentionally non-routable.`,
       image: images.limbeWorkshop,
       location: "Online · Limbe community cohort",
@@ -175,7 +175,7 @@ async function seedEvents(orgs: Awaited<ReturnType<typeof getSampleOrganizations
 async function seedElections(orgs: Awaited<ReturnType<typeof getSampleOrganizations>>) {
   let upcomingElectionId: number | null = null;
   let activeElectionId: number | null = null;
-  const upcomingTitle = "South-West Youth Council · ROBYNE sample";
+  const upcomingTitle = "South-West Youth Council · ROBLYNE sample";
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: electionsTable.id })
@@ -227,7 +227,7 @@ async function seedElections(orgs: Awaited<ReturnType<typeof getSampleOrganizati
     console.log(`Added upcoming election sample: ${upcomingTitle} (#${election.id})`);
   });
 
-  const activeTitle = "Buea Community Energy Committee · ROBYNE sample";
+  const activeTitle = "Buea Community Energy Committee · ROBLYNE sample";
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: electionsTable.id })
@@ -292,7 +292,7 @@ async function seedElections(orgs: Awaited<ReturnType<typeof getSampleOrganizati
     console.log(`Added active election sample: ${activeTitle} (#${election.id})`);
   });
 
-  const resultsTitle = "Community Leadership Poll · ROBYNE sample results";
+  const resultsTitle = "Community Leadership Poll · ROBLYNE sample results";
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: electionsTable.id })
@@ -372,7 +372,7 @@ async function seedElections(orgs: Awaited<ReturnType<typeof getSampleOrganizati
 }
 
 async function seedCampaigns(orgs: Awaited<ReturnType<typeof getSampleOrganizations>>) {
-  const applicationTitle = "Community Skills Grant Applications · ROBYNE sample";
+  const applicationTitle = "Community Skills Grant Applications · ROBLYNE sample";
   await db.transaction(async (tx) => {
     let [campaign] = await tx
       .select({ id: campaignsTable.id })
@@ -433,7 +433,7 @@ async function seedCampaigns(orgs: Awaited<ReturnType<typeof getSampleOrganizati
     }
   });
 
-  const contributionTitle = "Buea Learning Lab · ROBYNE sample contribution";
+  const contributionTitle = "Buea Learning Lab · ROBLYNE sample contribution";
   await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: campaignsTable.id })
@@ -473,7 +473,7 @@ async function seedCampaigns(orgs: Awaited<ReturnType<typeof getSampleOrganizati
 async function main() {
   try {
     const orgs = await getSampleOrganizations();
-    console.log("Adding ROBYNE sample fixtures to existing development organizations.");
+    console.log("Adding ROBLYNE sample fixtures to existing development organizations.");
     await seedEvents(orgs);
     const electionRoutes = await seedElections(orgs);
     await seedCampaigns(orgs);

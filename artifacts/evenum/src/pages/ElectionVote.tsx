@@ -55,7 +55,7 @@ export default function ElectionVote() {
 
   usePageMeta(election ? {
     title: `Vote Now — ${election.title}`,
-    description: election.description || `Cast your vote in ${election.title}. Participate securely on ROBYNE.`,
+    description: election.description || `Cast your vote in ${election.title}. Participate securely on ROBLYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
     url: `${window.location.origin}/elections/${electionId}/vote`,
   } : null);
@@ -474,7 +474,7 @@ export default function ElectionVote() {
 
             {/* Sparkle accent */}
             <p className="text-xs text-muted-foreground/50 mt-10 flex items-center justify-center gap-1.5">
-              <Sparkles className="h-3 w-3" /> Powered by ROBYNE — Organized Participation
+              <Sparkles className="h-3 w-3" /> Powered by ROBLYNE — Organized Participation
             </p>
           </div>
         </div>

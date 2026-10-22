@@ -79,7 +79,7 @@ export default function CampaignParticipate() {
 
   usePageMeta(campaign ? {
     title: campaign.title,
-    description: campaign.description || `Participate in ${campaign.title} — join the campaign on ROBYNE.`,
+    description: campaign.description || `Participate in ${campaign.title} — join the campaign on ROBLYNE.`,
     image: (campaign as any).heroImageUrl || campaign.coverImageUrl || null,
     url: shareUrl,
   } : null);

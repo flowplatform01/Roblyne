@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80">
-  <title>ROBYNE — Organized Participation</title>
+  <title>ROBLYNE — Organized Participation</title>
   <path d="M19 66V14h15a11 11 0 0 1 0 22H19" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M8 19h7M8 45h7" fill="none" stroke="#62D9B8" stroke-width="4" stroke-linecap="round"/>
   <path d="m33 36 17 15" fill="none" stroke="#62D9B8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="78" y="56" fill="#FFFFFF" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" letter-spacing="1">ROBYNE</text>
+  <text x="78" y="56" fill="#FFFFFF" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700" letter-spacing="1">ROBLYNE</text>
 </svg>

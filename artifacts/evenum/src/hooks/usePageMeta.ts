@@ -10,7 +10,7 @@ interface PageMetaOptions {
   url?: string;
 }
 
-const DEFAULT_TITLE = "ROBYNE — Organized Participation";
+const DEFAULT_TITLE = "ROBLYNE — Organized Participation";
 const DEFAULT_DESC =
   "A unified system for elections, events, and campaigns. Controlled, precise, and built for serious organizations.";
 
@@ -39,7 +39,7 @@ function removeMeta(attr: "property" | "name", value: string): void {
  * Centralized page metadata hook.
  *
  * Sets document.title and all Open Graph + Twitter Card meta tags whenever
- * the options change.  On unmount, resets to the default ROBYNE branding so
+ * the options change.  On unmount, resets to the default ROBLYNE branding so
  * navigating away doesn't leave stale meta on subsequent pages that omit
  * the hook.
  *
@@ -61,9 +61,9 @@ export function usePageMeta(options: PageMetaOptions | null): void {
 
     const { title, description, image, type = "website", url } = options;
     const canonicalUrl = url ?? window.location.href;
-    const fullTitle = title.endsWith("ROBYNE")
+    const fullTitle = title.endsWith("ROBLYNE")
       ? title
-      : `${title} | ROBYNE`;
+      : `${title} | ROBLYNE`;
 
     document.title = fullTitle;
 
@@ -71,7 +71,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
     setMeta("property", "og:description", description);
     setMeta("property", "og:url", canonicalUrl);
     setMeta("property", "og:type", type);
-    setMeta("property", "og:site_name", "ROBYNE");
+    setMeta("property", "og:site_name", "ROBLYNE");
 
     if (image) {
       setMeta("property", "og:image", image);
@@ -106,7 +106,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
       setMeta("property", "og:title", DEFAULT_TITLE);
       setMeta("property", "og:description", DEFAULT_DESC);
       setMeta("property", "og:type", "website");
-      setMeta("property", "og:site_name", "ROBYNE");
+    setMeta("property", "og:site_name", "ROBLYNE");
       setMeta("name", "twitter:title", DEFAULT_TITLE);
       setMeta("name", "twitter:description", DEFAULT_DESC);
       setMeta("name", "twitter:card", "summary_large_image");

@@ -45,7 +45,7 @@ export function PlatformAdminLayout({ children }: { children: React.ReactNode })
       <header className="sticky top-0 z-50 border-b border-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-            <Link href="/admin" aria-label="ROBYNE platform operations home" className="shrink-0">
+              <Link href="/admin" aria-label="ROBLYNE platform operations home" className="shrink-0">
               <EvenumLogo size="md" showWordmark />
             </Link>
             <div className="hidden min-w-0 border-l border-border pl-4 sm:block">

@@ -1,11 +1,11 @@
-# ROBYNE Final Readiness Report
+# ROBLYNE Final Readiness Report
 
 **Assessment date:** 22 October 2026  
 **Scope:** Final branding and results-countdown checks, development sample data, review of financial flows and operational routes, and local build/test verification.
 
 ## A. Executive Summary
 
-The current project was inspected across the web app, API, database schema, development fixtures, and payment/settlement code. The ROBYNE wordmark and icons are integrated, the artifact listing now says ROBYNE, the public election-results screen uses the shared lifecycle countdown, and development-only sample scenarios are available across the main pillars.
+The current project was inspected across the web app, API, database schema, development fixtures, and payment/settlement code. Following the product owner's spelling correction, current customer-facing copy, the wordmark and icons, the artifact listing, and the development sample titles now use ROBLYNE. The public election-results screen uses the shared lifecycle countdown, and development-only sample scenarios are available across the main pillars.
 
 One frontend dependency mismatch was corrected: the web artifact now resolves Zod 4 directly, matching the form resolver types used by the project. The full workspace type check and production web build pass after that change.
 
@@ -17,15 +17,15 @@ No real payment, payout, ballot, or application submission was made. Existing de
 
 ### Customer-facing locations updated
 
-- Shared ROBYNE mark and wordmark, including inverse logo, are used in the navigation, authentication screens, loading surfaces, and platform-admin layout.
-- `index.html`, the web manifest, page metadata, favicon, PWA icons, and app icon use ROBYNE identity.
-- The Replit artifact title is now **ROBYNE**; its stable internal ID and directory remain unchanged.
-- Translation values displayed to users say ROBYNE in English and French.
+- Shared ROBLYNE mark and wordmark, including inverse logo, are used in the navigation, authentication screens, loading surfaces, and platform-admin layout.
+- `index.html`, the web manifest, page metadata, favicon, PWA icons, and app icon use ROBLYNE identity.
+- The Replit artifact title is now **ROBLYNE**; its stable internal ID and directory remain unchanged.
+- Translation values displayed to users say ROBLYNE in English and French.
 
 ### Assets
 
-- `artifacts/evenum/src/assets/brand/robyne-logo.svg`
-- `artifacts/evenum/src/assets/brand/robyne-logo-inverse.svg`
+- `artifacts/evenum/src/assets/brand/roblyne-logo.svg`
+- `artifacts/evenum/src/assets/brand/roblyne-logo-inverse.svg`
 - `artifacts/evenum/src/assets/brand/favicon.svg`
 - `artifacts/evenum/src/assets/brand/icon-app.svg`
 - `artifacts/evenum/public/favicon.svg`
@@ -37,7 +37,7 @@ The SVG mark and wordmark are project-authored vector assets. Canva was not used
 
 ### Remaining legitimate references
 
-No customer-facing old brand label was found in the checked UI surfaces. The remaining `Evenum`/`evenum` references are internal compatibility names: the existing artifact directory/ID, stored theme value and browser storage keys, component and translation-key identifiers, historical documentation, and the legacy `EVENUM_PAYMENT_MODE` environment setting. These were left intact to avoid changing saved preferences, stored data, or existing configuration.
+No customer-facing old brand label was found in the checked UI surfaces. The remaining `Evenum`/`evenum` and `ROBYNE`/`robyne` references are internal compatibility names: the existing artifact directory/ID, stored theme value and browser storage keys, component and translation-key identifiers, seed command/environment-variable names, and historical documentation. The historical report filename remains `ROBYNE_FINAL_READINESS_REPORT.md` because the original deliverable specified that exact filename. Earlier prompt and handoff attachments were preserved as historical inputs. These identifiers were left intact to avoid changing saved preferences, stored data, existing configuration, or the required report path.
 
 ## C. Election Countdown
 
@@ -93,7 +93,7 @@ The management routes `/events/:id` and `/campaigns/:id` intentionally show sign
 
 ## F. Realistic Sample Data
 
-The development database contains these ROBYNE-labeled sample scenarios:
+The development database contains these ROBLYNE-labeled sample scenarios:
 
 - **Events:** Buea Civic Technology Forum and Limbe Coastal Skills Workshop, with three ticket types across the samples.
 - **Elections:** South-West Youth Council (upcoming), Buea Community Energy Committee (live), and Community Leadership Poll (ended/results). Ten fictional candidates and twelve synthetic votes support the election scenarios.
@@ -101,7 +101,7 @@ The development database contains these ROBYNE-labeled sample scenarios:
 - **Organizations:** The fixtures connect to existing sample organizations including City Council District 7, GreenTech Innovation Hub, and Alumni Association Network.
 - **Visuals:** Three sample activity cover images and ten fictional candidate SVG portraits are referenced by the fixture script and included in the web build.
 
-The web pages identify these records as development samples; the application campaign explicitly says its fictional submission does not promise or pay a grant, and the contribution sample states that it has no donations or payment records. The seed script is development-only, additive, and skips matching existing samples. It was run with the development guard enabled; all matching sample rows were already present, so it skipped them without deleting or updating records and without creating payments.
+The web pages identify these records as development samples; the application campaign explicitly says its fictional submission does not promise or pay a grant, and the contribution sample states that it has no donations or payment records. The seed script is development-only, additive, and skips matching existing samples. After the spelling correction, the seven existing sample titles were updated in the development database only; no other data was changed and no payments were created. The seed script now matches the corrected titles and remains safe to rerun.
 
 ## G. Security and Reliability
 
@@ -125,6 +125,7 @@ The web pages identify these records as development samples; the application cam
 - Routed API smoke checks returned **200** for the upcoming election, live and ended election results, sample event/ticket types, and both sample campaigns.
 - Browser previews checked the homepage on mobile, upcoming election on mobile, active results on desktop and mobile, ended results on mobile, public event registration, both campaign participation flows, and the public organization profile.
 - Continuation verification on 22 October 2026 reran the workspace type check, all API tests (**17 passed**), lifecycle tests (**3 passed**), and both production builds successfully. Fresh public requests returned **200** for health, upcoming election detail/positions, active election detail/results, ended results, both sample events and ticket types, both sample campaigns, and the public organization profile. Desktop and mobile screenshots of the active results page showed the closing countdown and readable results. The anonymous browser's 401 responses were limited to authentication/protected requests.
+- ROBLYNE spelling correction verification: regenerated the API client from the updated OpenAPI description; reran `pnpm run typecheck`, the API and lifecycle tests, and the production web build successfully. The built manifest and HTML contain ROBLYNE, the homepage and mobile results preview display ROBLYNE, and the seven development sample titles use ROBLYNE with no old-spelling title remaining.
 
 ### Not run or not verified
 
@@ -145,7 +146,7 @@ The repository’s `replit.md` documents the workspace setup. For local developm
 5. Local image uploads require the S3/R2 settings documented in `replit.md` (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, access/secret keys, and public base URL) and a bucket CORS rule permitting the application origin, `PUT`, and `Content-Type`.
 6. Keep payments in simulation until the provider contract is verified. FlowPay requires an environment-specific API base URL, client ID, public key, secret key, and webhook secret (`FLOWPAY_<ENV>_*` variables); production mode is gated by `NODE_ENV=production`. No FlowPay credentials were available in this workspace.
 7. When Redis is configured, build and run the maintenance worker with the commands in `replit.md`. Redis is not the source of truth.
-8. The safe fixture command is `ROBYNE_SEED_TARGET=development ROBYNE_SEED_SAMPLES=1 pnpm --filter @workspace/scripts run seed:robyne-samples`.
+8. The safe fixture command is `ROBYNE_SEED_TARGET=development ROBYNE_SEED_SAMPLES=1 pnpm --filter @workspace/scripts run seed:robyne-samples`. The ROBYNE-prefixed variables and script name are internal compatibility identifiers.
 
 Database schema changes should be applied only after reviewing the migration plan and target environment. `replit.md` specifically warns against blindly pushing the schema because the session table is managed by `connect-pg-simple`.
 

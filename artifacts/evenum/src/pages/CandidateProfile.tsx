@@ -26,7 +26,7 @@ export default function CandidateProfile() {
     title: position
       ? `${candidate.name} — ${position.title} · ${election.title}`
       : `${candidate.name} — ${election.title}`,
-    description: candidate.bio || `Meet ${candidate.name}, a candidate for ${position?.title || 'office'} in ${election.title}. View their profile and platform on ROBYNE.`,
+    description: candidate.bio || `Meet ${candidate.name}, a candidate for ${position?.title || 'office'} in ${election.title}. View their profile and platform on ROBLYNE.`,
     image: candidate.photoUrl || null,
     type: "profile",
     url: shareUrl,

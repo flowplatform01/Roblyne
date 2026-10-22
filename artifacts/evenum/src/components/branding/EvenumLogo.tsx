@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * ROBYNE mark: two incoming paths meet in a custom open R form.
+ * ROBLYNE mark: two incoming paths meet in a custom open R form.
  * Renders as an inline SVG so it inherits currentColor.
  * Wrap in a coloured container or set text-* to control colour.
  */
@@ -59,7 +59,7 @@ const sizeMap = {
 };
 
 /**
- * EvenumLogo — Shared brand component for the ROBYNE mark and wordmark.
+ * EvenumLogo — Shared brand component for the ROBLYNE mark and wordmark.
  *
  * @example
  * // Navbar usage
@@ -96,7 +96,7 @@ export function EvenumLogo({
 
       {showWordmark && (
         <span className={cn('font-serif font-bold tracking-tight text-foreground leading-none select-none', text)}>
-          ROBYNE
+          ROBLYNE
         </span>
       )}
     </span>
@@ -104,7 +104,7 @@ export function EvenumLogo({
 }
 
 /**
- * EvenumAuthMark — Large standalone ROBYNE icon tile used on auth / splash screens.
+ * EvenumAuthMark — Large standalone ROBLYNE icon tile used on auth / splash screens.
  */
 export function EvenumAuthMark({ className }: { className?: string }) {
   return (

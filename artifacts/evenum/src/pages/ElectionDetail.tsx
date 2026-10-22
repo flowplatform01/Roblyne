@@ -1123,7 +1123,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="evenum">ROBYNE (Dark Blue)</SelectItem>
+                <SelectItem value="evenum">ROBLYNE (Dark Blue)</SelectItem>
                 <SelectItem value="dark">Dark</SelectItem>
                 <SelectItem value="light">Light</SelectItem>
               </SelectContent>

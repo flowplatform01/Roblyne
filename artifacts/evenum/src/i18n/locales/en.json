@@ -63,7 +63,7 @@
     "system": "System"
   },
   "auth": {
-    "signInToEvenum": "Sign in to ROBYNE",
+    "signInToEvenum": "Sign in to ROBLYNE",
     "enterDetails": "Enter your details to access your dashboard",
     "emailAddress": "Email Address",
     "password": "Password",
@@ -81,7 +81,7 @@
     "signInFailed": "Sign in failed",
     "checkCredentials": "Please check your credentials and try again.",
     "accountCreated": "Account created",
-    "welcomeToEvenum": "Welcome to ROBYNE!",
+    "welcomeToEvenum": "Welcome to ROBLYNE!",
     "registrationFailed": "Registration failed",
     "registrationError": "There was a problem creating your account.",
     "emailValidation": "Please enter a valid email address",
@@ -102,7 +102,7 @@
     "trendingNow": "Trending Now",
     "recentActivity": "Recent Activity",
     "enginesTitle": "Three Capabilities. One Platform.",
-    "enginesDescription": "ROBYNE unifies the tools organizations need to engage their members, manage attendance, and drive participation.",
+    "enginesDescription": "ROBLYNE unifies the tools organizations need to engage their members, manage attendance, and drive participation.",
     "votingTitle": "Voting & Elections",
     "votingDescription": "Run secure, professional elections with ranked positions, candidate profiles, and live verifiable results.",
     "createElection": "Create Election",
@@ -666,7 +666,7 @@
   },
   "support": {
     "needHelp": "Need help?",
-    "contactTeam": "Contact the ROBYNE support team.",
+    "contactTeam": "Contact the ROBLYNE support team.",
     "whatsapp": "WhatsApp",
     "helpCenter": "Help center"
   },

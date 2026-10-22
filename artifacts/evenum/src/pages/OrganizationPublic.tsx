@@ -21,8 +21,8 @@ export default function OrganizationPublic() {
   const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
 
   usePageMeta(org ? {
-    title: `${org.name} · ROBYNE`,
-    description: org.description || `${org.name} uses ROBYNE to run elections, events, and campaigns. Explore their public profile.`,
+    title: `${org.name} · ROBLYNE`,
+    description: org.description || `${org.name} uses ROBLYNE to run elections, events, and campaigns. Explore their public profile.`,
     image: org.logoUrl || null,
     url: shareUrl,
   } : null);
@@ -71,7 +71,7 @@ export default function OrganizationPublic() {
             <ShareButton
               url={shareUrl}
               title={org.name}
-              description={org.description || `Visit ${org.name} on ROBYNE`}
+              description={org.description || `Visit ${org.name} on ROBLYNE`}
               className="bg-white/15 border-white/50 text-white hover:bg-white/25 hover:border-white/70 hover:text-white rounded-sm focus-visible:ring-white/70"
             />
           </>

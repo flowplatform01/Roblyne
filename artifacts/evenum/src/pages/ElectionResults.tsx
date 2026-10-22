@@ -33,7 +33,7 @@ export default function ElectionResults() {
 
   usePageMeta(election ? {
     title: `${election.title} — Official Results`,
-    description: `View the official results for ${election.title}. Powered by ROBYNE.`,
+    description: `View the official results for ${election.title}. Powered by ROBLYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
     url: shareUrl,
   } : null);

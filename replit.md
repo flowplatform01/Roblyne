@@ -1,6 +1,6 @@
-# ROBYNE
+# ROBLYNE
 
-ROBYNE is a bilingual participation platform for organizations to run elections, events, ticketing, and campaigns.
+ROBLYNE is a bilingual participation platform for organizations to run elections, events, ticketing, and campaigns. The official customer-facing spelling is ROBLYNE; existing workspace, package, and seed-script identifiers are retained for compatibility.
 
 ## Run & Operate
 

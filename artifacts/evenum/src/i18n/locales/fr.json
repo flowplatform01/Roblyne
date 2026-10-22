@@ -63,7 +63,7 @@
     "system": "Système"
   },
   "auth": {
-    "signInToEvenum": "Connexion à ROBYNE",
+    "signInToEvenum": "Connexion à ROBLYNE",
     "enterDetails": "Entrez vos informations pour accéder à votre tableau de bord",
     "emailAddress": "Adresse e-mail",
     "password": "Mot de passe",
@@ -81,7 +81,7 @@
     "signInFailed": "Échec de la connexion",
     "checkCredentials": "Veuillez vérifier vos identifiants et réessayer.",
     "accountCreated": "Compte créé",
-    "welcomeToEvenum": "Bienvenue sur ROBYNE !",
+    "welcomeToEvenum": "Bienvenue sur ROBLYNE !",
     "registrationFailed": "Échec de l'inscription",
     "registrationError": "Un problème est survenu lors de la création de votre compte.",
     "emailValidation": "Veuillez entrer une adresse e-mail valide",
@@ -102,7 +102,7 @@
     "trendingNow": "Tendances actuelles",
     "recentActivity": "Activité récente",
     "enginesTitle": "Trois outils. Une seule plateforme.",
-    "enginesDescription": "ROBYNE réunit les outils dont les organisations ont besoin pour mobiliser leurs membres, gérer les présences et stimuler la participation.",
+    "enginesDescription": "ROBLYNE réunit les outils dont les organisations ont besoin pour mobiliser leurs membres, gérer les présences et stimuler la participation.",
     "votingTitle": "Vote & Élections",
     "votingDescription": "Organisez des élections sécurisées et professionnelles avec des postes classés, des profils de candidats et des résultats vérifiables en temps réel.",
     "createElection": "Créer une élection",
@@ -666,7 +666,7 @@
   },
   "support": {
     "needHelp": "Besoin d'aide ?",
-    "contactTeam": "Contactez l'équipe d'assistance ROBYNE.",
+    "contactTeam": "Contactez l'équipe d'assistance ROBLYNE.",
     "whatsapp": "WhatsApp",
     "helpCenter": "Centre d'aide"
   },

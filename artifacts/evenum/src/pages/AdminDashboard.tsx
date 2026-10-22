@@ -636,7 +636,7 @@ export default function AdminDashboard() {
                                         </AlertDialogTitle>
                                         <AlertDialogDescription>
                                           {u.is_platform_admin
-                                            ? `This removes ${u.name}'s ability to operate ROBYNE platform controls. At least one platform administrator must remain.`
+                                            ? `This removes ${u.name}'s ability to operate ROBLYNE platform controls. At least one platform administrator must remain.`
                                             : `This gives ${u.name} access to all platform-wide user, organization, finance, and settings controls.`}
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
