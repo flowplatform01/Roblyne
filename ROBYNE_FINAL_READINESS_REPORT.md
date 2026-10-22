@@ -124,6 +124,7 @@ The web pages identify these records as development samples; the application cam
 - `pnpm --filter @workspace/api-server run build` — passed.
 - Routed API smoke checks returned **200** for the upcoming election, live and ended election results, sample event/ticket types, and both sample campaigns.
 - Browser previews checked the homepage on mobile, upcoming election on mobile, active results on desktop and mobile, ended results on mobile, public event registration, both campaign participation flows, and the public organization profile.
+- Continuation verification on 22 October 2026 reran the workspace type check, all API tests (**17 passed**), lifecycle tests (**3 passed**), and both production builds successfully. Fresh public requests returned **200** for health, upcoming election detail/positions, active election detail/results, ended results, both sample events and ticket types, both sample campaigns, and the public organization profile. Desktop and mobile screenshots of the active results page showed the closing countdown and readable results. The anonymous browser's 401 responses were limited to authentication/protected requests.
 
 ### Not run or not verified
 
