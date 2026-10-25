@@ -124,7 +124,7 @@ export default function ElectionDetail() {
   const removeEligibleVoter = useRemoveEligibleVoter();
 
   const form = useForm<z.infer<typeof positionSchema>>({
-    resolver: zodResolver(positionSchema),
+    resolver: zodResolver(positionSchema as any),
     defaultValues: {
       title: "",
       description: "",
@@ -134,7 +134,7 @@ export default function ElectionDetail() {
   });
 
   const candidateForm = useForm<z.infer<typeof candidateSchema>>({
-    resolver: zodResolver(candidateSchema),
+    resolver: zodResolver(candidateSchema as any),
     defaultValues: {
       name: "",
       bio: "",

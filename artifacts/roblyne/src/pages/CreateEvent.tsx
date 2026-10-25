@@ -53,7 +53,7 @@ export default function CreateEvent() {
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
 
   const form = useForm<z.infer<typeof eventSchema>>({
-    resolver: zodResolver(eventSchema),
+    resolver: zodResolver(eventSchema as any),
     defaultValues: {
       orgId: initialOrgId,
       title: "",

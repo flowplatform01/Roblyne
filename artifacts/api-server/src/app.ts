@@ -119,6 +119,7 @@ app.use(
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       tableName: "session",
+      createTableIfMissing: true,
       pruneSessionInterval: 60 * 60, // prune expired sessions hourly
     }),
     secret: sessionSecret ?? "evenum-dev-secret",

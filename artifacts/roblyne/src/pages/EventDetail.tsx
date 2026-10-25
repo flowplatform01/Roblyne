@@ -170,7 +170,7 @@ export default function EventDetail() {
   const checkIn = useCheckInAttendee();
 
   const form = useForm<z.infer<typeof ticketTypeSchema>>({
-    resolver: zodResolver(ticketTypeSchema),
+    resolver: zodResolver(ticketTypeSchema as any),
     defaultValues: {
       name: "",
       description: "",

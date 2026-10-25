@@ -39,7 +39,7 @@ export default function CreateOrganization() {
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof orgSchema>>({
-    resolver: zodResolver(orgSchema),
+    resolver: zodResolver(orgSchema as any),
     defaultValues: {
       name: "",
       description: "",

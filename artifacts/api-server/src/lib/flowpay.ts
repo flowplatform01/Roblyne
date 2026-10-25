@@ -48,10 +48,11 @@ function getEnvironment(): FlowPayEnvironment {
 
 export function shouldUsePaymentSimulator(): boolean {
   if (process.env.NODE_ENV === "production") return false;
-  const configuredMode = process.env.EVENUM_PAYMENT_MODE?.trim().toLowerCase();
+  const configuredMode = process.env.ROBLYNE_PAYMENT_MODE?.trim().toLowerCase()
+    || process.env.EVENUM_PAYMENT_MODE?.trim().toLowerCase();
   if (!configuredMode || configuredMode === "simulation") return true;
   if (configuredMode === "flowpay") return false;
-  throw new Error("EVENUM_PAYMENT_MODE must be either simulation or flowpay");
+  throw new Error("ROBLYNE_PAYMENT_MODE must be either simulation or flowpay");
 }
 
 function getWebhookSecret(environment = getEnvironment()): string {
@@ -112,6 +113,7 @@ function normalizeTransaction(body: unknown, externalReference: string): FlowPay
       ?? root.payment
       ?? (root.status || root.externalReference ? root : data),
   );
+  const checkout = asRecord(root.checkout ?? data.checkout ?? transaction.checkout);
   return {
     id: firstString(transaction.id, transaction.transactionId, transaction.reference, root.id, root.transactionId),
     externalReference: firstString(
@@ -128,6 +130,9 @@ function normalizeTransaction(body: unknown, externalReference: string): FlowPay
         ?? root.paymentStatus,
     ),
     checkoutUrl: firstString(
+      checkout.url,
+      checkout.checkoutUrl,
+      checkout.sessionUrl,
       transaction.checkoutSessionUrl,
       transaction.checkoutUrl,
       transaction.sessionUrl,
@@ -178,7 +183,10 @@ export async function initializeFlowPayPayment(input: {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await fetch(`${config.baseUrl}/payments/initialize`, {
+      const endpoint = config.baseUrl.endsWith("/api/v1")
+        ? `${config.baseUrl}/payments/initialize`
+        : `${config.baseUrl}/api/v1/payments/initialize`;
+      const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

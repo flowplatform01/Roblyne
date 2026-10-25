@@ -58,7 +58,7 @@ export default function CreateElection() {
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
 
   const form = useForm<z.infer<typeof electionSchema>>({
-    resolver: zodResolver(electionSchema),
+    resolver: zodResolver(electionSchema as any),
     defaultValues: {
       orgId: initialOrgId,
       title: "",

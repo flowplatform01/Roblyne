@@ -5,13 +5,22 @@ import { registerMaintenanceSchedule, closeQueues, queueInfrastructureStatus } f
 import { closeRedis } from "./lib/redis";
 import { isS3ImageStorageConfigured } from "./lib/s3-image-storage";
 
-const rawPort = process.env["PORT"];
+import path from "node:path";
+import fs from "node:fs";
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
+if (!process.env.PORT || !process.env.DATABASE_URL) {
+  try {
+    const rootEnv = path.resolve(process.cwd(), "../../.env");
+    const fallbackEnv = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(rootEnv)) {
+      process.loadEnvFile(rootEnv);
+    } else if (fs.existsSync(fallbackEnv)) {
+      process.loadEnvFile(fallbackEnv);
+    }
+  } catch {}
 }
+
+const rawPort = process.env["PORT"] ?? "8080";
 
 const port = Number(rawPort);
 
@@ -26,7 +35,7 @@ if (process.env.NODE_ENV === "production" && !isS3ImageStorageConfigured()) {
   process.exit(1);
 }
 
-const server = app.listen(port, (err) => {
+const server = app.listen(port, "0.0.0.0", (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);

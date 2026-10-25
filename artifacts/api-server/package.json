@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "node -e \"process.env.NODE_ENV='development';require('child_process').execSync('pnpm run build',{stdio:'inherit',env:{...process.env,NODE_ENV:'development'}});require('child_process').execSync('node --enable-source-maps ./dist/index.mjs',{stdio:'inherit',env:{...process.env,NODE_ENV:'development'}})\"",
     "build": "node ./build.mjs",
     "build:worker": "node ./build.mjs --worker",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "start:worker": "node --enable-source-maps ./dist/worker.mjs",
-    "test": "node --experimental-strip-types --test src/lib/*.test.mjs",
+    "test": "node -e \"const files = require('fs').readdirSync('src/lib').filter(f => f.endsWith('.test.mjs')).map(f => 'src/lib/' + f); require('child_process').execSync('pnpm exec tsx --test ' + files.join(' '), { stdio: 'inherit' });\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

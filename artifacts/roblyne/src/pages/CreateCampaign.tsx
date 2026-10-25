@@ -59,7 +59,7 @@ export default function CreateCampaign() {
   const { data: organizations, isLoading: isOrgsLoading } = useListOrganizations();
 
   const form = useForm<z.infer<typeof campaignSchema>>({
-    resolver: zodResolver(campaignSchema),
+    resolver: zodResolver(campaignSchema as any),
     defaultValues: {
       orgId: initialOrgId,
       title: "",

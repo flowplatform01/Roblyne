@@ -5,17 +5,19 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "seed": "tsx ./seed-demo.ts",
-    "seed:robyne-samples": "tsx ./seed-robyne-samples.ts",
-    "seed:branding": "tsx ./seed-branding.ts",
-    "migrate:election-monetization": "tsx ./migrate-election-monetization.ts",
-    "perf:baseline": "tsx ./perf-baseline.ts",
-    "test:concurrency": "tsx ./concurrency-integrity.mjs",
-    "integrity": "tsx ./concurrency-integrity.ts",
+    "start:pg": "tsx ./start-postgres.ts",
+    "seed": "tsx --env-file=../.env ./seed-demo.ts",
+    "seed:robyne-samples": "tsx --env-file=../.env ./seed-robyne-samples.ts",
+    "seed:branding": "tsx --env-file=../.env ./seed-branding.ts",
+    "migrate:election-monetization": "tsx --env-file=../.env ./migrate-election-monetization.ts",
+    "perf:baseline": "tsx --env-file=../.env ./perf-baseline.ts",
+    "test:concurrency": "tsx --env-file=../.env ./concurrency-integrity.mjs",
+    "integrity": "tsx --env-file=../.env ./concurrency-integrity.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
+    "embedded-postgres": "16.14.0-beta.17",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "catalog:",
     "pg": "^8.13.3"

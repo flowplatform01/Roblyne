@@ -88,71 +88,97 @@ async function main() {
 
   console.log("  ✓ Removed placeholder orgs 4–7 and test users\n");
 
-  // ── 2. ENRICH EXISTING USERS ──────────────────────────────────────────────
-  console.log("👤 Enriching existing users...");
+  // ── 2. ENRICH / ENSURE BASELINE USERS ──────────────────────────────────────
+  console.log("👤 Ensuring baseline users...");
 
-  // Admin
-  await db.update(usersTable).set({
+  const upsertUser = async (user: { id: number; name: string; email: string; avatarUrl: string; passwordHash: string }) => {
+    await pool.query(
+      `INSERT INTO users (id, name, email, avatar_url, password_hash)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, avatar_url = EXCLUDED.avatar_url, password_hash = EXCLUDED.password_hash`,
+      [user.id, user.name, user.email, user.avatarUrl, user.passwordHash]
+    );
+  };
+
+  await upsertUser({
+    id: 9,
     name: "Admin",
     email: "admin@evenum.com",
     avatarUrl: avatar("Admin Evenum"),
     passwordHash: hash,
-  }).where(eq(usersTable.id, 9));
+  });
 
-  // Alex Rivera — City Council organizer
-  await db.update(usersTable).set({
+  await upsertUser({
+    id: 1,
     name: "Alex Rivera",
     email: "alex.rivera@citycouncil.org",
     avatarUrl: avatar("Alex Rivera"),
     passwordHash: hash,
-  }).where(eq(usersTable.id, 1));
+  });
 
-  // Jordan Lee — GreenTech organizer
-  await db.update(usersTable).set({
+  await upsertUser({
+    id: 2,
     name: "Jordan Lee",
     email: "jordan.lee@greentech.io",
     avatarUrl: avatar("Jordan Lee"),
     passwordHash: hash,
-  }).where(eq(usersTable.id, 2));
+  });
 
-  // Sam Chen — Alumni organizer
-  await db.update(usersTable).set({
+  await upsertUser({
+    id: 3,
     name: "Sam Chen",
     email: "sam.chen@alumni.edu",
     avatarUrl: avatar("Sam Chen"),
     passwordHash: hash,
-  }).where(eq(usersTable.id, 3));
+  });
 
-  console.log("  ✓ Updated Alex Rivera, Jordan Lee, Sam Chen\n");
+  await pool.query(`SELECT setval(pg_get_serial_sequence('users', 'id'), coalesce(max(id), 1)) FROM users`);
+  console.log("  ✓ Configured baseline users (Admin, Alex, Jordan, Sam)\n");
 
-  // ── 3. ENRICH EXISTING ORGANIZATIONS ─────────────────────────────────────
-  console.log("🏛  Enriching existing organizations...");
+  // ── 3. ENRICH / ENSURE BASELINE ORGANIZATIONS ─────────────────────────────
+  console.log("🏛  Ensuring baseline organizations...");
 
-  await db.update(organizationsTable).set({
+  const upsertOrg = async (org: { id: number; name: string; slug: string; description: string; logoUrl: string; website: string; ownerId: number }) => {
+    await pool.query(
+      `INSERT INTO organizations (id, name, slug, description, logo_url, website, owner_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, description = EXCLUDED.description, logo_url = EXCLUDED.logo_url, website = EXCLUDED.website, owner_id = EXCLUDED.owner_id`,
+      [org.id, org.name, org.slug, org.description, org.logoUrl, org.website, org.ownerId]
+    );
+  };
+
+  await upsertOrg({
+    id: 1,
     name: "City Council District 7",
     slug: "city-council-d7",
     description: "Official civic participation hub for District 7 residents. We run transparent elections, host town halls, and collect community feedback to shape local policy.",
     logoUrl: logo("D7", "1E3A5F"),
     website: "https://district7.gov",
-  }).where(eq(organizationsTable.id, 1));
+    ownerId: 1,
+  });
 
-  await db.update(organizationsTable).set({
+  await upsertOrg({
+    id: 2,
     name: "GreenTech Innovation Hub",
     slug: "greentech-hub",
     description: "A community of 3,000+ sustainable technology professionals driving the future of clean energy, circular economy, and climate solutions.",
     logoUrl: logo("GT", "1B7A4C"),
     website: "https://greentechhub.io",
-  }).where(eq(organizationsTable.id, 2));
+    ownerId: 2,
+  });
 
-  await db.update(organizationsTable).set({
+  await upsertOrg({
+    id: 3,
     name: "Alumni Association Network",
     slug: "alumni-network",
     description: "Connecting 45,000 graduates across 80 countries. We celebrate achievements, support career development, and fund the next generation of scholars.",
     logoUrl: logo("AA", "8B1A1A"),
     website: "https://alumninetwork.edu",
-  }).where(eq(organizationsTable.id, 3));
+    ownerId: 3,
+  });
 
-  console.log("  ✓ Updated City Council, GreenTech, Alumni orgs\n");
+  await pool.query(`SELECT setval(pg_get_serial_sequence('organizations', 'id'), coalesce(max(id), 1)) FROM organizations`);
+  console.log("  ✓ Configured baseline organizations (City Council, GreenTech, Alumni)\n");
 
   // ── 4. CREATE NEW USERS ───────────────────────────────────────────────────
   console.log("👥 Creating new users...");
