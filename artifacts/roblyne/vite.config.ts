@@ -118,6 +118,7 @@ export default defineConfig({
           proxy: {
             '/api': {
               target: localApiOrigin,
+              changeOrigin: true,
             },
           },
         }

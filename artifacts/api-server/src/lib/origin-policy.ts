@@ -32,6 +32,16 @@ export function parseCorsAllowedOrigins(value: string | undefined): Set<string> 
     }
     origins.add(origin);
   }
+
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://localhost:5173");
+    origins.add("http://127.0.0.1:5173");
+    origins.add("http://localhost:5174");
+    origins.add("http://127.0.0.1:5174");
+    origins.add("http://localhost:3000");
+    origins.add("http://127.0.0.1:3000");
+  }
+
   return origins;
 }
 
