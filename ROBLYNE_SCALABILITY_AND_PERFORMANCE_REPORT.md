@@ -34,7 +34,7 @@
 | Search bounded result sets | **PASS** | Per-pillar `LIMIT` (default 40, max 100) |
 | Discover cache invalidation | **PASS** | Writes + lifecycle sweeps invalidate Redis discover keys |
 | Scheduler lock (multi-API) | **PASS** | One API registers BullMQ repeat job via Redis lock |
-| Startup config validation | **PASS** | API/worker fail fast on inconsistent `QUEUE_REQUIRED` / `REDIS_REQUIRED` |
+| Startup config validation | **PASS** | API/worker derive queue behavior from Redis configuration without separate feature-toggle variables |
 | Graceful DB pool shutdown | **PASS** | API/worker call `closeDatabasePool()` on SIGTERM |
 | Connection pool configurability | **PASS** | `DATABASE_POOL_*` env vars |
 | Worker job retries | **PASS** | BullMQ attempts/backoff on repeatable job |
@@ -93,7 +93,7 @@ Record p50/p95/p99, error rate, PG `pg_stat_activity`, Redis memory, BullMQ lag.
 
 ## Next validation steps
 
-1. Deploy three services to staging with Redis + `QUEUE_REQUIRED=true`.
+1. Deploy three services to staging with Redis configured on API and worker.
 2. Run `perf-baseline` and capture report JSON.
 3. Seed ≥100k synthetic public events/elections row subset (disposable DB) and re-run discover/search latency.
 4. Enable PgBouncer transaction pooling if connection count approaches provider limits.

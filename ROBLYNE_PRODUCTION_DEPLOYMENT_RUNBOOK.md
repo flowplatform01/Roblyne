@@ -34,7 +34,7 @@ pnpm run migrate
 
 1. Create Redis at Iven and obtain the exact authenticated/TLS URL required by that provider as `REDIS_URL`.
 2. Configure the same value on API and worker. Queue name is `evenum-maintenance`; Redis keys are created automatically. Do not pre-create keys.
-3. This deployment requires Redis: API readiness fails without a fresh worker heartbeat (`REDIS_REQUIRED=true`, `QUEUE_REQUIRED=true`). Redis contains coordination/cache/queue state only; PostgreSQL remains the durable record.
+3. When Redis is configured in production, API readiness automatically requires a fresh worker heartbeat. Redis contains coordination/cache/queue state only; PostgreSQL remains the durable record.
 
 ## 4. Configure Render
 
@@ -80,7 +80,7 @@ pnpm run migrate
 
 - **Application failure:** roll back the affected Render service to its last successful release; check build/runtime logs and `/api/readyz`.
 - **Bad migration:** do not blindly roll back SQL. Keep the application at a compatible release and forward-fix with a reviewed migration after backup/DBA assessment.
-- **Worker stopped:** restore worker connectivity; API readiness intentionally stays unhealthy while `QUEUE_REQUIRED=true`.
+- **Worker stopped:** restore worker connectivity; when Redis is configured in production, API readiness intentionally stays unhealthy until the worker heartbeat returns.
 - **Redis/PostgreSQL failure:** restore the provider service and connection URL first; do not delete Redis keys or database data as a recovery shortcut.
 
 ## Environment ownership

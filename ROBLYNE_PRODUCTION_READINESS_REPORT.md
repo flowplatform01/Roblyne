@@ -23,4 +23,4 @@
 
 ## Starter deployment without a worker
 
-ROBLYNE can start without Redis and the separate worker when `REDIS_REQUIRED=false`, `QUEUE_REQUIRED=false`, and `DISABLE_LIFECYCLE_FALLBACK=false`. In that mode the API performs lifecycle sweeps in-process and Redis-backed caching, shared rate limits, and BullMQ maintenance jobs are unavailable. Do not configure `REDIS_URL` unless the worker is also deployed.
+ROBLYNE can start without Redis and the separate worker with no Redis-related environment variables configured. In that mode the API performs lifecycle sweeps in-process and Redis-backed caching, shared rate limits, and BullMQ maintenance jobs are unavailable. Do not configure `REDIS_URL` unless the worker is also deployed.

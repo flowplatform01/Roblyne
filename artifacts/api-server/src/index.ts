@@ -41,13 +41,11 @@ const server = app.listen(port, "0.0.0.0", (err) => {
 });
 
 function shouldRunInProcessLifecycleFallback(): boolean {
-  if (process.env.DISABLE_LIFECYCLE_FALLBACK === "true") return false;
   const redisUrl = process.env.REDIS_URL?.trim();
   if (process.env.NODE_ENV === "production" && redisUrl) {
     // Production with Redis expects the dedicated worker; avoid duplicate sweeps on every API replica.
     return false;
   }
-  if (process.env.QUEUE_REQUIRED === "true") return false;
   return true;
 }
 

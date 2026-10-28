@@ -5,6 +5,7 @@ import { getPrometheusMetrics } from "../lib/metrics";
 import { pingRedis } from "../lib/redis";
 import { queueInfrastructureStatus } from "../lib/jobs";
 import { isQueueReady } from "../lib/queue-readiness";
+import { redisConfigured } from "../lib/redis";
 
 const router: IRouter = Router();
 
@@ -31,7 +32,7 @@ router.get("/readyz", async (_req, res): Promise<void> => {
     return;
   }
 
-  const redisRequired = process.env.REDIS_REQUIRED === "true";
+  const redisRequired = process.env.NODE_ENV === "production" && redisConfigured;
   if (redis.configured && !redis.ok && redisRequired) {
     res.status(503).json({
       status: "not_ready",
@@ -42,7 +43,7 @@ router.get("/readyz", async (_req, res): Promise<void> => {
     return;
   }
 
-  const queueRequired = process.env.QUEUE_REQUIRED === "true";
+  const queueRequired = process.env.NODE_ENV === "production" && redisConfigured;
   if (!isQueueReady({ required: queueRequired, ...queue })) {
     res.status(503).json({
       status: "not_ready",

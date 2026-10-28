@@ -12,7 +12,6 @@ ROBLYNE is a bilingual participation platform for organizations to run elections
 - `ROBYNE_SEED_TARGET=development ROBYNE_SEED_SAMPLES=1 pnpm --filter @workspace/scripts run seed:robyne-samples` — add clearly labeled, non-destructive preview fixtures to the development database
 - Required env: `DATABASE_URL` — Postgres connection string
 - Optional env: `REDIS_URL` — enables shared rate limiting, discovery caching, and the maintenance queue
-- Optional env: `REDIS_REQUIRED=true` — makes readiness fail when Redis is unavailable
 - Production image storage: set `S3_ENDPOINT`, `S3_REGION` (use `auto` for Cloudflare R2), `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, and `S3_PUBLIC_BASE_URL` (the R2 public/custom-domain URL). `S3_FORCE_PATH_STYLE=true` is optional for providers that require path-style addressing.
 - Image uploads use authenticated presigned PUT URLs directly from the browser to S3/R2. Configure bucket CORS for the production app origin with `PUT` and the `Content-Type` request header.
 - `pnpm --filter @workspace/api-server run build:worker && pnpm --filter @workspace/api-server run start:worker` — run the independent maintenance worker when Redis is configured
@@ -40,7 +39,7 @@ ROBLYNE is a bilingual participation platform for organizations to run elections
 - Redis is optional and replaceable: it improves cross-instance rate limiting, short-lived public discovery caching, and maintenance scheduling without becoming a source of truth.
 - Lifecycle transitions have a database-safe in-process fallback when Redis is not configured or unavailable.
 - Long-running maintenance is available as a BullMQ worker process rather than being tied to the web request process.
-- Readiness checks the database and reports Redis degradation without taking the app offline unless `REDIS_REQUIRED=true`.
+- In production, configuring Redis makes readiness require Redis and the maintenance worker automatically.
 
 ## Product
 

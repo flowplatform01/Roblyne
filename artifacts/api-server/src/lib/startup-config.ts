@@ -23,16 +23,6 @@ export function validateApiStartupConfig(): void {
     process.exit(1);
   }
 
-  if (process.env.QUEUE_REQUIRED === "true" && !redisConfigured) {
-    logger.fatal("QUEUE_REQUIRED=true but REDIS_URL is not configured");
-    process.exit(1);
-  }
-
-  if (process.env.REDIS_REQUIRED === "true" && !redisConfigured) {
-    logger.fatal("REDIS_REQUIRED=true but REDIS_URL is not configured");
-    process.exit(1);
-  }
-
   if (isProduction && !redisConfigured) {
     logger.warn(
       "REDIS_URL is not set in production. Shared rate limits, discovery cache, and the maintenance worker will not run across instances.",

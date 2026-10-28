@@ -11,12 +11,6 @@ services:
         value: "22.12.0"
       - key: NODE_ENV
         value: production
-      - key: REDIS_REQUIRED
-        value: "false"
-      - key: QUEUE_REQUIRED
-        value: "false"
-      - key: DISABLE_LIFECYCLE_FALLBACK
-        value: "false"
       - key: DATABASE_URL
         sync: false
       - key: SESSION_SECRET

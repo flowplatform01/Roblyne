@@ -143,7 +143,7 @@ The repository’s `replit.md` documents the workspace setup. For local developm
 1. Use Node.js 24 and pnpm; install the workspace dependencies with `pnpm install`.
 2. Configure a PostgreSQL `DATABASE_URL` and a strong `SESSION_SECRET`. Use the intended development database; do not point the sample seed at production.
 3. For platform-admin bootstrap, configure `PLATFORM_ADMIN_BOOTSTRAP_SECRET` through the environment’s secrets manager.
-4. Redis is optional for local development. `REDIS_URL` enables shared rate limiting, discovery caching, and the maintenance queue; `REDIS_REQUIRED=true` makes readiness fail if Redis is unavailable.
+4. Redis is optional for local development. `REDIS_URL` enables shared rate limiting, discovery caching, and the maintenance queue; production readiness automatically requires Redis and the worker when Redis is configured.
 5. Local image uploads require the S3/R2 settings documented in `replit.md` (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, access/secret keys, and public base URL) and a bucket CORS rule permitting the application origin, `PUT`, and `Content-Type`.
 6. Keep payments in simulation until the provider contract is verified. FlowPay requires an environment-specific API base URL, client ID, public key, secret key, and webhook secret (`FLOWPAY_<ENV>_*` variables); production mode is gated by `NODE_ENV=production`. No FlowPay credentials were available in this workspace.
 7. When Redis is configured, build and run the maintenance worker with the commands in `replit.md`. Redis is not the source of truth.

@@ -147,8 +147,6 @@ Never reuse this code as a user password or publish it in documentation.
 | `S3_REGION` | Optional | S3 region; defaults to `auto`, suitable for R2. |
 | `S3_FORCE_PATH_STYLE` | Optional | Set `true` only for providers requiring path-style addressing; defaults to `false`. |
 | `REDIS_URL` | Optional | Redis connection for shared rate limiting, discovery caching, and BullMQ scheduling. |
-| `REDIS_REQUIRED` | Optional | Set `true` if readiness must fail when configured Redis is unavailable. Defaults to `false`. |
-| `QUEUE_REQUIRED` | Optional | Set `true` when the maintenance worker must be healthy for readiness. |
 | `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated HTTP(S) origins with no path. Prefer same-origin `/api` routing so session cookies work without cross-origin configuration. |
 | `LOCAL_API_ORIGIN` | Optional, local Vite only | Local API proxy destination; defaults to `http://127.0.0.1:8080`. |
 | `API_BASE_URL` | Optional | API origin plus `/api`, used by the production web server for entity-specific link-preview requests. Example shape: `https://your-domain.example/api`. |
@@ -235,7 +233,7 @@ pnpm --filter @workspace/api-server run build:worker
 NODE_ENV=production pnpm --filter @workspace/api-server run start:worker
 ```
 
-Run one worker alongside the API service. Set `QUEUE_REQUIRED=true` if the deployment should not be considered ready without it. Without Redis, the API has an in-process lifecycle-sweep fallback.
+Run one worker alongside the API service whenever `REDIS_URL` is configured in production. Without Redis, the API has an in-process lifecycle-sweep fallback.
 
 ## Replit-specific and external-service notes
 

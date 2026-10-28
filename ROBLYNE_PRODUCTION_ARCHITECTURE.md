@@ -46,12 +46,12 @@ flowchart LR
 - **Health:** `GET /api/healthz` (liveness), `GET /api/readyz` (DB + optional Redis/queue), `GET /api/metrics` (Prometheus text).
 - **Maintenance scheduling:** on startup, the API instance that holds Redis scheduler lock `evenum:maintenance:scheduler-lock` registers BullMQ repeatable job `lifecycle-sweep` when `REDIS_URL` is set (`INSTANCE_ID` optional for lock ownership).
 - **Discover cache invalidation:** catalog writes and lifecycle sweeps call `invalidateDiscoverCache()` (Redis `SCAN` + `DEL` on `evenum:discover:v2:*`).
-- **In-process lifecycle fallback:** only when Redis is absent, or non-production without `QUEUE_REQUIRED` / `DISABLE_LIFECYCLE_FALLBACK` (see `src/index.ts`).
+- **In-process lifecycle fallback:** when Redis is absent. Production automatically assigns lifecycle processing to the worker when Redis is configured (see `src/index.ts`).
 
 ### Background worker (`dist/worker.mjs`)
 
 - **Verified job:** `lifecycle-sweep` on queue `evenum-maintenance` → `sweepExpiredLifecycles()` (elections → `ended`, campaigns → `ended`, published events past `endsAt` → `completed`).
-- **Heartbeat:** Redis key `evenum:maintenance:worker:heartbeat` (TTL 45s); API `/api/readyz` uses this when `QUEUE_REQUIRED=true`.
+- **Heartbeat:** Redis key `evenum:maintenance:worker:heartbeat` (TTL 45s); API `/api/readyz` uses this automatically in production when Redis is configured.
 - **Health:** HTTP `WORKER_HEALTH_PORT` (default **8091**), paths `/healthz` and `/`.
 - **Requires:** `REDIS_URL`, `DATABASE_URL` (via `@workspace/db` import in lifecycle sweep).
 - **No email/notification jobs** — there is no mail provider in the codebase (verified by route/lib search).
@@ -76,9 +76,9 @@ flowchart LR
 | BullMQ maintenance queue | `evenum-maintenance` | No (fallback sweep without Redis) |
 | Rate limiting | Custom store on `express-rate-limit` prefixes `evenum:ratelimit:*` | No (per-process fallback map) |
 | Discover cache | Keys `evenum:discover:v2:…`, TTL 10s | No (DB fallback) |
-| Worker heartbeat | `evenum:maintenance:worker:heartbeat` | Only if `QUEUE_REQUIRED=true` |
+| Worker heartbeat | `evenum:maintenance:worker:heartbeat` | When Redis is configured in production |
 
-`REDIS_REQUIRED=true` fails readiness when Redis is configured but unreachable. Cache/rate-limit failures degrade without blocking auth.
+When Redis is configured in production, readiness fails when Redis is unreachable. Cache/rate-limit failures degrade without blocking auth.
 
 ## PostgreSQL
 

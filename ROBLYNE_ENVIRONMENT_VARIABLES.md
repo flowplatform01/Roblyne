@@ -39,10 +39,9 @@ Placeholders only — never commit secrets. Copy from `.env.example` for local w
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `REDIS_URL` | unset | Redis connection URL for cache, rate limits, BullMQ. |
-| `REDIS_REQUIRED` | `false` | If `true`, `/api/readyz` fails when Redis is configured but down. |
-| `QUEUE_REQUIRED` | `false` | If `true`, readiness requires healthy maintenance worker heartbeat. |
-| `DISABLE_LIFECYCLE_FALLBACK` | `false` | If `true`, API never runs in-process lifecycle sweeps. |
 | `INSTANCE_ID` | Optional | Stable id for BullMQ scheduler lock across API restarts. |
+
+In production, `REDIS_URL` is the only queue switch: when it is absent, the API performs lifecycle maintenance in-process; when it is present, API readiness requires Redis and a fresh worker heartbeat, and the dedicated worker owns lifecycle processing.
 
 ### Object storage (production API)
 

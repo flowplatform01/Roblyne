@@ -38,12 +38,9 @@ S3_BUCKET=<bucket name>
 S3_ACCESS_KEY_ID=<access key>
 S3_SECRET_ACCESS_KEY=<secret key>
 S3_PUBLIC_BASE_URL=<public bucket URL>
-REDIS_REQUIRED=false
-QUEUE_REQUIRED=false
-DISABLE_LIFECYCLE_FALLBACK=false
 ```
 
-Set `S3_REGION` and `S3_FORCE_PATH_STYLE=true` only if your provider requires them. Do **not** add `REDIS_URL` now. The start command runs tracked Drizzle migrations before API startup, so no separate Render pre-deploy field or local migration step is required. Deploy and confirm the migration and health check succeed.
+Set `S3_REGION` and `S3_FORCE_PATH_STYLE=true` only if your provider requires them. Do **not** add `REDIS_URL` now. ROBLYNE automatically uses its safe in-process lifecycle maintenance mode when Redis is absent. The start command runs tracked Drizzle migrations before API startup, so no separate Render pre-deploy field or local migration step is required. Deploy and confirm the migration and health check succeed.
 
 ## 2. Create the static frontend
 
@@ -107,7 +104,7 @@ Provision Redis first, then create a normal **Web Service** (not Render Backgrou
 
 Set `NODE_VERSION=22.12.0`, `NODE_ENV=production`, `DATABASE_URL`, and `REDIS_URL` on the worker. Render supplies `PORT`; the worker binds its health endpoint to that port automatically.
 
-Set the same `REDIS_URL` on API, then change its values to `REDIS_REQUIRED=true`, `QUEUE_REQUIRED=true`, and `DISABLE_LIFECYCLE_FALLBACK=true`. Deploy worker first, wait for its health check, then redeploy API.
+Set the same `REDIS_URL` on API. In production, ROBLYNE automatically stops its in-process lifecycle fallback when Redis is configured, requires Redis plus a fresh worker heartbeat for API readiness, and lets the dedicated worker own lifecycle processing. Deploy worker first, wait for its health check, then redeploy API.
 
 ## Payments
 
