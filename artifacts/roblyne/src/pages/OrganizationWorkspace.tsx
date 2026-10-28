@@ -46,6 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
+import { apiUrl } from "@/lib/api-url";
 import { WorkspaceLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -1204,8 +1205,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
   };
 
   const handleExport = () => {
-    const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-    window.open(`${API_BASE}/api/organizations/${orgId}/finance/export`);
+    window.open(apiUrl(`/api/organizations/${orgId}/finance/export`));
   };
 
   const handleWithdrawal = (event: React.FormEvent) => {

@@ -19,6 +19,7 @@ import {
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Layout } from '@/components/layout/Layout';
 import { PlatformAdminLayout } from '@/components/layout/PlatformAdminLayout';
+import { apiUrl } from '@/lib/api-url';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -1002,8 +1003,7 @@ function FinanceAdminSection() {
   });
 
   const handleAdminExport = () => {
-    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-    window.open(`${base}/api/admin/finance/export`);
+    window.open(apiUrl('/api/admin/finance/export'));
   };
 
   const kpis = [

@@ -6,12 +6,12 @@
 | Essential initialization | PASS (code review) | No required system records are assumed at startup. Platform settings have safe defaults and are created on authorized administration; commission defaults use conflict-safe insertion only when the finance configuration route is used. |
 | Demo data exclusion | PASS (code review) | Demo scripts are explicit `scripts` package commands and are absent from Render build/start/pre-deploy commands. |
 | First administrator | PASS (code review) | Authenticated bootstrap requires a 32+ byte operator secret, takes a PostgreSQL advisory transaction lock, and rejects a second administrator. |
-| API/worker separation | PASS (code review) | API starts `dist/index.mjs`; worker separately starts `dist/worker.mjs` and consumes `evenum-maintenance`. Production API disables in-process lifecycle fallback with Redis. |
+| API/worker separation | PASS (code review) | API starts `dist/index.mjs`; worker separately starts `dist/worker.mjs` and consumes `evenum-maintenance`. The current starter deployment leaves Redis unset and safely uses the API lifecycle fallback until the worker is funded. |
 | Redis initialization | PASS (code review) | API registers the repeatable queue schedule; worker creates a heartbeat. No manual keys are needed. |
 | Fresh database end-to-end test | NOT TESTED | No disposable PostgreSQL/Redis service was available in this environment. Run the first-deployment sequence against isolated Iven test services. |
 | Second deployment test | NOT TESTED | Requires the preceding isolated test environment; rerun the same migration/deploy sequence and verify no duplicate migration or records. |
 | Typecheck, API/worker build, API tests | PASS | `pnpm run typecheck` passed across all workspace packages; API and worker production bundles built; 27 API tests passed. These ran on local Node 18.17.0 with an engine warning; Render must use Node 20.19+ (`.node-version` pins 22.12.0). |
-| Frontend production build | PARTIAL | Vite transformed 3,130 modules and reached final rendering, but local Windows esbuild exited with an out-of-memory error. Verify on Render or a machine with more available memory. |
+| Static frontend production build | PASS | `pnpm run build:render:web` completed successfully with a production-style `VITE_API_URL`. Vite produced the static PWA assets. It reports non-blocking source-map warnings and chunks above 500 kB. |
 
 ## Required verification procedure
 

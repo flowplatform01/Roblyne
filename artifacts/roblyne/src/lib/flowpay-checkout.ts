@@ -13,7 +13,7 @@ export interface FlowPayCheckoutPayload {
 const SHEET_ID = "roblyne-flowpay-checkout-sheet";
 
 function apiBase(): string {
-  return import.meta.env.BASE_URL.replace(/\/$/, "");
+  return apiUrl("").replace(/\/$/, "");
 }
 
 /**
@@ -244,3 +244,4 @@ export function openFlowPayCheckout(options: FlowPayCheckoutPayload): boolean {
 
   return true;
 }
+import { apiUrl } from '@/lib/api-url';

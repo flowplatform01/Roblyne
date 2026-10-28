@@ -23,7 +23,6 @@ function truncate(value: string | undefined): string | undefined {
 export function reportClientDiagnostic(input: ClientDiagnostic): void {
   if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
 
-  const basePath = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
   const payload = {
     event: input.event,
     message: truncate(input.message) ?? 'Unknown client error',
@@ -32,7 +31,7 @@ export function reportClientDiagnostic(input: ClientDiagnostic): void {
     route: truncate(input.route ?? window.location.pathname),
   };
 
-  void fetch(`${basePath}/api/diagnostics/client`, {
+  void fetch(apiUrl('/api/diagnostics/client'), {
     method: 'POST',
     credentials: 'include',
     headers: { 'content-type': 'application/json' },
@@ -52,3 +51,4 @@ export function describeUnknownError(reason: unknown): string {
     return 'Unknown promise rejection';
   }
 }
+import { apiUrl } from '@/lib/api-url';

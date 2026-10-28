@@ -1,6 +1,6 @@
 # ROBLYNE production deployment runbook
 
-This guide deploys the actual three-process architecture: `roblyne-web`, `roblyne-api`, and `roblyne-worker`. `render.yaml` is the authoritative Render Blueprint; it intentionally does not create PostgreSQL or Redis because the intended Iven services and their connection details have not been provided.
+This guide covers the future three-process architecture. For the current low-cost deployment (static frontend plus API, without Redis or worker), follow `ROBLYNE_RENDER_DEPLOYMENT_GUIDE.md`.
 
 ## 1. Prepare the repository
 
@@ -27,7 +27,7 @@ pnpm --filter @workspace/api-server run test
 pnpm run migrate
 ```
 
-4. The API Blueprint runs that command as its one pre-deploy step. It runs before each API release, is tracked by Drizzle, and does not reset or seed data. Use one API service only for this step; workers must never run migrations.
+4. The current single-instance API start command runs that command before each API release. It is tracked by Drizzle and does not reset or seed data. Workers must never run migrations. When scaling API replicas later, move migrations to one controlled release step to prevent concurrent migration attempts.
 5. The migrations create the tables, indexes, and constraints. No extension requirement is present in the committed migration SQL. Verify the pre-deploy log says the migration completed without printing its connection string.
 
 ## 3. Prepare Redis
@@ -61,9 +61,9 @@ pnpm run migrate
 
 ## 6. First deployment and initialization
 
-1. Deploy API first. Its pre-deploy migration must pass before the process starts. Check `GET https://api.<your-domain>/api/readyz`; it remains `503` until the worker heartbeat exists.
-2. Deploy the worker and confirm its logs show its health listener and a Redis connection. Wait up to 15 seconds for its heartbeat.
-3. Recheck API readiness, then deploy web. Confirm `https://app.<your-domain>/` loads and `https://app.<your-domain>/api/healthz` is proxied successfully.
+1. Deploy the worker first and confirm its logs show its health listener and a Redis connection. Wait up to 15 seconds for its heartbeat. It does not depend on the API process.
+2. Deploy API. Its pre-deploy migration must pass before the process starts, and its readiness check can now see the worker heartbeat. Check `GET https://api.<your-domain>/api/readyz`.
+3. Deploy web. Confirm `https://app.<your-domain>/` loads and `https://app.<your-domain>/api/healthz` is proxied successfully.
 4. Register the intended first administrator through the normal UI, sign in, then complete the platform-admin bootstrap using the one-time `PLATFORM_ADMIN_BOOTSTRAP_SECRET`. It can succeed only when no administrator exists. Remove or rotate that secret immediately afterward.
 5. No development accounts, organizations, samples, or demo transactions are created by migrations or deployment.
 

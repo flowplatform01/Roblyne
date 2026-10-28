@@ -10,8 +10,7 @@ Placeholders only — never commit secrets. Copy from `.env.example` for local w
 | `BASE_PATH` | Yes | URL prefix; use `/` at domain root. |
 | `NODE_ENV` | Runtime | `development` or `production`. |
 | `LOCAL_API_ORIGIN` | Dev only | Vite proxy target for `/api` (default `http://127.0.0.1:8080`). |
-| `API_BASE_URL` | Optional prod | Public API base including `/api` for OG/link previews when hosts differ. Example: `https://app.example.com/api`. |
-| `API_PROXY_URL` | Required on Render web | API origin used server-side to proxy browser `/api/*` requests. Set `https://api.<your-domain>`; it is not bundled into browser assets. |
+| `VITE_API_URL` | Required production build | Public API origin used by the static browser bundle. Example: `https://api.example.com`. This is public, not a secret. |
 
 **Must not** expose to browser bundles: `DATABASE_URL`, `SESSION_SECRET`, Redis URL, FlowPay secret keys, S3 secret keys.
 
@@ -79,11 +78,11 @@ Legacy unprefixed `FLOWPAY_*` names remain as fallbacks (see `SETUP.md`).
 |----------|----------|-------------|
 | `REDIS_URL` | Yes | BullMQ + heartbeat. |
 | `DATABASE_URL` | Yes | Lifecycle sweep writes. |
-| `WORKER_HEALTH_PORT` | Optional | Health HTTP port (default `8091`). |
+| `WORKER_HEALTH_PORT` | Local-only optional | Health HTTP port when `PORT` is not supplied (default `8091`). Render Web Service deployments use the Render-provided `PORT`. |
 | `NODE_ENV` | Recommended | Set `production` in deployed environments. |
 | `LOG_LEVEL` | Optional | Same as API. |
 
-Worker does **not** need `SESSION_SECRET` or S3 credentials unless future jobs require them.
+Worker does **not** need `SESSION_SECRET` or S3 credentials unless future jobs require them. It is optional for the current starter Render deployment; do not set `REDIS_URL` on API until the worker is deployed.
 
 ## Harness / tooling only
 

@@ -14,6 +14,7 @@ import { Loader2, User, Lock, Bell, Globe, Save, AlertTriangle } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiUrl } from "@/lib/api-url";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -60,7 +61,7 @@ export default function Settings() {
         body.avatarUrl = avatarValue ?? null;
       }
 
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(apiUrl('/api/auth/me'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -95,7 +96,7 @@ export default function Settings() {
     setIsSavingPassword(true);
     
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(apiUrl('/api/auth/change-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -1,45 +1,29 @@
 services:
-  # A web service is required instead of a static site because server.mjs
-  # provides same-origin API proxying and dynamic Open Graph pages.
-  - type: web
-    name: roblyne-web
-    runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:web
-    startCommand: node artifacts/roblyne/server.mjs
-    healthCheckPath: /
-    maxShutdownDelaySeconds: 30
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: BASE_PATH
-        value: /
-      - key: API_PROXY_URL
-        sync: false
-
   - type: web
     name: roblyne-api
     runtime: node
     buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:api
-    preDeployCommand: pnpm run migrate
-    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    startCommand: pnpm run migrate && node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/readyz
     maxShutdownDelaySeconds: 60
     envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
       - key: NODE_ENV
         value: production
       - key: REDIS_REQUIRED
-        value: "true"
+        value: "false"
       - key: QUEUE_REQUIRED
-        value: "true"
+        value: "false"
       - key: DISABLE_LIFECYCLE_FALLBACK
-        value: "true"
+        value: "false"
       - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
         sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: PLATFORM_ADMIN_BOOTSTRAP_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: S3_ENDPOINT
         sync: false
@@ -52,13 +36,44 @@ services:
       - key: S3_PUBLIC_BASE_URL
         sync: false
 
-  - type: worker
+  - type: web
+    name: roblyne-web
+    runtime: static
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:web
+    staticPublishPath: artifacts/roblyne/dist/public
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      - key: VITE_API_URL
+        sync: false
+    headers:
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
     name: roblyne-worker
     runtime: node
     buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:worker
     startCommand: node --enable-source-maps artifacts/api-server/dist/worker.mjs
+    healthCheckPath: /healthz
     maxShutdownDelaySeconds: 60
     envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL

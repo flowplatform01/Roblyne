@@ -2,6 +2,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { UploadCloud, X, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
+import { apiUrl } from '@/lib/api-url';
 
 export interface ImageUploadProps {
   value?: string;
@@ -60,8 +61,7 @@ export function ImageUpload({
     setIsUploading(true);
 
     try {
-      const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-      const presignResponse = await fetch(`${basePath}/api/uploads/presign`, {
+      const presignResponse = await fetch(apiUrl('/api/uploads/presign'), {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },

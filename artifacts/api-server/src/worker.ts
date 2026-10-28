@@ -24,7 +24,7 @@ validateWorkerStartupConfig();
 
 const redisUrl = process.env.REDIS_URL!.trim();
 
-const healthPort = Number(process.env.WORKER_HEALTH_PORT ?? "8091");
+const healthPort = Number(process.env.PORT ?? process.env.WORKER_HEALTH_PORT ?? "8091");
 if (!Number.isFinite(healthPort) || healthPort <= 0) {
   logger.fatal({ WORKER_HEALTH_PORT: process.env.WORKER_HEALTH_PORT }, "Invalid WORKER_HEALTH_PORT");
   process.exit(1);

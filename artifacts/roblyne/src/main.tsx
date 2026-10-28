@@ -4,8 +4,12 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import '@/i18n';
 import App from './App';
 import { describeUnknownError, reportClientDiagnostic } from '@/lib/diagnostics';
+import { setBaseUrl } from '@workspace/api-client-react';
+import { getApiUrl } from '@/lib/api-url';
 
 import './index.css';
+
+setBaseUrl(getApiUrl());
 
 window.addEventListener('error', (event) => {
   reportClientDiagnostic({

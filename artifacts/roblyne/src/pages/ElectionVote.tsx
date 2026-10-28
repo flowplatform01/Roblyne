@@ -29,6 +29,7 @@ import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { BallotLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
+import { apiUrl } from "@/lib/api-url";
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -87,8 +88,7 @@ export default function ElectionVote() {
   const positionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-    fetch(`${base}/api/admin/platform-settings/public`)
+    fetch(apiUrl('/api/admin/platform-settings/public'))
       .then(res => res.ok ? res.json() : null)
       .then(settings => {
         if (settings?.paymentMode === 'amount_first' || settings?.paymentMode === 'quantity_first') {
