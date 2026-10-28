@@ -11,6 +11,7 @@ Placeholders only — never commit secrets. Copy from `.env.example` for local w
 | `NODE_ENV` | Runtime | `development` or `production`. |
 | `LOCAL_API_ORIGIN` | Dev only | Vite proxy target for `/api` (default `http://127.0.0.1:8080`). |
 | `API_BASE_URL` | Optional prod | Public API base including `/api` for OG/link previews when hosts differ. Example: `https://app.example.com/api`. |
+| `API_PROXY_URL` | Required on Render web | API origin used server-side to proxy browser `/api/*` requests. Set `https://api.<your-domain>`; it is not bundled into browser assets. |
 
 **Must not** expose to browser bundles: `DATABASE_URL`, `SESSION_SECRET`, Redis URL, FlowPay secret keys, S3 secret keys.
 

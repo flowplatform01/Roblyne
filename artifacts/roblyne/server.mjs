@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist/pu
 const port = Number(process.env.PORT ?? 22244);
 const basePath = normalizeBasePath(process.env.BASE_PATH ?? "/");
 const configuredApiBase = process.env.API_BASE_URL?.replace(/\/$/, "");
+const apiProxyUrl = process.env.API_PROXY_URL?.replace(/\/$/, "");
 
 const botRegex =
   /WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|ia_archiver|Pinterestbot|redditbot|bufferbot|iframely|Googlebot|Applebot|vkShare|MicrosoftPreview|SkypeUriPreview|nuzzel|SeznamBot|Yahoo.*Slurp|DuckDuckBot/i;
@@ -54,6 +55,53 @@ async function fetchJson(base, route, timeoutMs) {
     return await response.json();
   } catch {
     return null;
+  }
+}
+
+async function proxyApi(req, res) {
+  if (!apiProxyUrl) {
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "API proxy is not configured" }));
+    return;
+  }
+
+  const target = new URL(req.url ?? "/api", apiProxyUrl);
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value === undefined || name === "host" || name === "connection") continue;
+    headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+  }
+  headers.set("x-forwarded-host", String(req.headers.host ?? ""));
+  headers.set("x-forwarded-proto", "https");
+
+  try {
+    const response = await fetch(target, {
+      method: req.method,
+      headers,
+      body: req.method === "GET" || req.method === "HEAD" ? undefined : req,
+      duplex: "half",
+    });
+    const responseHeaders = {};
+    response.headers.forEach((value, name) => {
+      if (name !== "transfer-encoding" && name !== "connection") responseHeaders[name] = value;
+    });
+    const setCookies = response.headers.getSetCookie?.();
+    if (setCookies?.length) responseHeaders["set-cookie"] = setCookies;
+    res.writeHead(response.status, responseHeaders);
+    if (!response.body) {
+      res.end();
+      return;
+    }
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(value);
+    }
+    res.end();
+  } catch {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "API is unavailable" }));
   }
 }
 
@@ -244,6 +292,11 @@ createServer(async (req, res) => {
     const pathname = basePath && rawPath.startsWith(basePath)
       ? rawPath.slice(basePath.length) || "/"
       : rawPath;
+
+    if (pathname === "/api" || pathname.startsWith("/api/")) {
+      await proxyApi(req, res);
+      return;
+    }
 
     if (isBot(req.headers["user-agent"])) {
       const route = parseRoute(pathname);

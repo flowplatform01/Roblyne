@@ -1,0 +1,67 @@
+services:
+  # A web service is required instead of a static site because server.mjs
+  # provides same-origin API proxying and dynamic Open Graph pages.
+  - type: web
+    name: roblyne-web
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:web
+    startCommand: node artifacts/roblyne/server.mjs
+    healthCheckPath: /
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BASE_PATH
+        value: /
+      - key: API_PROXY_URL
+        sync: false
+
+  - type: web
+    name: roblyne-api
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:api
+    preDeployCommand: pnpm run migrate
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/readyz
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REDIS_REQUIRED
+        value: "true"
+      - key: QUEUE_REQUIRED
+        value: "true"
+      - key: DISABLE_LIFECYCLE_FALLBACK
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PLATFORM_ADMIN_BOOTSTRAP_SECRET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+
+  - type: worker
+    name: roblyne-worker
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:worker
+    startCommand: node --enable-source-maps artifacts/api-server/dist/worker.mjs
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
