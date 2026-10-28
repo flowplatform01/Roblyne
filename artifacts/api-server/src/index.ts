@@ -3,7 +3,8 @@ import { logger } from "./lib/logger";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { registerMaintenanceSchedule, closeQueues, queueInfrastructureStatus } from "./lib/jobs";
 import { closeRedis } from "./lib/redis";
-import { isS3ImageStorageConfigured } from "./lib/s3-image-storage";
+import { validateApiStartupConfig } from "./lib/startup-config";
+import { closeDatabasePool } from "@workspace/db";
 
 import path from "node:path";
 import fs from "node:fs";
@@ -28,12 +29,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-if (process.env.NODE_ENV === "production" && !isS3ImageStorageConfigured()) {
-  logger.fatal(
-    "S3-compatible image storage is not configured. Set S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and S3_PUBLIC_BASE_URL before starting production.",
-  );
-  process.exit(1);
-}
+validateApiStartupConfig();
 
 const server = app.listen(port, "0.0.0.0", (err) => {
   if (err) {
@@ -44,10 +40,24 @@ const server = app.listen(port, "0.0.0.0", (err) => {
   logger.info({ port }, "Server listening");
 });
 
+function shouldRunInProcessLifecycleFallback(): boolean {
+  if (process.env.DISABLE_LIFECYCLE_FALLBACK === "true") return false;
+  const redisUrl = process.env.REDIS_URL?.trim();
+  if (process.env.NODE_ENV === "production" && redisUrl) {
+    // Production with Redis expects the dedicated worker; avoid duplicate sweeps on every API replica.
+    return false;
+  }
+  if (process.env.QUEUE_REQUIRED === "true") return false;
+  return true;
+}
+
 void (async () => {
-  const queued = await registerMaintenanceSchedule();
-  const queueStatus = queued ? await queueInfrastructureStatus() : null;
-  if (queued && queueStatus?.workerHealthy) return;
+  await registerMaintenanceSchedule();
+
+  if (!shouldRunInProcessLifecycleFallback()) {
+    logger.info("In-process lifecycle sweep disabled; Redis worker or request-time checks handle transitions");
+    return;
+  }
 
   // Safe single-process fallback for local development or environments without Redis.
   const runFallbackSweep = async () => {
@@ -69,8 +79,24 @@ async function shutdown(signal: string): Promise<void> {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await closeQueues();
   await closeRedis();
+  await closeDatabasePool();
   process.exit(0);
 }
 
 process.once("SIGTERM", () => void shutdown("SIGTERM"));
 process.once("SIGINT", () => void shutdown("SIGINT"));
+
+// Redis/BullMQ transient failures must not take down the HTTP process.
+process.on("unhandledRejection", (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  if (
+    message.includes("max retries per request")
+    || message.includes("ECONNRESET")
+    || message.includes("ECONNREFUSED")
+    || message.includes("Connection is closed")
+  ) {
+    logger.warn({ err: reason }, "Unhandled Redis/network rejection absorbed by API");
+    return;
+  }
+  logger.error({ err: reason }, "Unhandled promise rejection");
+});

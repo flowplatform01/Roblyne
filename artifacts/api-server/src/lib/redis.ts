@@ -3,7 +3,9 @@ import { logger } from "./logger";
 
 const redisUrl = process.env.REDIS_URL?.trim();
 export const MAINTENANCE_WORKER_HEARTBEAT_KEY = "evenum:maintenance:worker:heartbeat";
+export const MAINTENANCE_SCHEDULER_LOCK_KEY = "evenum:maintenance:scheduler-lock";
 export const MAINTENANCE_WORKER_HEARTBEAT_TTL_SECONDS = 45;
+export const MAINTENANCE_SCHEDULER_LOCK_TTL_SECONDS = 120;
 let client: Redis | null = null;
 let connectPromise: Promise<Redis> | null = null;
 let unavailableUntil = 0;

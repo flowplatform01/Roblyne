@@ -20,11 +20,41 @@ import {
 import { requireAuth } from "../middlewares/auth";
 import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middlewares/orgAccess";
 import { getPlatformCurrency, isPlatformCurrencySupported, recordTransaction } from "../lib/commission-engine";
-import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
+import {
+  buildPaymentInitializationResponse,
+  createPaymentIntent,
+  failPaymentIntent,
+  initializePaymentIntent,
+} from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 import { canViewElectionResults } from "../lib/election-access";
+import { invalidateDiscoverCache } from "../lib/discover-cache";
+import { normalizeCameroonPhone } from "../lib/phone";
 
 const router: IRouter = Router();
+
+async function resumePendingElectionPayment(
+  res: import("express").Response,
+  electionId: number,
+  voterIdentifier: string,
+): Promise<boolean> {
+  const [intent] = await db.select().from(paymentIntentsTable).where(and(
+    eq(paymentIntentsTable.pillar, "election"),
+    eq(paymentIntentsTable.entityId, electionId),
+    sql`${paymentIntentsTable.status} IN ('initializing', 'pending', 'processing')`,
+    sql`${paymentIntentsTable.payload}->'election'->>'voterIdentifier' = ${voterIdentifier}`,
+  )).limit(1);
+  if (!intent) return false;
+  try {
+    const payload = await buildPaymentInitializationResponse(intent);
+    res.json(payload);
+    return true;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Payment initialization failed";
+    await failPaymentIntent(intent.id, message);
+    return false;
+  }
+}
 
 function isUniqueViolation(error: unknown): boolean {
   let current: any = error;
@@ -151,6 +181,7 @@ router.post("/elections", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     paymentAmount: paymentAmount === undefined || paymentAmount === null ? null : String(paymentAmount),
     currency: normalizedCurrency,
   }).returning();
+  void invalidateDiscoverCache();
   res.status(201).json({ ...election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
 
@@ -292,6 +323,7 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
     });
     return;
   }
+  void invalidateDiscoverCache();
   res.json({ ...outcome.election, organizationName: null, positionsCount: 0, candidatesCount: 0, totalVotes: 0 });
 });
 
@@ -326,6 +358,7 @@ router.delete("/elections/:electionId", requireAuth, requireResourceOrgRole(elec
     res.status(409).json({ error: "Only draft elections with no ballots or payment history can be permanently deleted. End the election to preserve the official record." });
     return;
   }
+  void invalidateDiscoverCache();
   res.json({ message: "Deleted" });
 });
 
@@ -654,9 +687,17 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   if (!election) { res.status(404).json({ error: "Election not found" }); return; }
   const paymentAmount = Number(election.paymentAmount || 0);
   const isPaid = election.requiresPayment && paymentAmount > 0;
-  if (isPaid && (!bodyParsed.data.customerName?.trim() || !bodyParsed.data.customerEmail?.trim() || !bodyParsed.data.customerPhone?.trim())) {
-    res.status(400).json({ error: "A customer name, email, and phone number are required for paid voting" });
-    return;
+  let normalizedCustomerPhone: string | null = null;
+  if (isPaid) {
+    if (!bodyParsed.data.customerName?.trim() || !bodyParsed.data.customerEmail?.trim() || !bodyParsed.data.customerPhone?.trim()) {
+      res.status(400).json({ error: "A customer name, email, and phone number are required for paid voting" });
+      return;
+    }
+    normalizedCustomerPhone = normalizeCameroonPhone(bodyParsed.data.customerPhone);
+    if (!normalizedCustomerPhone) {
+      res.status(400).json({ error: "Please enter a valid phone number (e.g. +237 6XXXXXXXX or 6XXXXXXXX)" });
+      return;
+    }
   }
   const viewerRole = req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
   if (election.visibility === "private" && !viewerRole) {
@@ -774,6 +815,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
       LIMIT 1
     `);
     if (pendingResult.rows.length > 0) {
+      if (await resumePendingElectionPayment(res, electionId, voterIdentifier)) return;
       res.status(409).json({ error: "A payment for this ballot is already in progress" });
       return;
     }
@@ -851,7 +893,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
           currency: lockedElection.currency || "XAF",
           customerName: bodyParsed.data.customerName!,
           customerEmail: bodyParsed.data.customerEmail!,
-          customerPhone: bodyParsed.data.customerPhone!,
+          customerPhone: normalizedCustomerPhone!,
           payload: {
             election: {
               voterIdentifier,
@@ -899,6 +941,7 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
       } else if (voteOrPayment.error === "already_voted") {
         res.status(403).json({ error: "You have already participated in this election" });
       } else if (voteOrPayment.error === "payment_in_progress") {
+        if (await resumePendingElectionPayment(res, electionId, voterIdentifier)) return;
         res.status(409).json({ error: "A payment for this ballot is already in progress" });
       } else if (voteOrPayment.error === "ballot_structure_changed") {
         res.status(409).json({ error: "The ballot changed while you were submitting. Please review your selections and try again." });
@@ -910,14 +953,8 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
 
     if (voteOrPayment.paymentIntent) {
       try {
-        const intent = await initializePaymentIntent(voteOrPayment.paymentIntent);
-        res.json({
-          paymentRequired: true,
-          paymentId: intent.id,
-          paymentStatus: intent.paymentStatus,
-          statusToken: intent.statusToken,
-          checkoutUrl: intent.checkoutUrl,
-        });
+        const payload = await buildPaymentInitializationResponse(voteOrPayment.paymentIntent);
+        res.json(payload);
       } catch (error: any) {
         await failPaymentIntent(voteOrPayment.paymentIntent.id, error?.message || "Payment initialization failed");
         res.status(502).json({ error: "Unable to start the payment. Please try again." });

@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, copyFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -12,9 +13,13 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
-  await rm(distDir, { recursive: true, force: true });
-
   const workerBuild = process.argv.includes("--worker");
+  if (workerBuild) {
+    await rm(path.join(distDir, "worker.mjs"), { force: true });
+  } else {
+    await rm(distDir, { recursive: true, force: true });
+  }
+
   await esbuild({
     entryPoints: [path.resolve(artifactDir, workerBuild ? "src/worker.ts" : "src/index.ts")],
     platform: "node",
@@ -119,6 +124,17 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  const tableSqlCandidates = [
+    path.resolve(artifactDir, "../../node_modules/.pnpm/connect-pg-simple@10.0.0/node_modules/connect-pg-simple/table.sql"),
+    path.resolve(artifactDir, "node_modules/connect-pg-simple/table.sql"),
+  ];
+  for (const candidate of tableSqlCandidates) {
+    if (existsSync(candidate)) {
+      await copyFile(candidate, path.resolve(distDir, "table.sql"));
+      break;
+    }
+  }
 }
 
 buildAll().catch((err) => {

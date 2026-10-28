@@ -17,6 +17,8 @@ import { getPlatformCurrency, isPlatformCurrencySupported } from "../lib/commiss
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 import { getEventRegistrationBlockReason } from "../lib/event-registration-lifecycle";
+import { normalizeCameroonPhone } from "../lib/phone";
+import { invalidateDiscoverCache } from "../lib/discover-cache";
 
 const router: IRouter = Router();
 
@@ -94,6 +96,7 @@ router.post("/events", requireAuth, requireBodyOrgRole(["owner", "admin"]), asyn
     isOnline: isOnline ?? false, onlineUrl, visibility: visibility ?? "public",
     inviteCode, startsAt, endsAt, capacity,
   }).returning();
+  void invalidateDiscoverCache();
   res.status(201).json({ ...event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
@@ -209,6 +212,7 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
     });
     return;
   }
+  void invalidateDiscoverCache();
   res.json({ ...outcome.event, organizationName: null, organizationLogoUrl: null, attendeesCount: 0, ticketTypesCount: 0 });
 });
 
@@ -243,6 +247,7 @@ router.delete("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTabl
     res.status(409).json({ error: "Only draft events with no attendees or payment history can be permanently deleted. Cancel a published event to preserve its records." });
     return;
   }
+  void invalidateDiscoverCache();
   res.json({ message: "Deleted" });
 });
 
@@ -516,8 +521,15 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
         throw Object.assign(new Error("Ticket sales have ended"), { code: "TICKET_SALE_ENDED" });
       }
       const isPaid = Number(lockedTt.price) > 0;
-      if (isPaid && !bodyParsed.data.customerPhone?.trim()) {
-        throw Object.assign(new Error("A customer phone number is required"), { code: "CUSTOMER_PHONE_REQUIRED" });
+      let normalizedCustomerPhone: string | null = null;
+      if (isPaid) {
+        if (!bodyParsed.data.customerPhone?.trim()) {
+          throw Object.assign(new Error("A customer phone number is required"), { code: "CUSTOMER_PHONE_REQUIRED" });
+        }
+        normalizedCustomerPhone = normalizeCameroonPhone(bodyParsed.data.customerPhone);
+        if (!normalizedCustomerPhone) {
+          throw Object.assign(new Error("Please enter a valid phone number"), { code: "INVALID_CUSTOMER_PHONE" });
+        }
       }
       if (lockedTt.quantity !== null && lockedTt.sold >= lockedTt.quantity) {
         throw Object.assign(new Error("Sold out"), { code: "SOLD_OUT" });
@@ -536,7 +548,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
           currency: lockedTt.currency || "XAF",
           customerName: attendeeName,
           customerEmail: attendeeEmail,
-          customerPhone: bodyParsed.data.customerPhone!,
+          customerPhone: normalizedCustomerPhone!,
           payload: { event: { ticketTypeId, attendeeName, attendeeEmail, ticketCode } },
           database: tx,
         });
@@ -593,6 +605,10 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
     }
     if (err?.code === "CUSTOMER_PHONE_REQUIRED") {
       res.status(400).json({ error: "A customer phone number is required for paid event registration" });
+      return;
+    }
+    if (err?.code === "INVALID_CUSTOMER_PHONE") {
+      res.status(400).json({ error: "Please enter a valid phone number (e.g. +237 6XXXXXXXX or 6XXXXXXXX)" });
       return;
     }
     if (err?.code === "EVENT_UNAVAILABLE" || err?.code === "REGISTRATION_CLOSED") {

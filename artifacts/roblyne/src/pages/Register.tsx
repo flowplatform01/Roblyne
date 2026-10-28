@@ -58,8 +58,9 @@ export default function Register() {
     registerMutation.mutate(
       { data: values },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        onSuccess: async (registeredUser) => {
+          queryClient.setQueryData(getGetMeQueryKey(), registeredUser);
+          await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           toast({
              title: t("auth.accountCreated"),
              description: t("auth.welcomeToEvenum"),

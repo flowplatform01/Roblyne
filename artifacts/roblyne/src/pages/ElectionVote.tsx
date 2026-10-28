@@ -28,6 +28,7 @@ import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { BallotLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -106,6 +107,10 @@ export default function ElectionVote() {
       setPaymentStatusToken(null);
       setCheckoutUrl(null);
       setStep("success");
+      toast({
+        title: "Vote recorded",
+        description: "Payment confirmed and your ballot has been sealed.",
+      });
     } else if (paymentStatus.status === "failed") {
       setPaymentProcessing(false);
       setPaymentId(null);
@@ -162,6 +167,9 @@ export default function ElectionVote() {
   };
 
   const submitBallot = () => {
+    const pricePerVoteForSubmit = Number(election?.paymentAmount || 0);
+    const paidBallot = Boolean(election?.requiresPayment && pricePerVoteForSubmit > 0);
+
     if (lifecycleState !== "live") {
       toast({
         title: lifecycleState === "upcoming" ? t("voting.notOpen") : t("voting.ended"),
@@ -176,6 +184,40 @@ export default function ElectionVote() {
       toast({ title: t("voting.selectCandidate"), description: t("voting.selectCandidateDescription"), variant: 'destructive' });
       return;
     }
+
+    const customerName = paymentCustomerName.trim();
+    const customerEmail = (paymentCustomerEmail || voterEmail).trim();
+    const customerPhone = paymentCustomerPhone.trim();
+    const quantityForSubmit = paymentMode === 'amount_first' && pricePerVoteForSubmit > 0
+      ? Math.floor(
+        (paymentMode === 'amount_first'
+          ? Math.max(0, paymentAmountInput === '' ? pricePerVoteForSubmit * Math.max(selectedCandidateCount, 1) : Number(paymentAmountInput))
+          : pricePerVoteForSubmit * selectedCandidateCount * voteQuantity)
+        / (pricePerVoteForSubmit * Math.max(selectedCandidateCount, 1)),
+      )
+      : voteQuantity;
+
+    if (paidBallot) {
+      if (!customerName || !customerEmail || !customerPhone) {
+        toast({
+          title: t("voting.submissionFailed"),
+          description: "Enter your full name, email, and phone number before paying.",
+          variant: "destructive",
+        });
+        setStep("payment");
+        return;
+      }
+      if (quantityForSubmit < 1) {
+        toast({
+          title: t("voting.submissionFailed"),
+          description: "The payment amount is too low for at least one vote at the selected price.",
+          variant: "destructive",
+        });
+        setStep("payment");
+        return;
+      }
+    }
+
     submitVote.mutate(
       {
         electionId,
@@ -184,12 +226,12 @@ export default function ElectionVote() {
             positionId: parseInt(positionId, 10),
             candidateIds,
           })),
-          voteQuantity: computedQuantity,
+          voteQuantity: quantityForSubmit,
           inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
-          voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail : undefined,
-          customerName: feeRequired ? paymentCustomerName || undefined : undefined,
-          customerEmail: feeRequired ? paymentCustomerEmail || undefined : undefined,
-          customerPhone: feeRequired ? paymentCustomerPhone || undefined : undefined,
+          voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail.trim() || undefined : undefined,
+          customerName: paidBallot ? customerName : undefined,
+          customerEmail: paidBallot ? customerEmail : undefined,
+          customerPhone: paidBallot ? customerPhone : undefined,
         },
       },
       {
@@ -204,7 +246,27 @@ export default function ElectionVote() {
             setPaymentId(result.paymentId);
             setPaymentStatusToken(result.statusToken);
             setCheckoutUrl(result.checkoutUrl);
-            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            openFlowPayCheckout({
+              checkoutUrl: result.checkoutUrl,
+              paymentId: result.paymentId,
+              statusToken: result.statusToken,
+              title: t("voting.completePayment", "Cast Ballot — Complete Payment"),
+              onCompleted: () => {
+                // Keep paymentId/statusToken so usePaymentStatus can confirm
+                // ROBLYNE finalization before clearing checkout state.
+                setPaymentProcessing(true);
+                setHasPaid(true);
+              },
+              onFailed: () => {
+                setPaymentProcessing(false);
+                setStep("review");
+                toast({
+                  title: "Payment failed",
+                  description: "Your ballot was not recorded. Please try again.",
+                  variant: "destructive",
+                });
+              },
+            });
             return;
           }
           setStep('success');
@@ -244,11 +306,11 @@ export default function ElectionVote() {
   const orgPublicUrl = orgId ? `/organizations/${orgId}/public` : null;
 
   // Payment helpers
-  const feeRequired = Boolean(election.requiresPayment);
+  const pricePerVote = Number(election.paymentAmount || 0);
+  const feeRequired = Boolean(election.requiresPayment && pricePerVote > 0);
   const feeCur = election.currency || 'XAF';
   const formatMoney = (amount: number | string | null | undefined) =>
     formatCurrency(amount, feeCur, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
-  const pricePerVote = Number(election.paymentAmount || 0);
   const amountInput = paymentAmountInput === ''
     ? pricePerVote * Math.max(selectedCandidateCount, 1)
     : Number(paymentAmountInput);
@@ -591,17 +653,19 @@ export default function ElectionVote() {
               <span className="ml-auto text-lg">🔒</span>
             </div>
             <div className="p-6">
-              <Button className="w-full h-14 text-base rounded-sm" onClick={handlePayment} disabled={paymentProcessing || !paymentCustomerName || !paymentCustomerEmail || !paymentCustomerPhone}>
-                {paymentProcessing ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Confirming payment…</>
+              <Button className="w-full h-14 text-base rounded-sm" onClick={handlePayment} disabled={paymentProcessing || paymentId !== null || !paymentCustomerName || !paymentCustomerEmail || !paymentCustomerPhone}>
+                {paymentProcessing || paymentId !== null ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {hasPaid ? "Recording your ballot…" : "Confirming payment…"}</>
                 ) : (
                   <><Wallet className="mr-2 h-5 w-5" /> Confirm payment</>
                 )}
               </Button>
               <p className="text-center text-xs text-muted-foreground/50 mt-4">
-                Your vote will be submitted automatically after payment confirmation.
+                {hasPaid
+                  ? "Payment succeeded. Waiting for ROBLYNE to seal your ballot…"
+                  : "Your vote will be submitted automatically after payment confirmation."}
               </p>
-              {checkoutUrl && (
+              {checkoutUrl && !hasPaid && (
                 <Button asChild variant="outline" className="mt-4 w-full">
                   <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open payment checkout</a>
                 </Button>

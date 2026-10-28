@@ -14,11 +14,13 @@ import {
 } from "@workspace/db";
 import { randomUUID } from "node:crypto";
 import {
+  fetchFlowPaySessionStatus,
   initializeFlowPayPayment,
   normalizeFlowPayStatus,
   shouldUsePaymentSimulator,
   type FlowPayPaymentStatus,
 } from "./flowpay";
+import { logger } from "./logger";
 import { recordTransaction, type Pillar, type TransactionType } from "./commission-engine";
 
 export interface PaymentPayload {
@@ -123,11 +125,16 @@ export async function initializePaymentIntent(intent: any): Promise<any> {
     },
   });
   const status = transaction.status;
+  const existingPayload = asRecord(intent.payload);
   const [updated] = await db.update(paymentIntentsTable).set({
     status,
     paymentStatus: status,
     flowpayTransactionId: transaction.id,
     checkoutUrl: transaction.checkoutUrl,
+    payload: {
+      ...existingPayload,
+      flowpaySessionToken: transaction.sessionToken,
+    },
     updatedAt: new Date(),
   }).where(eq(paymentIntentsTable.id, intent.id)).returning();
   if (updated.financialTransactionId) {
@@ -137,6 +144,42 @@ export async function initializePaymentIntent(intent: any): Promise<any> {
     }).where(eq(financialTransactionsTable.id, updated.financialTransactionId));
   }
   return { ...updated, statusToken: intent.externalReference };
+}
+
+export async function buildPaymentInitializationResponse(intent: {
+  id: number;
+  externalReference: string;
+  checkoutUrl?: string | null;
+  status?: string | null;
+  paymentStatus?: string | null;
+}): Promise<{
+  paymentRequired: true;
+  paymentId: number;
+  paymentStatus: string | null;
+  statusToken: string;
+  checkoutUrl: string | null;
+}> {
+  let checkoutUrl = intent.checkoutUrl ?? null;
+  let paymentStatus = intent.paymentStatus ?? intent.status ?? "pending";
+  if (!checkoutUrl || intent.status === "initializing") {
+    const initialized = await initializePaymentIntent(intent);
+    checkoutUrl = initialized.checkoutUrl ?? null;
+    paymentStatus = initialized.paymentStatus ?? initialized.status ?? paymentStatus;
+    return {
+      paymentRequired: true,
+      paymentId: initialized.id,
+      paymentStatus,
+      statusToken: initialized.statusToken ?? intent.externalReference,
+      checkoutUrl,
+    };
+  }
+  return {
+    paymentRequired: true,
+    paymentId: intent.id,
+    paymentStatus,
+    statusToken: intent.externalReference,
+    checkoutUrl,
+  };
 }
 
 export async function failPaymentIntent(intentId: number, message: string): Promise<void> {
@@ -320,12 +363,146 @@ export async function processFlowPayWebhook(input: {
   });
 }
 
+function extractFlowPaySessionIdFromCheckoutUrl(checkoutUrl?: string | null): string | null {
+  if (!checkoutUrl) return null;
+  try {
+    const parsed = new URL(checkoutUrl, "https://flowpay.internal");
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const checkoutIndex = segments.findIndex((segment) => segment === "checkout" || segment === "session");
+    if (checkoutIndex >= 0 && segments[checkoutIndex + 1]) {
+      return segments[checkoutIndex + 1];
+    }
+    const last = segments[segments.length - 1];
+    return last && last.length >= 8 ? last : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveFlowPaySessionIds(intent: {
+  flowpayTransactionId?: string | null;
+  checkoutUrl?: string | null;
+}): string[] {
+  const ids = [
+    intent.flowpayTransactionId,
+    extractFlowPaySessionIdFromCheckoutUrl(intent.checkoutUrl),
+  ].filter((value): value is string => Boolean(value?.trim()));
+  return [...new Set(ids.map((value) => value.trim()))];
+}
+
+async function reconcilePaymentIntentWithFlowPay(intent: {
+  id: number;
+  status: string;
+  externalReference: string;
+  flowpayTransactionId?: string | null;
+  checkoutUrl?: string | null;
+  payload?: unknown;
+}): Promise<void> {
+  if (shouldUsePaymentSimulator()) return;
+  if (!["pending", "processing", "initializing"].includes(intent.status)) return;
+
+  const payload = asRecord(intent.payload);
+  const checkoutSessionToken = extractCheckoutToken(intent.checkoutUrl, payload);
+  const sessionIds = resolveFlowPaySessionIds(intent);
+  if (sessionIds.length === 0) return;
+
+  let lastError: unknown;
+  for (const sessionId of sessionIds) {
+    try {
+      const remote = await fetchFlowPaySessionStatus(sessionId, checkoutSessionToken);
+      if (remote.status !== "succeeded" && remote.status !== "failed") continue;
+      await processFlowPayWebhook({
+        eventId: `reconcile-${sessionId}-${Date.now()}`,
+        eventType: remote.status === "succeeded" ? "payment.succeeded" : "payment.failed",
+        payload: {
+          data: {
+            transaction: {
+              id: sessionId,
+              externalReference: intent.externalReference,
+              status: remote.status.toUpperCase(),
+              ...remote.raw,
+            },
+          },
+        },
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    logger.warn(
+      { err: lastError, paymentId: intent.id, sessionIds },
+      "Failed to reconcile remote FlowPay session status",
+    );
+  }
+}
+
+function extractCheckoutToken(checkoutUrl?: string | null, payload?: Record<string, any>): string | undefined {
+  if (payload?.flowpaySessionToken && typeof payload.flowpaySessionToken === "string") {
+    return payload.flowpaySessionToken;
+  }
+  if (checkoutUrl) {
+    try {
+      const parsed = new URL(checkoutUrl, "https://flowpay.internal");
+      const token = parsed.searchParams.get("token");
+      if (token) return token;
+    } catch {
+      // ignore
+    }
+  }
+  return undefined;
+}
+
 export async function getPaymentStatus(paymentId: number, statusToken: string): Promise<any | null> {
-  const [intent] = await db.select().from(paymentIntentsTable).where(and(
+  let [intent] = await db.select().from(paymentIntentsTable).where(and(
     eq(paymentIntentsTable.id, paymentId),
     eq(paymentIntentsTable.externalReference, statusToken),
   )).limit(1);
   if (!intent) return null;
+
+  // Active status reconciliation: if the local transaction is in a non-terminal state,
+  // query FlowPay directly to reconcile with the authoritative checkout session status.
+  // This guarantees local dev (without inbound webhooks) and transient webhook drops
+  // immediately update the Evenum ledger and business records (tickets, votes, contributions).
+  if (
+    (intent.status === "pending" || intent.status === "processing" || intent.status === "initializing")
+    && intent.flowpayTransactionId
+    && !shouldUsePaymentSimulator()
+  ) {
+    const payload = asRecord(intent.payload);
+    const checkoutSessionToken = extractCheckoutToken(intent.checkoutUrl, payload);
+    try {
+      const remote = await fetchFlowPaySessionStatus(intent.flowpayTransactionId, checkoutSessionToken);
+      if (remote.status === "succeeded" || remote.status === "failed") {
+        // Prefer our durable externalReference so webhook processing never
+        // fails when FlowPay omits it from the session lookup response.
+        const remoteExternalReference = remote.externalReference?.trim() || intent.externalReference;
+        await processFlowPayWebhook({
+          eventId: `reconcile-${intent.id}-${intent.flowpayTransactionId}-${remote.status}`,
+          eventType: remote.status === "succeeded" ? "payment.succeeded" : "payment.failed",
+          payload: {
+            data: {
+              transaction: {
+                ...remote.raw,
+                id: intent.flowpayTransactionId,
+                externalReference: remoteExternalReference,
+                status: remote.status.toUpperCase(),
+              },
+            },
+          },
+        });
+        const [refreshed] = await db.select().from(paymentIntentsTable).where(eq(paymentIntentsTable.id, paymentId)).limit(1);
+        if (refreshed) {
+          intent = refreshed;
+        }
+      }
+    } catch (err) {
+      logger.warn({ err, paymentId, flowpayTransactionId: intent.flowpayTransactionId }, "Failed to reconcile remote FlowPay session status");
+    }
+  }
+
   let result: any = null;
   if (intent.status === "succeeded" && intent.flowpayTransactionId) {
     if (intent.pillar === "event") {

@@ -25,6 +25,7 @@ import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
 
 const LEGACY_PLATFORM_IDENTITY_FIELD_IDS = new Set(["field_name", "field_email", "field_phone"]);
 
@@ -139,7 +140,27 @@ export default function CampaignParticipate() {
             setPaymentStatusToken(result.statusToken);
             setPaymentPending(true);
             setCheckoutUrl(result.checkoutUrl);
-            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            openFlowPayCheckout({
+              checkoutUrl: result.checkoutUrl,
+              paymentId: result.paymentId,
+              statusToken: result.statusToken,
+              title: t("campaignParticipate.completePayment", "Campaign Participation — Complete Payment"),
+              onCompleted: () => {
+                setPaymentPending(false);
+                setIsSuccess(true);
+              },
+              onFailed: () => {
+                setPaymentPending(false);
+                toast({
+                  title: "Payment failed",
+                  description: "Your campaign contribution was not completed. Please try again.",
+                  variant: "destructive",
+                });
+              },
+              onClosed: () => {
+                setPaymentPending(false);
+              },
+            });
             return;
           }
           setIsSuccess(true);

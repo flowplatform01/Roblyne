@@ -74,6 +74,14 @@ app.use((req, res, next) => {
 });
 
 const corsAllowedOrigins = parseCorsAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
+if (process.env.NODE_ENV !== "production") {
+  corsAllowedOrigins.add("http://localhost:5173");
+  corsAllowedOrigins.add("http://127.0.0.1:5173");
+  corsAllowedOrigins.add("http://localhost:5174");
+  corsAllowedOrigins.add("http://127.0.0.1:5174");
+  corsAllowedOrigins.add("http://localhost:3000");
+  corsAllowedOrigins.add("http://127.0.0.1:3000");
+}
 app.use(cors({
   origin(origin, callback) {
     callback(null, isCorsOriginAllowed(origin, corsAllowedOrigins));

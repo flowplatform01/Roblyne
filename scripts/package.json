@@ -11,6 +11,7 @@
     "seed:branding": "tsx --env-file=../.env ./seed-branding.ts",
     "migrate:election-monetization": "tsx --env-file=../.env ./migrate-election-monetization.ts",
     "perf:baseline": "tsx --env-file=../.env ./perf-baseline.ts",
+    "verify:stack": "node ./verify-production-stack.mjs",
     "test:concurrency": "tsx --env-file=../.env ./concurrency-integrity.mjs",
     "integrity": "tsx --env-file=../.env ./concurrency-integrity.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

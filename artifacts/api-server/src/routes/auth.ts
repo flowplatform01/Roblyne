@@ -14,7 +14,13 @@ function establishSession(req: Request, userId: number): Promise<void> {
         return;
       }
       req.session.userId = userId;
-      resolve();
+      req.session.save((saveErr: unknown) => {
+        if (saveErr) {
+          reject(saveErr);
+          return;
+        }
+        resolve();
+      });
     });
   });
 }

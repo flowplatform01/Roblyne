@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { formatCurrency } from "@/lib/currency";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
+import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
 
 type SavedEventTicket = {
   eventId: number;
@@ -252,7 +253,30 @@ export default function EventRegister() {
             setPaymentStatusToken(result.statusToken);
             setPaymentPending(true);
             setCheckoutUrl(result.checkoutUrl);
-            window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+            openFlowPayCheckout({
+              checkoutUrl: result.checkoutUrl,
+              paymentId: result.paymentId,
+              statusToken: result.statusToken,
+              title: t("eventRegister.completePayment", "Event Registration — Complete Payment"),
+              onCompleted: (res) => {
+                setRegistrationError(null);
+                setPaymentPending(false);
+                setIsSuccess(true);
+                if (res?.ticketCode) {
+                  setTicketCode(res.ticketCode);
+                }
+                if (res?.ticketTypeName) {
+                  setTicketTypeName(res.ticketTypeName);
+                }
+              },
+              onFailed: (err) => {
+                setPaymentPending(false);
+                setRegistrationError(err?.errorMessage || "Payment was not completed. Please try again.");
+              },
+              onClosed: () => {
+                setPaymentPending(false);
+              },
+            });
             return;
           }
           setRegistrationError(null);

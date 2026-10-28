@@ -12,6 +12,8 @@ import { getOrgRole, requireBodyOrgRole, requireResourceOrgRole } from "../middl
 import { getPlatformCurrency, isPlatformCurrencySupported, recordTransaction } from "../lib/commission-engine";
 import { createPaymentIntent, failPaymentIntent, initializePaymentIntent } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
+import { normalizeCameroonPhone } from "../lib/phone";
+import { invalidateDiscoverCache } from "../lib/discover-cache";
 
 const router: IRouter = Router();
 
@@ -183,6 +185,7 @@ router.post("/campaigns", requireAuth, requireBodyOrgRole(["owner", "admin"]), a
     fields: fields ?? [],
     startsAt, endsAt,
   }).returning();
+  void invalidateDiscoverCache();
   res.status(201).json(campaignRow(campaign, null, 0));
 });
 
@@ -302,6 +305,7 @@ router.patch("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(campa
     res.status(409).json({ error: "Campaign form fields cannot change after the first submission has been received." });
     return;
   }
+  void invalidateDiscoverCache();
   res.json(campaignRow(outcome.campaign, null, 0));
 });
 
@@ -336,6 +340,7 @@ router.delete("/campaigns/:campaignId", requireAuth, requireResourceOrgRole(camp
     res.status(409).json({ error: "Only draft campaigns with no submissions or payment history can be permanently deleted. End the campaign to preserve its history." });
     return;
   }
+  void invalidateDiscoverCache();
   res.json({ message: "Deleted" });
 });
 
@@ -384,9 +389,17 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
 
   // ── Atomic: insert response + update current_amount in one transaction ──
   const paymentAmount = campaign.requiresPayment ? Number(campaign.paymentAmount ?? 0) : 0;
-  if (paymentAmount > 0 && !customerPhone?.trim()) {
-    res.status(400).json({ error: "A customer phone number is required for paid campaign participation" });
-    return;
+  let normalizedCustomerPhone: string | null = null;
+  if (paymentAmount > 0) {
+    if (!customerPhone?.trim()) {
+      res.status(400).json({ error: "A customer phone number is required for paid campaign participation" });
+      return;
+    }
+    normalizedCustomerPhone = normalizeCameroonPhone(customerPhone);
+    if (!normalizedCustomerPhone) {
+      res.status(400).json({ error: "Please enter a valid phone number (e.g. +237 6XXXXXXXX or 6XXXXXXXX)" });
+      return;
+    }
   }
 
   const responseOrPayment = await db.transaction(async (tx) => {
@@ -401,7 +414,7 @@ router.post("/campaigns/:campaignId/submit", async (req, res): Promise<void> => 
         currency: campaign.currency || await getPlatformCurrency(),
         customerName: submitterName,
         customerEmail: submitterEmail,
-        customerPhone: customerPhone!,
+        customerPhone: normalizedCustomerPhone!,
         payload: { campaign: { submitterName, submitterEmail, data } },
         database: tx,
       });

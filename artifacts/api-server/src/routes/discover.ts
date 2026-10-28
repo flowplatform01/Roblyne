@@ -135,6 +135,10 @@ router.get("/search", async (req, res): Promise<void> => {
   }
   const { q, type: typeFilter } = queryParsed.data;
   const pattern = `%${q}%`;
+  const searchLimit = Math.min(
+    Math.max(Number(req.query.limit) || 40, 1),
+    100,
+  );
 
   // All three searches run in parallel; participant counts are subqueries.
   const [elections, events, campaigns] = await Promise.all([
@@ -152,6 +156,8 @@ router.get("/search", async (req, res): Promise<void> => {
            WHERE e.visibility = 'public'
              AND e.status <> 'draft'
             AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
+          ORDER BY e.created_at DESC
+          LIMIT ${searchLimit}
         `)
       : { rows: [] },
 
@@ -167,6 +173,8 @@ router.get("/search", async (req, res): Promise<void> => {
            WHERE e.visibility = 'public'
              AND e.status <> 'draft'
             AND (e.title ILIKE ${pattern} OR e.description ILIKE ${pattern})
+          ORDER BY e.created_at DESC
+          LIMIT ${searchLimit}
         `)
       : { rows: [] },
 
@@ -182,6 +190,8 @@ router.get("/search", async (req, res): Promise<void> => {
            WHERE c.visibility = 'public'
              AND c.status <> 'draft'
             AND (c.title ILIKE ${pattern} OR c.description ILIKE ${pattern})
+          ORDER BY c.created_at DESC
+          LIMIT ${searchLimit}
         `)
       : { rows: [] },
   ]);

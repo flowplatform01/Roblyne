@@ -23,12 +23,23 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+function readPoolInt(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 5,                        // Replit internal Postgres has a low connection limit
-  idleTimeoutMillis: 30_000,     // release idle connections after 30s
-  connectionTimeoutMillis: 8_000, // fail fast if pool is exhausted (vs. waiting forever)
+  max: readPoolInt("DATABASE_POOL_MAX", 5),
+  idleTimeoutMillis: readPoolInt("DATABASE_POOL_IDLE_TIMEOUT_MS", 30_000),
+  connectionTimeoutMillis: readPoolInt("DATABASE_POOL_CONNECTION_TIMEOUT_MS", 8_000),
 });
 export const db = drizzle(pool, { schema });
+
+export async function closeDatabasePool(): Promise<void> {
+  await pool.end();
+}
 
 export * from "./schema";

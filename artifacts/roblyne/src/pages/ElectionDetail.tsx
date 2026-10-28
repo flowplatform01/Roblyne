@@ -47,7 +47,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ManagementDetailLoadingSkeleton, InlineListLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { EntityRecoveryActions } from "@/components/management/EntityRecoveryActions";
-import { formatCurrency } from "@/lib/currency";
 
 const candidateSchema = z.object({
   name: z.string().min(1, "Candidate name is required"),
@@ -81,6 +80,18 @@ function isCandidateRemovalLocked(
   return !Number.isFinite(startsAt)
     || startsAt <= now
     || (election.endsAt != null && (endsAt === null || !Number.isFinite(endsAt) || endsAt <= now));
+}
+
+function formatFeeAmountDisplay(
+  amount: number | string | null | undefined,
+  currency = "XAF",
+): string {
+  const value = Number(amount ?? 0);
+  const normalizedValue = Number.isFinite(value) ? value : 0;
+
+  return `${currency} ${normalizedValue.toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 
@@ -944,7 +955,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
   // Monetization state
   const [requiresPayment, setRequiresPayment] = useState<boolean>(election.requiresPayment ?? false);
   const [paymentAmount, setPaymentAmount] = useState<string>(election.paymentAmount ? String(election.paymentAmount) : '');
-  const [currency] = useState<string>('XAF');
+  const currency = election.currency || 'XAF';
   const { data: commissionRates } = useGetPublicCommissionRates();
 
   const updateElection = useUpdateElection();
@@ -982,13 +993,18 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
         data: {
           requiresPayment,
           paymentAmount: requiresPayment ? amount : undefined,
-          currency: 'XAF',
+          currency,
         },
       },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetElectionQueryKey(electionId) });
-          toast({ title: 'Fees saved', description: requiresPayment ? `Entry fee set to XAF ${amount.toLocaleString('en-US')}.` : 'Participation is now free.' });
+          toast({
+            title: 'Fees saved',
+            description: requiresPayment
+              ? `Entry fee set to ${formatFeeAmountDisplay(amount, currency)}.`
+              : 'Participation is now free.',
+          });
         },
         onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
       }
@@ -1037,8 +1053,10 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="fee-amount" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fee Amount</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">XAF</span>
+                  <div className="flex h-10 min-w-0 w-full items-center overflow-hidden rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <span className="shrink-0 border-r border-input px-3 text-sm font-medium text-muted-foreground" aria-hidden="true">
+                      {currency}
+                    </span>
                     <input
                       id="fee-amount"
                       type="number"
@@ -1047,7 +1065,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                       placeholder="200"
                       value={paymentAmount}
                       onChange={e => setPaymentAmount(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm shadow-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -1056,7 +1074,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
                     <p className="text-lg font-semibold text-primary">
                       {estimatedReceipt == null
                         ? "Fee estimate unavailable"
-                        : formatCurrency(estimatedReceipt, currency, "en-US")}
+                        : formatFeeAmountDisplay(estimatedReceipt, currency)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {commissionRates?.election == null
@@ -1068,7 +1086,7 @@ function ElectionBrandingSection({ election, electionId }: { election: any; elec
               {paymentAmount && parseFloat(paymentAmount) > 0 && (
                 <div className="flex items-center gap-2 text-sm bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 rounded-md px-3 py-2">
                   <CreditCard className="h-4 w-4 shrink-0" />
-                  Voters will be charged <strong className="ml-1">XAF {Number(paymentAmount).toLocaleString('en-US')}</strong> before accessing this ballot.
+                  Voters will be charged <strong className="ml-1">{formatFeeAmountDisplay(paymentAmount, currency)}</strong> before accessing this ballot.
                 </div>
               )}
             </>

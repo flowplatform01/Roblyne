@@ -18,7 +18,7 @@ if (fs.existsSync(rootEnv)) {
 const rawPort = process.env.WEB_PORT ?? (process.env.PORT && process.env.PORT !== '8080' && process.env.PORT !== '8085' ? process.env.PORT : '5173');
 const port = Number(rawPort) || 5173;
 const basePath = process.env.BASE_PATH ?? '/';
-const localApiOrigin = process.env.API_ORIGIN ?? process.env.LOCAL_API_ORIGIN ?? 'http://127.0.0.1:8085';
+const localApiOrigin = process.env.API_ORIGIN ?? process.env.LOCAL_API_ORIGIN ?? 'http://127.0.0.1:8080';
 
 export default defineConfig({
   base: basePath,

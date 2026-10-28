@@ -57,6 +57,7 @@ export default function Login() {
       { data: values },
       {
         onSuccess: async (loggedInUser) => {
+          queryClient.setQueryData(getGetMeQueryKey(), loggedInUser);
           await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           toast({
              title: t("auth.welcomeBack"),

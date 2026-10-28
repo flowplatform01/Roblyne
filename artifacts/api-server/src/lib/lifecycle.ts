@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, campaignsTable, electionsTable, eventsTable } from "@workspace/db";
+import { invalidateDiscoverCache } from "./discover-cache";
 import { logger } from "./logger";
 
 export type LifecycleStatus = "upcoming" | "live" | "ended";
@@ -62,5 +63,6 @@ export async function sweepExpiredLifecycles(): Promise<void> {
       },
       "Lifecycle sweep transitioned expired activities",
     );
+    await invalidateDiscoverCache();
   }
 }
