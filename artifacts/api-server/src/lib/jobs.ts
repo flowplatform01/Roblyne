@@ -20,10 +20,37 @@ export const maintenanceQueue = queueConnection
   ? new Queue("evenum-maintenance", { connection: queueConnection })
   : null;
 
+export const paymentRecoveryQueue = queueConnection
+  ? new Queue("evenum-payment-recovery", { connection: queueConnection })
+  : null;
+
 if (maintenanceQueue) {
   maintenanceQueue.on("error", (error) => {
     logger.warn({ err: error }, "Maintenance queue Redis error; API continues without crashing");
   });
+}
+
+if (paymentRecoveryQueue) {
+  paymentRecoveryQueue.on("error", (error) => {
+    logger.warn({ err: error }, "Payment recovery queue Redis error");
+  });
+}
+
+export async function schedulePaymentRecovery(paymentIntentId: number, attempt = 0): Promise<void> {
+  if (!paymentRecoveryQueue) return;
+  const delay = Math.min(60_000 * 2 ** attempt, 30 * 60_000);
+  await paymentRecoveryQueue.add(
+    "reconcile-payment",
+    { paymentIntentId, attempt },
+    {
+      jobId: `payment-recovery-${paymentIntentId}-${attempt}`,
+      delay,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5_000 },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+    },
+  );
 }
 
 async function holdsMaintenanceSchedulerLock(): Promise<boolean> {
@@ -91,16 +118,36 @@ export async function closeQueues(): Promise<void> {
       logger.warn({ err: error }, "Could not close maintenance queue cleanly");
     });
   }
+  if (paymentRecoveryQueue) {
+    await paymentRecoveryQueue.close().catch((error: unknown) => {
+      logger.warn({ err: error }, "Could not close payment recovery queue cleanly");
+    });
+  }
 }
 
 export async function queueInfrastructureStatus(): Promise<{
   configured: boolean;
   enabled: boolean;
   workerHealthy: boolean | null;
+  queues: Record<string, Record<string, number> | null>;
 }> {
+  const readCounts = async (queue: Queue | null): Promise<Record<string, number> | null> => {
+    if (!queue) return null;
+    try {
+      return await queue.getJobCounts("waiting", "active", "delayed", "completed", "failed");
+    } catch (error) {
+      logger.warn({ err: error, queue: queue.name }, "Could not read queue metrics");
+      return null;
+    }
+  };
+
   return {
     configured: redisConfigured,
     enabled: Boolean(maintenanceQueue),
     workerHealthy: maintenanceQueue ? await hasFreshMaintenanceWorkerHeartbeat() : null,
+    queues: {
+      maintenance: await readCounts(maintenanceQueue),
+      paymentRecovery: await readCounts(paymentRecoveryQueue),
+    },
   };
 }

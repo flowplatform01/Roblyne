@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import type { Request } from "express";
 import { getRedis } from "../lib/redis";
 
 type RedisRateLimitStore = {
@@ -11,11 +12,20 @@ type RedisRateLimitStore = {
 function createRedisStore(prefix: string): RedisRateLimitStore | undefined {
   if (!process.env.REDIS_URL) return undefined;
   const fallback = new Map<string, { totalHits: number; resetTime: number }>();
+  const MAX_FALLBACK_KEYS = 10_000;
 
   function localIncrement(key: string) {
     const current = fallback.get(key);
     const now = Date.now();
     if (!current || current.resetTime <= now) {
+      if (fallback.size >= MAX_FALLBACK_KEYS) {
+        for (const [staleKey, value] of fallback) {
+          if (value.resetTime <= now) fallback.delete(staleKey);
+        }
+        if (fallback.size >= MAX_FALLBACK_KEYS) {
+          fallback.delete(fallback.keys().next().value!);
+        }
+      }
       const next = { totalHits: 1, resetTime: now + 60_000 };
       fallback.set(key, next);
       return next;
@@ -66,12 +76,18 @@ function createRedisStore(prefix: string): RedisRateLimitStore | undefined {
 
 const isDev = process.env.NODE_ENV !== "production";
 
+function isFlowPayWebhook(request: Request): boolean {
+  return request.baseUrl === "/api"
+    && request.path === "/payments/webhooks/flowpay";
+}
+
 // General ceiling for all API traffic — generous enough for normal browsing/polling.
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: isDev ? 10_000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: isFlowPayWebhook,
   message: { error: "Too many requests, please slow down." },
   store: createRedisStore("evenum:ratelimit:api") as never,
 });
@@ -103,9 +119,21 @@ export const writeLimiter = rateLimit({
   limit: isDev ? 10_000 : 60,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
+  skip: (req) => isFlowPayWebhook(req)
+    || req.method === "GET"
+    || req.method === "HEAD"
+    || req.method === "OPTIONS",
   message: { error: "Too many submissions in a short time. Please slow down." },
   store: createRedisStore("evenum:ratelimit:write") as never,
+});
+
+export const flowPayWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: isDev ? 10_000 : 12_000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many webhook deliveries, please retry." },
+  store: createRedisStore("evenum:ratelimit:flowpay-webhook") as never,
 });
 
 // Targeted limit on the public search/discover endpoints to prevent scraping or DoS.

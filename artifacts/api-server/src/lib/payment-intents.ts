@@ -21,6 +21,7 @@ import {
   type FlowPayPaymentStatus,
 } from "./flowpay";
 import { logger } from "./logger";
+import { schedulePaymentRecovery } from "./jobs";
 import { recordTransaction, type Pillar, type TransactionType } from "./commission-engine";
 
 export interface PaymentPayload {
@@ -142,6 +143,11 @@ export async function initializePaymentIntent(intent: any): Promise<any> {
       paymentStatus: status,
       flowpayTransactionId: transaction.id,
     }).where(eq(financialTransactionsTable.id, updated.financialTransactionId));
+  }
+  if (updated.flowpayTransactionId && ["initializing", "pending", "processing"].includes(updated.status)) {
+    void schedulePaymentRecovery(updated.id).catch((error) => {
+      logger.warn({ err: error, paymentId: updated.id }, "Could not schedule payment recovery");
+    });
   }
   return { ...updated, statusToken: intent.externalReference };
 }
@@ -437,6 +443,16 @@ async function reconcilePaymentIntentWithFlowPay(intent: {
       "Failed to reconcile remote FlowPay session status",
     );
   }
+}
+
+export async function reconcilePendingPaymentIntent(paymentIntentId: number): Promise<FlowPayPaymentStatus | null> {
+  const [intent] = await db.select().from(paymentIntentsTable)
+    .where(eq(paymentIntentsTable.id, paymentIntentId)).limit(1);
+  if (!intent) return null;
+  await reconcilePaymentIntentWithFlowPay(intent);
+  const [refreshed] = await db.select({ status: paymentIntentsTable.status }).from(paymentIntentsTable)
+    .where(eq(paymentIntentsTable.id, paymentIntentId)).limit(1);
+  return refreshed ? normalizeFlowPayStatus(refreshed.status) : null;
 }
 
 function extractCheckoutToken(checkoutUrl?: string | null, payload?: Record<string, any>): string | undefined {

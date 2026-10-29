@@ -67,3 +67,17 @@ export function getPrometheusMetrics(): string {
 
   return `${lines.join("\n")}\n`;
 }
+
+export function getQueuePrometheusMetrics(queues: Record<string, Record<string, number> | null>): string {
+  const lines = [
+    "# HELP roblyne_queue_jobs Number of jobs by queue and state.",
+    "# TYPE roblyne_queue_jobs gauge",
+  ];
+  for (const [queue, counts] of Object.entries(queues)) {
+    if (!counts) continue;
+    for (const [state, value] of Object.entries(counts)) {
+      lines.push(`roblyne_queue_jobs{queue="${queue}",state="${state}"} ${value}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}

@@ -3,6 +3,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { Worker } from "bullmq";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
+import { reconcilePendingPaymentIntent } from "./lib/payment-intents";
+import { schedulePaymentRecovery } from "./lib/jobs";
 import { logger } from "./lib/logger";
 import { closeRedis, pingRedis, recordMaintenanceWorkerHeartbeat } from "./lib/redis";
 import { validateWorkerStartupConfig } from "./lib/startup-config";
@@ -47,6 +49,29 @@ const worker = new Worker(
   },
 );
 
+const paymentRecoveryWorker = new Worker(
+  "evenum-payment-recovery",
+  async (job) => {
+    if (job.name !== "reconcile-payment") throw new Error(`Unknown payment recovery job: ${job.name}`);
+    const paymentIntentId = Number(job.data?.paymentIntentId);
+    const attempt = Number(job.data?.attempt ?? 0);
+    if (!Number.isInteger(paymentIntentId) || paymentIntentId <= 0) {
+      throw new Error("Invalid payment recovery job");
+    }
+    const status = await reconcilePendingPaymentIntent(paymentIntentId);
+    if ((status === "pending" || status === "processing") && attempt < 10) {
+      await schedulePaymentRecovery(paymentIntentId, attempt + 1);
+    }
+    return { paymentIntentId, status, attempt };
+  },
+  {
+    connection: { url: redisUrl, maxRetriesPerRequest: null },
+    concurrency: 5,
+    limiter: { max: 60, duration: 60_000 },
+    lockDuration: 120_000,
+  },
+);
+
 const heartbeatInterval = setInterval(() => {
   void recordMaintenanceWorkerHeartbeat();
 }, 15_000);
@@ -56,6 +81,8 @@ void recordMaintenanceWorkerHeartbeat();
 worker.on("completed", (job) => logger.info({ jobId: job.id, name: job.name }, "Background job completed"));
 worker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id, name: job?.name }, "Background job failed"));
 worker.on("error", (error) => logger.error({ err: error }, "Background worker error"));
+paymentRecoveryWorker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id }, "Payment recovery job failed"));
+paymentRecoveryWorker.on("error", (error) => logger.error({ err: error }, "Payment recovery worker error"));
 
 const healthServer = http.createServer((req, res) => {
   if (req.url === "/healthz" || req.url === "/") {
@@ -81,11 +108,16 @@ healthServer.listen(healthPort, "0.0.0.0", () => {
   logger.info({ healthPort }, "Worker health server listening");
 });
 
+healthServer.headersTimeout = 15_000;
+healthServer.requestTimeout = 30_000;
+healthServer.keepAliveTimeout = 65_000;
+
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "Stopping background worker");
   clearInterval(heartbeatInterval);
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   await worker.close();
+  await paymentRecoveryWorker.close();
   await closeRedis();
   await closeDatabasePool();
   process.exit(0);

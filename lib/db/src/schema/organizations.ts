@@ -30,6 +30,7 @@ export const organizationMembersTable = pgTable("organization_members", {
   invitedAt: timestamp("invited_at").notNull().defaultNow(),
 }, (table) => ({
   orgUserUnique: uniqueIndex("org_members_org_user_unique").on(table.orgId, table.userId),
+  orgInvitedAtIdx: index("org_members_org_invited_at_idx").on(table.orgId, table.invitedAt),
 }));
 
 export const insertOrganizationSchema = createInsertSchema(organizationsTable).omit({ id: true, createdAt: true });

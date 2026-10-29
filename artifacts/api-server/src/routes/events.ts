@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import { db, eventsTable, ticketTypesTable, ticketsTable, organizationsTable, paymentIntentsTable } from "@workspace/db";
 import {
   CreateEventBody, UpdateEventBody, GetEventParams, UpdateEventParams, DeleteEventParams, ListEventsQueryParams,
@@ -21,6 +21,8 @@ import { normalizeCameroonPhone } from "../lib/phone";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
 
 const router: IRouter = Router();
+const MAX_EVENT_LIST_RESULTS = 100;
+const MAX_EVENT_ATTENDEE_RESULTS = 500;
 
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
@@ -67,8 +69,11 @@ router.get("/events", async (req, res): Promise<void> => {
     })
     .from(eventsTable)
     .leftJoin(organizationsTable, eq(eventsTable.orgId, organizationsTable.id))
-    .where(filters.length > 0 ? and(...filters) : undefined);
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(desc(eventsTable.createdAt))
+    .limit(MAX_EVENT_LIST_RESULTS);
 
+  res.setHeader("X-Result-Limit", String(MAX_EVENT_LIST_RESULTS));
   res.json(rows.map(({ event, orgName, orgLogoUrl, attendeesCount, ticketTypesCount }) => ({
     ...compactListMedia({
       ...event,
@@ -633,7 +638,10 @@ router.get("/events/:eventId/attendees", requireAuth, requireResourceOrgRole(eve
     .select({ ticket: ticketsTable, ticketTypeName: ticketTypesTable.name })
     .from(ticketsTable)
     .leftJoin(ticketTypesTable, eq(ticketsTable.ticketTypeId, ticketTypesTable.id))
-    .where(eq(ticketsTable.eventId, parsed.data.eventId));
+    .where(eq(ticketsTable.eventId, parsed.data.eventId))
+    .orderBy(desc(ticketsTable.issuedAt))
+    .limit(MAX_EVENT_ATTENDEE_RESULTS);
+  res.setHeader("X-Result-Limit", String(MAX_EVENT_ATTENDEE_RESULTS));
   res.json(attendees.map(({ ticket, ticketTypeName }) => ({ ...ticket, ticketTypeName: ticketTypeName ?? null })));
 });
 

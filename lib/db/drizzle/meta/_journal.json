@@ -15,6 +15,13 @@
       "when": 1792678151492,
       "tag": "0001_complete-current-schema",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793275200000,
+      "tag": "0002_scale_read_indexes",
+      "breakpoints": true
     }
   ]
 }

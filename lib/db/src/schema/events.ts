@@ -61,6 +61,7 @@ export const ticketsTable = pgTable("tickets", {
   eventIdIdx: index("tickets_event_id_idx").on(table.eventId),
   ticketTypeIdIdx: index("tickets_ticket_type_id_idx").on(table.ticketTypeId),
   attendeeEmailIdx: index("tickets_attendee_email_idx").on(table.attendeeEmail),
+  eventIssuedAtIdx: index("tickets_event_issued_at_idx").on(table.eventId, table.issuedAt),
   flowpayTransactionIdx: index("tickets_flowpay_transaction_idx").on(table.flowpayTransactionId),
 }));
 

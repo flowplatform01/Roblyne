@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { ReportClientDiagnosticBody, HealthCheckResponse } from "@workspace/api-zod";
 import { pool } from "@workspace/db";
-import { getPrometheusMetrics } from "../lib/metrics";
+import { getPrometheusMetrics, getQueuePrometheusMetrics } from "../lib/metrics";
 import { pingRedis } from "../lib/redis";
 import { queueInfrastructureStatus } from "../lib/jobs";
 import { isQueueReady } from "../lib/queue-readiness";
@@ -64,8 +64,9 @@ router.get("/readyz", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/metrics", (_req, res) => {
-  res.type("text/plain").send(getPrometheusMetrics());
+router.get("/metrics", async (_req, res): Promise<void> => {
+  const queue = await queueInfrastructureStatus();
+  res.type("text/plain").send(`${getPrometheusMetrics()}${getQueuePrometheusMetrics(queue.queues)}`);
 });
 
 router.post("/diagnostics/client", (req, res): void => {

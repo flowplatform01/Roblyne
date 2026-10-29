@@ -47,6 +47,7 @@ export const campaignResponsesTable = pgTable("campaign_responses", {
   campaignIdIdx: index("campaign_responses_campaign_id_idx").on(table.campaignId),
   statusIdx: index("campaign_responses_status_idx").on(table.status),
   submitterEmailIdx: index("campaign_responses_submitter_email_idx").on(table.submitterEmail),
+  campaignSubmittedAtIdx: index("campaign_responses_campaign_submitted_at_idx").on(table.campaignId, table.submittedAt),
   flowpayTransactionIdx: index("campaign_responses_flowpay_transaction_idx").on(table.flowpayTransactionId),
 }));
 

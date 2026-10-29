@@ -40,6 +40,10 @@ const server = app.listen(port, "0.0.0.0", (err) => {
   logger.info({ port }, "Server listening");
 });
 
+server.headersTimeout = 15_000;
+server.requestTimeout = 60_000;
+server.keepAliveTimeout = 65_000;
+
 function shouldRunInProcessLifecycleFallback(): boolean {
   const redisUrl = process.env.REDIS_URL?.trim();
   if (process.env.NODE_ENV === "production" && redisUrl) {

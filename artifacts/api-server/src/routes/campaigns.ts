@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import { db, campaignsTable, campaignResponsesTable, organizationsTable, paymentIntentsTable } from "@workspace/db";
 import {
   CreateCampaignBody, UpdateCampaignBody, GetCampaignParams, UpdateCampaignParams, DeleteCampaignParams, ListCampaignsQueryParams,
@@ -16,6 +16,8 @@ import { normalizeCameroonPhone } from "../lib/phone";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
 
 const router: IRouter = Router();
+const MAX_CAMPAIGN_LIST_RESULTS = 100;
+const MAX_CAMPAIGN_SUBMISSION_RESULTS = 500;
 
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
@@ -151,8 +153,11 @@ router.get("/campaigns", async (req, res): Promise<void> => {
     })
     .from(campaignsTable)
     .leftJoin(organizationsTable, eq(campaignsTable.orgId, organizationsTable.id))
-    .where(filters.length > 0 ? and(...filters) : undefined);
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(desc(campaignsTable.createdAt))
+    .limit(MAX_CAMPAIGN_LIST_RESULTS);
 
+  res.setHeader("X-Result-Limit", String(MAX_CAMPAIGN_LIST_RESULTS));
   res.json(rows.map(({ campaign, orgName, orgLogoUrl, submissionsCount }) =>
     compactListMedia(campaignRow(campaign, orgName ?? null, submissionsCount ?? 0, orgLogoUrl))
   ));
@@ -484,7 +489,11 @@ router.get("/campaigns/:campaignId/submissions", requireAuth, requireResourceOrg
   const rawId = Array.isArray(req.params.campaignId) ? req.params.campaignId[0] : req.params.campaignId;
   const parsed = ListCampaignSubmissionsParams.safeParse({ campaignId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const submissions = await db.select().from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId));
+  const submissions = await db.select().from(campaignResponsesTable)
+    .where(eq(campaignResponsesTable.campaignId, parsed.data.campaignId))
+    .orderBy(desc(campaignResponsesTable.submittedAt))
+    .limit(MAX_CAMPAIGN_SUBMISSION_RESULTS);
+  res.setHeader("X-Result-Limit", String(MAX_CAMPAIGN_SUBMISSION_RESULTS));
   res.json(submissions.map(s => ({ ...s, amountPaid: s.amountPaid ? parseFloat(s.amountPaid) : null })));
 });
 

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import { db, organizationsTable, electionsTable, eventsTable, campaignsTable, organizationMembersTable, usersTable } from "@workspace/db";
 import {
   CreateOrganizationBody, UpdateOrganizationBody, GetOrganizationParams, UpdateOrganizationParams, GetOrganizationStatsParams,
@@ -12,6 +12,7 @@ import { requireOrgRole, getOrgRole } from "../middlewares/orgAccess";
 import { compactListMedia } from "../lib/compact-list-media";
 
 const router: IRouter = Router();
+const MAX_ORGANIZATION_MEMBER_RESULTS = 500;
 
 // List organizations for current user — includes owned + member orgs
 router.get("/organizations", requireAuth, async (req, res): Promise<void> => {
@@ -280,7 +281,9 @@ router.get("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner"
       })
       .from(organizationMembersTable)
       .leftJoin(usersTable, eq(organizationMembersTable.userId, usersTable.id))
-      .where(eq(organizationMembersTable.orgId, orgId)),
+      .where(eq(organizationMembersTable.orgId, orgId))
+      .orderBy(desc(organizationMembersTable.invitedAt))
+      .limit(MAX_ORGANIZATION_MEMBER_RESULTS),
   ]);
 
   if (!org) { res.status(404).json({ error: "Not found" }); return; }
@@ -288,6 +291,7 @@ router.get("/organizations/:orgId/members", requireAuth, requireOrgRole(["owner"
   const [owner] = await db.select({ email: usersTable.email, name: usersTable.name })
     .from(usersTable).where(eq(usersTable.id, org.ownerId)).limit(1);
 
+  res.setHeader("X-Result-Limit", String(MAX_ORGANIZATION_MEMBER_RESULTS));
   res.json([
     { id: 0, orgId, userId: org.ownerId, email: owner?.email ?? null, name: owner?.name ?? null, role: "owner", invitedAt: org.createdAt },
     ...memberRows.map(m => ({ ...m, email: m.email ?? null, name: m.name ?? null })),

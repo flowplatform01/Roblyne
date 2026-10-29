@@ -112,4 +112,30 @@ Set the same `REDIS_URL` on API. In production, ROBLYNE automatically stops its 
 
 ## Payments
 
-FlowPay works through the API and does not require a ROBLYNE worker. Configure FlowPay production values only when you are ready for live payments.
+FlowPay works through `roblyne-api`; it does **not** need a separate Render service or the ROBLYNE worker. Configure it only when FlowPay has issued your production access and you are ready to validate real payments.
+
+Add these **API-service** environment variables in Render:
+
+```text
+FLOWPAY_API_BASE_URL=<FlowPay production API base URL>
+FLOWPAY_CLIENT_ID=<FlowPay client ID>
+FLOWPAY_PUBLIC_KEY=<FlowPay public key>
+FLOWPAY_SECRET_KEY=<FlowPay secret key>
+FLOWPAY_WEBHOOK_SECRET=<FlowPay webhook signing secret>
+FLOWPAY_PROVIDER=FAPSHI
+FLOWPAY_TIMEOUT_MS=15000
+```
+
+These are the valid names used by the current deployment and ROBLYNE adapter. With `NODE_ENV=production`, ROBLYNE always uses the production payment path, so `FLOWPAY_ENVIRONMENT` is not needed. `FLOWPAY_CLIENT_SECRET` is not read by ROBLYNE; it is harmless if already present, but `FLOWPAY_SECRET_KEY` is the required value. Do not put payment credentials on the static site or worker, and never use `VITE_*` for them. `FLOWPAY_PROVIDER` and `FLOWPAY_TIMEOUT_MS` are optional; the defaults are `FAPSHI` and 15 seconds.
+
+In the FlowPay merchant/admin dashboard, configure the production webhook URL as:
+
+```text
+https://<your-roblyne-api-host>/api/payments/webhooks/flowpay
+```
+
+Use the exact Render API URL now, and later replace it with `https://api.<your-domain>/api/payments/webhooks/flowpay`. The webhook secret in FlowPay must exactly match `FLOWPAY_WEBHOOK_SECRET` in Render. ROBLYNE verifies the signed raw request using `x-flowpay-event-id`, `x-flowpay-event-type`, and `x-flowpay-signature`; duplicate deliveries are safe.
+
+Save, redeploy the **API only**, then use a FlowPay signed test webhook or a provider-approved controlled payment. Verify the webhook delivery is `200`, the payment changes from pending only after confirmed status, and replaying a delivery does not duplicate the ticket, vote, campaign contribution, or financial record. Keep paid features closed until this production check succeeds.
+
+For the complete contract, fallback behavior, and troubleshooting steps, see `ROBLYNE_DEPLOYMENT_RUNBOOK.md`.

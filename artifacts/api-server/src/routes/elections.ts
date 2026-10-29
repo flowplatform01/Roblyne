@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import {
   db, electionsTable, positionsTable, candidatesTable,
@@ -32,6 +32,8 @@ import { invalidateDiscoverCache } from "../lib/discover-cache";
 import { normalizeCameroonPhone } from "../lib/phone";
 
 const router: IRouter = Router();
+const MAX_ELECTION_LIST_RESULTS = 100;
+const MAX_ELIGIBLE_VOTER_RESULTS = 1000;
 
 async function resumePendingElectionPayment(
   res: import("express").Response,
@@ -139,8 +141,11 @@ router.get("/elections", async (req, res): Promise<void> => {
     })
     .from(electionsTable)
     .leftJoin(organizationsTable, eq(electionsTable.orgId, organizationsTable.id))
-    .where(filters.length > 0 ? and(...filters) : undefined);
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(desc(electionsTable.createdAt))
+    .limit(MAX_ELECTION_LIST_RESULTS);
 
+  res.setHeader("X-Result-Limit", String(MAX_ELECTION_LIST_RESULTS));
   res.json(rows.map(({ election, orgName, orgLogoUrl, positionsCount, candidatesCount, totalVotes }) => ({
     ...compactListMedia({
       ...election,
@@ -979,7 +984,10 @@ router.get("/elections/:electionId/eligible-voters", requireAuth, requireResourc
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = ListEligibleVotersParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const voters = await db.select().from(electionEligibleVotersTable).where(eq(electionEligibleVotersTable.electionId, parsed.data.electionId));
+  const voters = await db.select().from(electionEligibleVotersTable)
+    .where(eq(electionEligibleVotersTable.electionId, parsed.data.electionId))
+    .limit(MAX_ELIGIBLE_VOTER_RESULTS);
+  res.setHeader("X-Result-Limit", String(MAX_ELIGIBLE_VOTER_RESULTS));
   res.json(voters);
 });
 

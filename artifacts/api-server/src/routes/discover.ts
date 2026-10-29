@@ -8,6 +8,8 @@ import { compactListMedia } from "../lib/compact-list-media";
 const router: IRouter = Router();
 type DiscoverResponse = { items: any[]; featured: any[]; trending: any[] };
 const discoveryInFlight = new Map<string, Promise<DiscoverResponse>>();
+const MAX_DISCOVERY_LIMIT = 48;
+const MAX_SEARCH_LIMIT = 48;
 
 async function buildDiscoverResponse(typeFilter: string | undefined, limit: number, sort: string): Promise<DiscoverResponse> {
   // Fetch all three pillars in parallel using a single aggregated query each.
@@ -93,7 +95,7 @@ async function buildDiscoverResponse(typeFilter: string | undefined, limit: numb
 router.get("/discover", async (req, res): Promise<void> => {
   const queryParsed = DiscoverQueryParams.safeParse(req.query);
   const typeFilter = queryParsed.success ? queryParsed.data.type : "all";
-  const limit = queryParsed.success ? (queryParsed.data.limit ?? 24) : 24;
+  const limit = Math.min(queryParsed.success ? (queryParsed.data.limit ?? 24) : 24, MAX_DISCOVERY_LIMIT);
   const sort = queryParsed.success ? (queryParsed.data.sort ?? "newest") : "newest";
   const cacheKey = `evenum:discover:v2:${typeFilter}:${limit}:${sort}`;
   // Discovery is public and intentionally tolerates a few seconds of staleness.
@@ -137,7 +139,7 @@ router.get("/search", async (req, res): Promise<void> => {
   const pattern = `%${q}%`;
   const searchLimit = Math.min(
     Math.max(Number(req.query.limit) || 40, 1),
-    100,
+    MAX_SEARCH_LIMIT,
   );
 
   // All three searches run in parallel; participant counts are subqueries.

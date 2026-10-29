@@ -5,7 +5,7 @@ import helmet from "helmet";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pinoHttp from "pino-http";
-import { apiLimiter, authLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
+import { apiLimiter, authLimiter, flowPayWebhookLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordRequest } from "./lib/metrics";
@@ -107,7 +107,9 @@ app.use("/api", (req, res, next) => {
 app.use(express.json({
   limit: "10mb",
   verify: (req, _res, buf) => {
-    (req as any).rawBody = Buffer.from(buf);
+    if ((req as express.Request).originalUrl.split("?")[0] === "/api/payments/webhooks/flowpay") {
+      (req as any).rawBody = Buffer.from(buf);
+    }
   },
 }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -138,6 +140,7 @@ app.use(
   }),
 );
 
+app.use("/api/payments/webhooks/flowpay", flowPayWebhookLimiter);
 app.use("/api", apiLimiter);
 app.use("/api/auth", authLimiter);
 app.use("/api", writeLimiter);
