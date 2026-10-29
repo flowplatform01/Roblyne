@@ -16,12 +16,13 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --workspace-concurrency=1 --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:api": "pnpm --filter @workspace/api-server run test",
+    "test:e2e": "playwright test",
     "verify:stack": "pnpm --filter @workspace/scripts run verify:stack",
     "verify:render:artifacts": "node scripts/verify-render-artifacts.mjs"
   },
   "private": true,
-  "dependencies": {},
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "prettier": "^3.9.4",
     "typescript": "~5.9.3"
   }

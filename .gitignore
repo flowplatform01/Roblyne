@@ -52,6 +52,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.logs/
+playwright-report/
+test-results/
 
 # Embedded PostgreSQL data
 .pgdata/

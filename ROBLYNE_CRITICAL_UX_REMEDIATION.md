@@ -22,13 +22,18 @@ This remediation inspected the deployed-code paths for private election access, 
 
 - **Root cause:** the client had no timeout on either presign or direct S3-compatible PUT request, so a stalled request could keep the upload state active indefinitely.
 - **Fix:** both stages use a 45-second deadline. Timeout clears busy state, preserves normal retry behavior, and gives a recovery message. The backend still validates image type/size and only returns a pre-signed URL; application records are not created by the upload endpoint.
-- **Limit:** R2/S3 CORS, credentials, and actual object retrieval require controlled provider verification after deployment.
+- **Controlled provider verification:** on 2026-10-30, a disposable local user uploaded a harmless 1×1 PNG through the local API to the configured R2 bucket. Registration, presign, direct PUT, and public retrieval each returned HTTP 200 with `image/png` retrieval. The resulting object key is intentionally not treated as application content.
+- **Remaining limit:** interrupted transfer, expired authorization, and retry behavior still require dedicated browser/network tests.
 
 ## Route and organization isolation
 
 - Numeric IDs are identifiers, not authorization. The audited API applies organization access middleware to 42 route handlers, and election/event public read paths apply explicit visibility rules. No identifier-only authorization bypass was confirmed by source review.
 - Cross-organization runtime attempts require two isolated test accounts and are recorded as an outstanding browser/integration verification item.
 
-## Browser limitation
+## Browser verification and remaining limitation
 
-No `playwright` package or `playwright.config.*` exists in this checkout. No browser test was claimed or simulated. A dedicated isolated test database, test accounts, and Playwright setup are required before treating the reported live journeys as browser-verified.
+Playwright is now configured in this repository. Chromium tests run the real ROBLYNE frontend with synthetic intercepted APIs, so they do not touch a database, provider, or production service. They verify successful shared-link verification removes the secret from the URL, protected reads continue without the query code, the code field is not repeated, and invalid links reveal no election data.
+
+The browser suite also verifies that a controlled Finance summary failure renders the section-level retry state instead of triggering the global application error screen.
+
+The configured local `.env` now targets the repository's embedded local PostgreSQL. The migration command was not run because the execution environment denied that approval request, so database-backed browser journeys still require a completed local migration and synthetic test accounts.
