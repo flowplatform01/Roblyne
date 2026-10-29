@@ -9,6 +9,7 @@ import { apiLimiter, authLimiter, writeLimiter, searchLimiter } from "./middlewa
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordRequest } from "./lib/metrics";
+import { sessionCookieOptions } from "./lib/session-cookie";
 import {
   isCorsOriginAllowed,
   isWriteRequestOriginAllowed,
@@ -133,12 +134,7 @@ app.use(
     secret: sessionSecret ?? "evenum-dev-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    },
+    cookie: sessionCookieOptions(),
   }),
 );
 

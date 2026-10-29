@@ -97,7 +97,9 @@ Set `NODE_ENV=production`, `NODE_VERSION=22.12.0`, `DATABASE_URL`, and `REDIS_UR
 
 ### Render subdomains are not sufficient for browser login
 
-Render supplies HTTPS for `onrender.com` URLs, so they can be used for build, health-check, and public-read testing. They are **not sufficient for production browser session authentication** when the static site and API use different Render subdomains. `onrender.com` is a public suffix, so browsers treat the frontend-to-API session cookie as cross-site and can refuse it after login. This produces a successful login/register response followed by an unauthenticated `/auth/me` request.
+Render supplies HTTPS for `onrender.com` URLs, so they can be used for build, health-check, and public-read testing. `onrender.com` is a public suffix, so browsers treat the frontend-to-API session cookie as cross-site. ROBLYNE sets `Secure`, `SameSite=None`, and `Partitioned` cookies in production to support current Chromium browsers during this temporary phase.
+
+Partitioned-cookie support is not universal and users can disable third-party cookies. Before enabling real account use broadly, obtain one domain and put both public services under that same registrable domain, for example `app.example.com` and `api.example.com`.
 
 Before enabling real account use, obtain one domain and put both public services under that same registrable domain, for example `app.example.com` and `api.example.com`. Do not add arbitrary Cloudflare DNS records for an `onrender.com` address; Render owns that DNS zone.
 
