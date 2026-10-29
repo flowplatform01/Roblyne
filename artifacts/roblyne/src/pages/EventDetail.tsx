@@ -362,9 +362,12 @@ export default function EventDetail() {
   };
 
   const copyRegistrationLink = () => {
-    const url = `${window.location.origin}/events/${event.id}/register`;
+    const inviteSuffix = event.visibility === 'invite_only' && event.inviteCode
+      ? `?invite=${encodeURIComponent(event.inviteCode)}`
+      : '';
+    const url = `${window.location.origin}/events/${event.id}/register${inviteSuffix}`;
     navigator.clipboard.writeText(url);
-    toast({ title: "Link copied to clipboard" });
+    toast({ title: event.visibility === 'invite_only' ? "Invite link copied to clipboard" : "Link copied to clipboard" });
   };
 
   const getStatusBadge = () => {
@@ -422,7 +425,7 @@ export default function EventDetail() {
               </Link>
             </Button>
             <ShareButton
-              url={`${window.location.origin}/events/${event.id}/register`}
+              url={`${window.location.origin}/events/${event.id}/register${event.visibility === 'invite_only' && event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ''}`}
               title={event.title}
               description={event.description || `Register for ${event.title}`}
               ctaLabel="Share Event"

@@ -3,6 +3,8 @@ import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout/Layout";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useGetEvent, useListTicketTypes, useRegisterForEvent } from "@workspace/api-client-react";
+import type { Event as EventResource, TicketType } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +21,7 @@ import { formatCurrency } from "@/lib/currency";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { ParticipationLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
+import { apiUrl } from "@/lib/api-url";
 
 type SavedEventTicket = {
   eventId: number;
@@ -101,6 +104,8 @@ function safeFilePart(value: string): string {
 export default function EventRegister() {
   const [, params] = useRoute("/events/:id/register");
   const eventId = params?.id ? parseInt(params.id, 10) : 0;
+  const inviteFromLink = new URLSearchParams(window.location.search).get('invite')?.trim().toUpperCase() || '';
+  const hasInviteLink = inviteFromLink.length > 0;
 
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
@@ -119,9 +124,29 @@ export default function EventRegister() {
   const [ticketPdfDownloaded, setTicketPdfDownloaded] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const { data: event, isLoading: isEventLoading } = useGetEvent(eventId);
+  const standardEvent = useGetEvent(eventId, { query: { enabled: !hasInviteLink } });
+  const standardTicketTypes = useListTicketTypes(eventId, { query: { enabled: !hasInviteLink } });
+  const inviteResources = useQuery({
+    queryKey: ['invite-event', eventId, inviteFromLink],
+    enabled: hasInviteLink && Number.isInteger(eventId) && eventId > 0,
+    retry: false,
+    queryFn: async (): Promise<[EventResource, TicketType[]]> => {
+      const suffix = `?invite=${encodeURIComponent(inviteFromLink)}`;
+      const responses = await Promise.all([
+        fetch(apiUrl(`/api/events/${eventId}${suffix}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/events/${eventId}/ticket-types${suffix}`), { credentials: 'include' }),
+      ]);
+      if (responses.some(response => !response.ok)) throw new Error('This invite link is invalid or no longer available.');
+      const [eventData, ticketTypesData] = await Promise.all(responses.map(response => response.json()));
+      return [eventData as EventResource, ticketTypesData as TicketType[]];
+    },
+  });
+  const [inviteEvent, inviteTicketTypes] = inviteResources.data ?? [];
+  const event = hasInviteLink ? inviteEvent : standardEvent.data;
   const brandingStyle = useOrgBranding(event);
-  const { data: ticketTypes, isLoading: isTicketTypesLoading } = useListTicketTypes(eventId);
+  const ticketTypes = hasInviteLink ? inviteTicketTypes : standardTicketTypes.data;
+  const isEventLoading = hasInviteLink ? inviteResources.isLoading : standardEvent.isLoading;
+  const isTicketTypesLoading = hasInviteLink ? inviteResources.isLoading : standardTicketTypes.isLoading;
   const registerMutation = useRegisterForEvent();
   const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
   const countdown = useCountdown(event?.endsAt);
@@ -236,8 +261,9 @@ export default function EventRegister() {
         data: {
           ticketTypeId: selectedTicketId,
           attendeeName: formData.name,
-           attendeeEmail: formData.email,
+          attendeeEmail: formData.email,
            customerPhone: formData.phone || undefined,
+          inviteCode: event?.visibility === 'invite_only' ? inviteFromLink : undefined,
           quantity: 1,
         },
       },
@@ -473,7 +499,29 @@ export default function EventRegister() {
     );
   }
 
-  if (!event) return null;
+  if (!event) {
+    return (
+      <Layout>
+        <main className="mx-auto flex min-h-[60vh] max-w-lg items-center px-4 py-12">
+          <div className="w-full rounded-lg border bg-card p-8 text-center shadow-sm">
+            <Ticket className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold">This registration page needs access</h1>
+            <p className="mt-3 text-sm text-muted-foreground">Use the complete link provided by the organizer. Private events remain visible only to their organization.</p>
+            <form className="mt-6 flex gap-2" onSubmit={(submitEvent) => {
+              submitEvent.preventDefault();
+              const form = new FormData(submitEvent.currentTarget);
+              const code = String(form.get('invite') || '').trim().toUpperCase();
+              if (code) window.location.assign(`/events/${eventId}/register?invite=${encodeURIComponent(code)}`);
+            }}>
+              <Input name="invite" aria-label="Invite code" placeholder="Invite code" className="font-mono" autoComplete="off" />
+              <Button type="submit">Continue</Button>
+            </form>
+            <Button asChild variant="link" className="mt-4"><Link href="/events">Browse public events</Link></Button>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
 
   const lightHero = (event as any).theme === "light" && !(event as any).heroImageUrl && !event.coverImageUrl;
 

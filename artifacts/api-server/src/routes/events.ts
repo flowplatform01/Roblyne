@@ -19,10 +19,26 @@ import { compactListMedia } from "../lib/compact-list-media";
 import { getEventRegistrationBlockReason } from "../lib/event-registration-lifecycle";
 import { normalizeCameroonPhone } from "../lib/phone";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
+import { canReadEvent } from "../lib/event-access";
 
 const router: IRouter = Router();
 const MAX_EVENT_LIST_RESULTS = 100;
 const MAX_EVENT_ATTENDEE_RESULTS = 500;
+
+function requestInviteCode(query: unknown): string | null {
+  const value = (query as Record<string, unknown> | undefined)?.invite;
+  if (typeof value !== "string") return null;
+  const code = value.trim().toUpperCase();
+  return code.length > 0 && code.length <= 64 ? code : null;
+}
+
+function canReadEventRequest(
+  event: { visibility: string; status: string; inviteCode?: string | null },
+  viewerRole: string | null,
+  inviteCode: string | null,
+): boolean {
+  return canReadEvent(event.visibility, event.status, Boolean(viewerRole), Boolean(inviteCode && event.inviteCode && inviteCode === event.inviteCode));
+}
 
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
@@ -126,7 +142,7 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.event.orgId, req.session.userId) : null;
-  if ((row.event.visibility !== "public" || row.event.status === "draft") && !viewerRole) {
+  if (!canReadEventRequest(row.event, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -262,12 +278,12 @@ router.get("/events/:eventId/ticket-types", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
   const parsed = ListTicketTypesParams.safeParse({ eventId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [event] = await db.select({ visibility: eventsTable.visibility, orgId: eventsTable.orgId })
+  const [event] = await db.select({ visibility: eventsTable.visibility, status: eventsTable.status, inviteCode: eventsTable.inviteCode, orgId: eventsTable.orgId })
     .from(eventsTable)
     .where(eq(eventsTable.id, parsed.data.eventId))
     .limit(1);
   const viewerRole = event && req.session?.userId ? await getOrgRole(event.orgId, req.session.userId) : null;
-  if (!event || (event.visibility !== "public" && !viewerRole)) {
+  if (!event || !canReadEventRequest(event, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" });
     return;
   }
