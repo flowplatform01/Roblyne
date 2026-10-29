@@ -16,6 +16,34 @@ This is the authoritative production procedure. ROBLYNE is host-portable; Render
 3. Generate a random `SESSION_SECRET` and a separate high-entropy `PLATFORM_ADMIN_BOOTSTRAP_SECRET`.
 4. Do not configure Redis or create the worker until Redis is available.
 
+## Cloudflare R2 image storage
+
+ROBLYNE uploads PNG, JPEG, GIF, and WebP images (up to 2 MB) directly to S3-compatible object storage using short-lived presigned upload URLs. It then stores the corresponding public object URL. Therefore the R2 bucket must be publicly readable for image delivery, while write credentials stay only on the API service.
+
+### Create ROBLYNE's R2 resources now
+
+1. In Cloudflare, open **Storage & databases -> R2 -> Create bucket**. Create a separate lowercase bucket such as `roblyne-images-prod`; do not reuse the Airfyl bucket.
+2. Open **R2 -> Overview -> Manage in API Tokens -> Create API Token**. Grant **Object Read & Write** and restrict the token to only `roblyne-images-prod`. Save the displayed Access Key ID and Secret Access Key immediately; the secret is shown once.
+3. Copy the R2 S3 API endpoint from Cloudflare. Its format is `https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com`.
+4. In the bucket **Settings**, enable **Public Development URL** and copy its `https://<bucket>.<random>.r2.dev` URL. This is acceptable as a temporary development/testing public URL only; do not create your own CNAME to it.
+5. Set these API-service environment values in Render (and, if needed, your local `.env`):
+
+```text
+S3_ENDPOINT=https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_BUCKET=roblyne-images-prod
+S3_ACCESS_KEY_ID=<R2 access key ID>
+S3_SECRET_ACCESS_KEY=<R2 secret access key>
+S3_PUBLIC_BASE_URL=https://<bucket>.<random>.r2.dev
+S3_FORCE_PATH_STYLE=true
+```
+
+6. Deploy the API and test an image upload. Never put either R2 credential in `VITE_*` frontend variables.
+
+### Replace the temporary R2 URL when you own a domain
+
+Cloudflare marks `r2.dev` URLs as development-only and rate-limited. Once you buy a domain and add it to the same Cloudflare account, open the R2 bucket **Settings -> Custom Domains -> Add**, attach a dedicated hostname such as `media.example.com`, wait until it is active, then change only `S3_PUBLIC_BASE_URL` to `https://media.example.com` and redeploy the API. You do not manually create that R2 custom-domain DNS record; Cloudflare creates it during the bucket-domain connection.
+
 ## API service
 
 Create a Node **Web Service** at the repository root.
@@ -64,6 +92,24 @@ Set `NODE_ENV=production`, `NODE_VERSION=22.12.0`, `DATABASE_URL`, and `REDIS_UR
 4. Register the first account, complete bootstrap with `PLATFORM_ADMIN_BOOTSTRAP_SECRET`, then remove or rotate that secret.
 5. Add custom domains by rebuilding the static site with the API custom origin, then update API CORS with the frontend custom origin.
 6. Add Redis and worker only as described above.
+
+## Domains and Cloudflare
+
+### Render subdomains are not sufficient for browser login
+
+Render supplies HTTPS for `onrender.com` URLs, so they can be used for build, health-check, and public-read testing. They are **not sufficient for production browser session authentication** when the static site and API use different Render subdomains. `onrender.com` is a public suffix, so browsers treat the frontend-to-API session cookie as cross-site and can refuse it after login. This produces a successful login/register response followed by an unauthenticated `/auth/me` request.
+
+Before enabling real account use, obtain one domain and put both public services under that same registrable domain, for example `app.example.com` and `api.example.com`. Do not add arbitrary Cloudflare DNS records for an `onrender.com` address; Render owns that DNS zone.
+
+### Add Cloudflare later, after buying a domain
+
+1. Buy one domain from any registrar. Add that domain as a Cloudflare zone and change the registrar nameservers to the two Cloudflare nameservers assigned to the zone. Wait until Cloudflare marks the zone active.
+2. Choose separate names under the same domain, for example `app.example.com` for the static site and `api.example.com` for the API. Do not expose the worker with a custom domain.
+3. In each Render service, add the matching custom domain **before** creating DNS records. Copy the Render service's exact `onrender.com` hostname.
+4. In Cloudflare, set **SSL/TLS -> Overview** to **Full**. Create a `CNAME` for `app` to the static site's Render hostname and another for `api` to the API's Render hostname. Set both records to **DNS only** (gray cloud) until Render verifies them and issues certificates. Remove conflicting `AAAA` records.
+5. In Render, verify both custom domains and wait until TLS is active. Cloudflare proxying is optional after verification; keep DNS-only initially for the simplest operation.
+6. Update the static-site build variable to `VITE_API_URL=https://api.example.com` and redeploy it. Then update the API variable to `CORS_ALLOWED_ORIGINS=https://app.example.com` and redeploy it.
+7. Test registration, login, logout, a protected route, and an upload over the custom domains before advertising them. Keep the Render subdomains enabled until this succeeds.
 
 ## Validation and recovery
 

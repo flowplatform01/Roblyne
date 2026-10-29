@@ -42,6 +42,10 @@ S3_PUBLIC_BASE_URL=<public bucket URL>
 
 Set `S3_REGION` and `S3_FORCE_PATH_STYLE=true` only if your provider requires them. Do **not** add `REDIS_URL` now. ROBLYNE automatically uses its safe in-process lifecycle maintenance mode when Redis is absent. The start command runs tracked Drizzle migrations before API startup, so no separate Render pre-deploy field or local migration step is required. Deploy and confirm the migration and health check succeed.
 
+### If using Cloudflare R2 for storage
+
+Create a **separate** R2 bucket for ROBLYNE (for example `roblyne-images-prod`) and a bucket-restricted **Object Read & Write** R2 API token. Do not reuse the Airfyl bucket or credentials. Use the R2 S3 endpoint as `S3_ENDPOINT`, set `S3_REGION=auto` and `S3_FORCE_PATH_STYLE=true`, and use the bucket's public URL as `S3_PUBLIC_BASE_URL`. Without your own domain, Cloudflare provides an `r2.dev` public URL; it works for initial testing but is development-only and rate-limited. When you later own a domain, attach a Cloudflare R2 custom domain such as `media.<your-domain>` and replace only `S3_PUBLIC_BASE_URL`. Full steps are in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`.
+
 ## 2. Create the static frontend
 
 Render -> **New +** -> **Static Site** -> select the same ROBLYNE repository.
@@ -88,9 +92,9 @@ Save and redeploy API. Then open the static frontend, register your account, and
 
 ## 5. Add custom domains
 
-1. Add your app domain to the static site and API domain to the API service.
-2. Create the exact DNS records Render provides in Cloudflare.
-3. Change `VITE_API_URL` to the API custom domain, redeploy the static site, then change `CORS_ALLOWED_ORIGINS` to the frontend custom domain and redeploy API.
+You can use Render `onrender.com` URLs for deployment and health-check testing, but not for reliable browser login when the static site and API are separate services. They cannot reliably share the session cookie because Render subdomains are cross-site to each other in browsers. Before inviting real users, buy one domain and use `app.<your-domain>` for the static site and `api.<your-domain>` for the API.
+
+When you later buy a domain, follow the **Domains and Cloudflare** section in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`: add `app.<your-domain>` to the static site and `api.<your-domain>` to the API in Render first, then create DNS-only Cloudflare CNAME records to the corresponding Render hostnames. After Render verifies TLS, rebuild the static site with the API custom URL and redeploy the API with the frontend custom URL in `CORS_ALLOWED_ORIGINS`.
 
 ## 6. Add Redis and the worker
 
