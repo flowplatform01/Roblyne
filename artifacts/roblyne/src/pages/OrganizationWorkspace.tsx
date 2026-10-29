@@ -54,8 +54,12 @@ export default function OrganizationWorkspace() {
   const [match, params] = useRoute("/organizations/:id");
   const orgId = params?.id ? parseInt(params.id, 10) : 0;
   const [location, setLocation] = useLocation();
-  
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return tab && ['overview', 'elections', 'events', 'campaigns', 'team', 'analytics', 'finance', 'settings'].includes(tab)
+      ? tab
+      : 'overview';
+  });
   
   React.useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -75,9 +79,19 @@ export default function OrganizationWorkspace() {
   const { data: org, isLoading: isOrgLoading } = useGetOrganization(orgId);
   const { data: stats, isLoading: isStatsLoading } = useGetOrganizationStats(orgId);
   
-  const { data: elections, isLoading: isElectionsLoading } = useListElections({ orgId });
-  const { data: events, isLoading: isEventsLoading } = useListEvents({ orgId });
-  const { data: campaigns, isLoading: isCampaignsLoading } = useListCampaigns({ orgId });
+  const showOverviewActivity = activeTab === 'overview';
+  const { data: elections, isLoading: isElectionsLoading } = useListElections(
+    { orgId },
+    { query: { enabled: showOverviewActivity || activeTab === 'elections' } },
+  );
+  const { data: events, isLoading: isEventsLoading } = useListEvents(
+    { orgId },
+    { query: { enabled: showOverviewActivity || activeTab === 'events' } },
+  );
+  const { data: campaigns, isLoading: isCampaignsLoading } = useListCampaigns(
+    { orgId },
+    { query: { enabled: showOverviewActivity || activeTab === 'campaigns' } },
+  );
 
   if (isOrgLoading || isStatsLoading) {
     return (

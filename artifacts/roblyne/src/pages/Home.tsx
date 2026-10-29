@@ -24,11 +24,19 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [searchQuery]);
 
-  const { data: discoverData, isLoading } = useDiscover();
+  const { data: discoverData, isLoading } = useDiscover({ limit: 12 });
   const { data: searchData, isLoading: isSearchLoading } = useSearch(
     { q: debouncedQuery },
     { query: { enabled: debouncedQuery.length >= 2, queryKey: ['search', debouncedQuery] } }
   );
+  const highlightedItemKeys = new Set(
+    discoverData
+      ? [...discoverData.featured, ...discoverData.trending].map((item) => `${item.type}-${item.id}`)
+      : [],
+  );
+  const generalItems = discoverData?.items.filter(
+    (item) => !highlightedItemKeys.has(`${item.type}-${item.id}`),
+  ) ?? [];
 
   return (
     <Layout>
@@ -166,14 +174,14 @@ export default function Home() {
                 )}
                 
                 {/* General Feed */}
-                {discoverData.items.length > 0 && (
+                {generalItems.length > 0 && (
                   <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <div className="flex items-center gap-4 mb-10">
                       <span className="w-12 h-[2px] bg-primary block"></span>
                        <h3 className="text-3xl font-serif font-bold">{t("home.recentActivity")}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                      {discoverData.items.map((item, i) => (
+                      {generalItems.map((item, i) => (
                         <div key={`${item.type}-${item.id}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
                           <DiscoveryCard item={item} />
                         </div>

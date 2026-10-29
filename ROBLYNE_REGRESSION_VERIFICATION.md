@@ -14,7 +14,8 @@
 - Frontend Vite/PWA production build: passed.
 - Render artifact verifier: API, worker, and static frontend artifacts all present.
 - `git diff --check`: passed during final artifact validation.
-- Playwright/Chromium: 3 passing synthetic-API browser tests. The successful shared private-election link verifies once, clears the URL code, loads protected data without the code query parameter, and hides the redundant inline code field. The invalid-link path shows recovery without election data. A controlled Finance summary failure renders its local retry state without a page error.
+- Playwright/Chromium: 5 passing synthetic-API browser tests. The home shell stays visible while a bounded discovery request is deliberately delayed, and a Finance deep link avoids inactive engine-list requests. The successful shared private-election link verifies once, clears the URL code, loads protected data without the code query parameter, and hides the redundant inline code field. The invalid-link path shows recovery without election data. A controlled Finance summary failure renders its local retry state without a page error.
+- API tests: 33 passing assertions across access controls, lifecycle windows, CORS, queue readiness, session behavior, phone normalization, and settlement allocation.
 - R2 upload integration: passed against the configured provider using a disposable local user and harmless 1×1 PNG. Local registration, `/api/uploads/presign`, signed PUT, and public object retrieval each returned HTTP 200; retrieved content type was `image/png`.
 
 ## Critical behavior covered by source/unit tests

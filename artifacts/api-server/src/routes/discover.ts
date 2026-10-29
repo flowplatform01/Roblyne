@@ -138,7 +138,7 @@ router.get("/search", async (req, res): Promise<void> => {
   const { q, type: typeFilter } = queryParsed.data;
   const pattern = `%${q}%`;
   const searchLimit = Math.min(
-    Math.max(Number(req.query.limit) || 40, 1),
+    Math.max(Number(req.query.limit) || 24, 1),
     MAX_SEARCH_LIMIT,
   );
 
@@ -204,7 +204,9 @@ router.get("/search", async (req, res): Promise<void> => {
     ...campaigns.rows.map((r: any) => ({ ...compactListMedia(r), type: "campaign" })),
   ];
 
-  res.json({ query: q, total: items.length, items });
+  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const boundedItems = items.slice(0, searchLimit);
+  res.json({ query: q, total: boundedItems.length, items: boundedItems });
 });
 
 export default router;
