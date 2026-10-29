@@ -28,6 +28,10 @@ import {
 } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
 import { canReadElection, canViewElectionResults } from "../lib/election-access";
+import {
+  addElectionInviteVerification,
+  hasElectionInviteVerification,
+} from "../lib/election-invite-verification";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
 import { normalizeCameroonPhone } from "../lib/phone";
 
@@ -71,19 +75,30 @@ function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | nu
   return startsAt.getTime() < endsAt.getTime();
 }
 
-function requestInviteCode(query: unknown): string | null {
-  const value = (query as Record<string, unknown> | undefined)?.invite;
+function normalizeInviteCode(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const code = value.trim().toUpperCase();
   return code.length > 0 && code.length <= 64 ? code : null;
 }
 
+function requestInviteCode(query: unknown): string | null {
+  return normalizeInviteCode((query as Record<string, unknown> | undefined)?.invite);
+}
+
 function canReadElectionRequest(
+  electionId: number,
   election: { visibility: string; status: string; inviteCode?: string | null },
   viewerRole: string | null,
   inviteCode: string | null,
+  inviteVerifications?: Record<string, number>,
 ): boolean {
-  return canReadElection(election.visibility, election.status, Boolean(viewerRole), Boolean(inviteCode && election.inviteCode && inviteCode === election.inviteCode));
+  const inviteCodeMatches = Boolean(inviteCode && election.inviteCode && inviteCode === election.inviteCode);
+  return canReadElection(
+    election.visibility,
+    election.status,
+    Boolean(viewerRole),
+    inviteCodeMatches || hasElectionInviteVerification(inviteVerifications, electionId),
+  );
 }
 
 function isCandidateRemovalLocked(
@@ -227,19 +242,45 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.election.orgId, req.session.userId) : null;
-  if (!canReadElectionRequest(row.election, viewerRole, requestInviteCode(req.query))) {
+  if (!canReadElectionRequest(row.election.id, row.election, viewerRole, requestInviteCode(req.query), req.session.electionInviteVerifications)) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
   res.json({
     ...row.election,
     inviteCode: viewerRole === "owner" || viewerRole === "admin" ? row.election.inviteCode : null,
+    inviteVerified: row.election.visibility === "invite_only"
+      && hasElectionInviteVerification(req.session.electionInviteVerifications, row.election.id),
     organizationName: row.orgName ?? null,
     organizationLogoUrl: row.orgLogoUrl ?? null,
     positionsCount: row.positionsCount ?? 0,
     candidatesCount: row.candidatesCount ?? 0,
     totalVotes: row.totalVotes ?? 0,
   });
+});
+
+router.post("/elections/:electionId/invite-verification", async (req, res): Promise<void> => {
+  const electionId = parseInt(String(req.params.electionId), 10);
+  const inviteCode = normalizeInviteCode(req.body?.inviteCode);
+  if (!Number.isInteger(electionId) || electionId <= 0 || !inviteCode) {
+    res.status(400).json({ error: "Enter a valid invite code" });
+    return;
+  }
+
+  const [election] = await db.select({
+    id: electionsTable.id,
+    visibility: electionsTable.visibility,
+    status: electionsTable.status,
+    inviteCode: electionsTable.inviteCode,
+  }).from(electionsTable).where(eq(electionsTable.id, electionId)).limit(1);
+  if (!election || election.status === "draft" || election.visibility !== "invite_only" || inviteCode !== election.inviteCode) {
+    res.status(403).json({ error: "This invite code is invalid or no longer available" });
+    return;
+  }
+
+  req.session.electionInviteVerifications = addElectionInviteVerification(req.session.electionInviteVerifications, electionId);
+  await new Promise<void>((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
+  res.json({ verified: true });
 });
 
 // Update election — must be org owner/admin
@@ -388,12 +429,12 @@ router.get("/elections/:electionId/positions", async (req, res): Promise<void> =
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = ListPositionsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
+  const [election] = await db.select({ id: electionsTable.id, visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, parsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
+  if (!election || !canReadElectionRequest(election.id, election, viewerRole, requestInviteCode(req.query), req.session.electionInviteVerifications)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -430,12 +471,12 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
   const positionId = parseInt(rawPosId, 10);
   if (isNaN(electionId) || isNaN(positionId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
+  const [election] = await db.select({ id: electionsTable.id, visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
+  if (!election || !canReadElectionRequest(election.id, election, viewerRole, requestInviteCode(req.query), req.session.electionInviteVerifications)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -514,12 +555,12 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = ListCandidatesParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
+  const [election] = await db.select({ id: electionsTable.id, visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, paramParsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
+  if (!election || !canReadElectionRequest(election.id, election, viewerRole, requestInviteCode(req.query), req.session.electionInviteVerifications)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -580,12 +621,12 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const parsed = GetCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
+  const [election] = await db.select({ id: electionsTable.id, visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, parsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
+  if (!election || !canReadElectionRequest(election.id, election, viewerRole, requestInviteCode(req.query), req.session.electionInviteVerifications)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -788,7 +829,8 @@ router.post("/elections/:electionId/vote", async (req, res): Promise<void> => {
   }
 
   if (election.visibility === "invite_only") {
-    if (!bodyParsed.data.inviteCode || bodyParsed.data.inviteCode !== election.inviteCode) {
+    const inviteCodeMatches = Boolean(bodyParsed.data.inviteCode && bodyParsed.data.inviteCode === election.inviteCode);
+    if (!inviteCodeMatches && !hasElectionInviteVerification(req.session.electionInviteVerifications, electionId)) {
       res.status(403).json({ error: "A valid invite code is required to vote in this election" });
       return;
     }

@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 declare module "express-session" {
   interface SessionData {
     userId: number;
+    electionInviteVerifications?: Record<string, number>;
   }
 }
 

@@ -14,6 +14,8 @@ export interface ImageUploadProps {
   className?: string;
 }
 
+const UPLOAD_TIMEOUT_MS = 45_000;
+
 type PresignResponse = {
   uploadUrl: string;
   publicUrl: string;
@@ -58,6 +60,7 @@ export function ImageUpload({
     abortRef.current = controller;
     setError(null);
     setIsPreparing(true);
+    let timedOut = false;
 
     try {
       const prepared = await prepareImageForUpload(file, controller.signal);
@@ -68,20 +71,31 @@ export function ImageUpload({
         return localPreviewUrl;
       });
       setIsPreparing(false);
-      setIsUploading(true);
-      const presignResponse = await fetch(apiUrl('/api/uploads/presign'), {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contentType: prepared.file.type, size: prepared.file.size }),
-      });
+    setIsUploading(true);
+      const fetchWithDeadline = async (input: RequestInfo | URL, init: RequestInit) => {
+        const timeout = window.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, UPLOAD_TIMEOUT_MS);
+        try {
+          return await fetch(input, { ...init, signal: controller.signal });
+        } finally {
+          window.clearTimeout(timeout);
+        }
+      };
+      const presignResponse = await fetchWithDeadline(apiUrl('/api/uploads/presign'), {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ contentType: prepared.file.type, size: prepared.file.size }),
+        });
 
       const presignBody = await presignResponse.json().catch(() => null) as PresignResponse | { error?: string } | null;
       if (!presignResponse.ok || !presignBody || !("uploadUrl" in presignBody) || !("publicUrl" in presignBody)) {
         throw new Error((presignBody && "error" in presignBody ? presignBody.error : undefined) || "Unable to prepare image upload");
       }
 
-      const uploadResponse = await fetch(presignBody.uploadUrl, {
+      const uploadResponse = await fetchWithDeadline(presignBody.uploadUrl, {
         method: "PUT",
         headers: { "content-type": prepared.file.type },
         body: prepared.file,
@@ -92,15 +106,15 @@ export function ImageUpload({
 
       onChange(presignBody.publicUrl);
     } catch (uploadError) {
-      if (!controller.signal.aborted) {
-        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
+      if (!controller.signal.aborted || timedOut) {
+        setError(timedOut ? "The upload timed out. Check your connection and try again." : uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
         setPreviewUrl((current) => {
           if (current) URL.revokeObjectURL(current);
           return null;
         });
       }
     } finally {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted || timedOut) {
         setIsPreparing(false);
         setIsUploading(false);
       }

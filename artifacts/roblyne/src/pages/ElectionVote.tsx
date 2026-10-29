@@ -52,6 +52,24 @@ export default function ElectionVote() {
   })();
   const inviteFromLink = new URLSearchParams(window.location.search).get('invite')?.trim().toUpperCase() || '';
   const hasInviteLink = inviteFromLink.length > 0;
+  const inviteVerification = useQuery({
+    queryKey: ['election-invite-verification', electionId, inviteFromLink],
+    enabled: hasInviteLink && Number.isInteger(electionId) && electionId > 0,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(apiUrl(`/api/elections/${electionId}/invite-verification`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ inviteCode: inviteFromLink }),
+      });
+      const body = await response.json().catch(() => null) as { error?: string; verified?: boolean } | null;
+      if (!response.ok || !body?.verified) {
+        throw new Error(body?.error || 'This invite link is invalid or no longer available.');
+      }
+      return body;
+    },
+  });
 
   const standardElection = useGetElection(electionId, { query: { enabled: !hasInviteLink } });
   const standardPositions = useListPositions(electionId, { query: { enabled: !hasInviteLink } });
@@ -59,14 +77,13 @@ export default function ElectionVote() {
   const standardResults = useGetElectionResults(electionId, { query: { enabled: !hasInviteLink } });
   const inviteResources = useQuery({
     queryKey: ['invite-election', electionId, inviteFromLink],
-    enabled: hasInviteLink && Number.isInteger(electionId) && electionId > 0,
+    enabled: hasInviteLink && inviteVerification.isSuccess && Number.isInteger(electionId) && electionId > 0,
     retry: false,
     queryFn: async (): Promise<[Election, Position[], Candidate[]]> => {
-      const suffix = `?invite=${encodeURIComponent(inviteFromLink)}`;
       const responses = await Promise.all([
-        fetch(apiUrl(`/api/elections/${electionId}${suffix}`), { credentials: 'include' }),
-        fetch(apiUrl(`/api/elections/${electionId}/positions${suffix}`), { credentials: 'include' }),
-        fetch(apiUrl(`/api/elections/${electionId}/candidates${suffix}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/elections/${electionId}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/elections/${electionId}/positions`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/elections/${electionId}/candidates`), { credentials: 'include' }),
       ]);
       if (responses.some(response => !response.ok)) throw new Error('This invite link is invalid or no longer available.');
       const [electionData, positionsData, candidatesData] = await Promise.all(responses.map(response => response.json()));
@@ -78,9 +95,9 @@ export default function ElectionVote() {
   const positions = hasInviteLink ? invitePositions : standardPositions.data;
   const candidates = hasInviteLink ? inviteCandidates : standardCandidates.data;
   const liveResults = hasInviteLink ? undefined : standardResults.data;
-  const isElectionLoading = hasInviteLink ? inviteResources.isLoading : standardElection.isLoading;
-  const isPositionsLoading = hasInviteLink ? inviteResources.isLoading : standardPositions.isLoading;
-  const isCandidatesLoading = hasInviteLink ? inviteResources.isLoading : standardCandidates.isLoading;
+  const isElectionLoading = hasInviteLink ? inviteVerification.isLoading || inviteResources.isLoading : standardElection.isLoading;
+  const isPositionsLoading = hasInviteLink ? inviteVerification.isLoading || inviteResources.isLoading : standardPositions.isLoading;
+  const isCandidatesLoading = hasInviteLink ? inviteVerification.isLoading || inviteResources.isLoading : standardCandidates.isLoading;
   const submitVote = useSubmitVote();
 
   usePageMeta(election ? {
@@ -107,6 +124,14 @@ export default function ElectionVote() {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'quantity_first' | 'amount_first'>('quantity_first');
   const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
+
+  useEffect(() => {
+    if (!inviteVerification.isSuccess || !hasInviteLink) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url.toString());
+    setInviteCode('');
+  }, [hasInviteLink, inviteVerification.isSuccess]);
 
   // ── Display preferences ───────────────────────────────────────────────────
   const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('grid');
@@ -255,7 +280,9 @@ export default function ElectionVote() {
             candidateIds,
           })),
           voteQuantity: quantityForSubmit,
-          inviteCode: election?.visibility === 'invite_only' ? inviteCode : undefined,
+          inviteCode: election?.visibility === 'invite_only' && !inviteVerification.isSuccess
+            ? inviteCode || undefined
+            : undefined,
           voterEmail: election?.eligibilityMode === 'allowlist' ? voterEmail.trim() || undefined : undefined,
           customerName: paidBallot ? customerName : undefined,
           customerEmail: paidBallot ? customerEmail : undefined,
@@ -345,7 +372,8 @@ export default function ElectionVote() {
     ? { "--primary": hexToHsl(election.accentColor) } as React.CSSProperties
     : {};
 
-  const needsInviteCode = election.visibility === 'invite_only';
+  const inviteAccessVerified = inviteVerification.isSuccess || Boolean((election as any).inviteVerified);
+  const needsInviteCode = election.visibility === 'invite_only' && !inviteAccessVerified;
   const needsVoterEmail = election.eligibilityMode === 'allowlist';
   const positionList = positions || [];
   const totalPositions = positionList.length;

@@ -1138,7 +1138,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 }
 
 function FinanceSection({ orgId }: { orgId: number }) {
-  const { data: summary, isLoading: isLoadingSummary } = useGetOrgFinanceSummary(orgId, { query: { enabled: !!orgId, queryKey: getGetOrgFinanceSummaryQueryKey(orgId) } });
+  const { data: summary, isLoading: isLoadingSummary, isError: isSummaryError, refetch: refetchSummary } = useGetOrgFinanceSummary(orgId, { query: { enabled: !!orgId, queryKey: getGetOrgFinanceSummaryQueryKey(orgId) } });
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -1151,18 +1151,18 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const [withdrawalReviewOpen, setWithdrawalReviewOpen] = useState(false);
   
   const [pillarFilter, setPillarFilter] = useState<string>("all");
-  const { data: transactionsData, isLoading: isLoadingTransactions } = useListOrgTransactions(
+  const { data: transactionsData, isLoading: isLoadingTransactions, isError: isTransactionsError, refetch: refetchTransactions } = useListOrgTransactions(
     orgId,
     { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined },
     { query: { enabled: !!orgId, queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) } }
   );
   
-  const { data: settlements, isLoading: isLoadingSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
+  const { data: settlements, isLoading: isLoadingSettlements, isError: isSettlementsError, refetch: refetchSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
 
   const formatCurrency = (amount: number, currency: string = "XAF") => {
     return formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
   };
-  const currencyBalances = summary?.balancesByCurrency ?? [];
+  const currencyBalances = Array.isArray(summary?.balancesByCurrency) ? summary.balancesByCurrency : [];
   const availableBalances = currencyBalances.filter((balance) => balance.availableBalance > 0);
   const selectedCurrency = availableBalances.some((balance) => balance.currency === withdrawalCurrency)
     ? withdrawalCurrency
@@ -1184,6 +1184,10 @@ function FinanceSection({ orgId }: { orgId: number }) {
         ))
       : <div>{formatCurrency(0)}</div>
   );
+  const formatDateSafely = (value: unknown, pattern: string) => {
+    const date = value ? new Date(String(value)) : null;
+    return date && !Number.isNaN(date.getTime()) ? format(date, pattern) : "—";
+  };
 
   const getSettlementBadge = (status: string) => {
     switch(status) {
@@ -1269,6 +1273,18 @@ function FinanceSection({ orgId }: { orgId: number }) {
   if (isLoadingSummary) {
     return (
       <InlineListLoadingSkeleton rows={3} label="Loading financial summary" />
+    );
+  }
+
+  if (isSummaryError) {
+    return (
+      <Card className="border-destructive/30">
+        <CardContent className="flex flex-col items-start gap-3 p-6">
+          <p className="font-medium">Financial data could not be loaded.</p>
+          <p className="text-sm text-muted-foreground">No balances or payouts are shown until the authoritative summary is available.</p>
+          <Button variant="outline" onClick={() => void refetchSummary()}>Try again</Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -1505,6 +1521,11 @@ function FinanceSection({ orgId }: { orgId: number }) {
                     ))}
                   </TableBody>
                 </Table>
+              ) : isTransactionsError ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <p>Transaction history could not be loaded.</p>
+                  <Button variant="link" onClick={() => void refetchTransactions()}>Try again</Button>
+                </div>
               ) : !transactionsData?.transactions?.length ? (
                 <div className="p-12 text-center text-muted-foreground">
                   <Receipt className="h-8 w-8 mx-auto mb-3 opacity-20" />
@@ -1524,19 +1545,19 @@ function FinanceSection({ orgId }: { orgId: number }) {
                     {transactionsData.transactions.map((tx: any) => (
                       <TableRow key={tx.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="text-xs">
-                          {format(new Date(tx.createdAt), 'MMM d, h:mm a')}
+                          {formatDateSafely(tx.createdAt, 'MMM d, h:mm a')}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium text-sm">{tx.entityTitle}</div>
                           <div className="text-xs text-muted-foreground capitalize flex items-center gap-1">
-                            {tx.pillar} • {tx.transactionType.replace('_', ' ')}
+                            {tx.pillar || 'Transaction'} • {typeof tx.transactionType === 'string' ? tx.transactionType.replace('_', ' ') : 'Unknown'}
                           </div>
                         </TableCell>
                         <TableCell className="font-medium text-primary text-sm">{formatCurrency(tx.orgEarnings, tx.currency)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1 items-start">
                             {getTxStatusBadge(tx.status)}
-                            {tx.status === 'completed' && <span className="text-[10px] text-muted-foreground capitalize">{tx.settlementStatus.replace('_', ' ')}</span>}
+                            {tx.status === 'completed' && typeof tx.settlementStatus === 'string' && <span className="text-[10px] text-muted-foreground capitalize">{tx.settlementStatus.replace('_', ' ')}</span>}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1567,6 +1588,11 @@ function FinanceSection({ orgId }: { orgId: number }) {
                     ))}
                   </TableBody>
                 </Table>
+              ) : isSettlementsError ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  <p>Settlement history could not be loaded.</p>
+                  <Button variant="link" onClick={() => void refetchSettlements()}>Try again</Button>
+                </div>
               ) : !settlements?.length ? (
                 <div className="p-8 text-center text-muted-foreground text-sm">
                   No settlements yet
@@ -1584,7 +1610,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
                     {settlements.map((s: any) => (
                       <TableRow key={s.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="text-xs">
-                          {format(new Date(s.createdAt), 'MMM d, yyyy')}
+                          {formatDateSafely(s.createdAt, 'MMM d, yyyy')}
                         </TableCell>
                         <TableCell className="font-medium text-sm">
                           {formatCurrency(s.amount, s.currency)}
