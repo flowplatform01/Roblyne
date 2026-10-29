@@ -2,7 +2,7 @@ services:
   - type: web
     name: roblyne-api
     runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:api
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm run build:render:api
     startCommand: pnpm run migrate && node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/readyz
     maxShutdownDelaySeconds: 60
@@ -33,7 +33,7 @@ services:
   - type: web
     name: roblyne-web
     runtime: static
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:web
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm run build:render:web
     staticPublishPath: artifacts/roblyne/dist/public
     envVars:
       - key: NODE_VERSION
@@ -61,7 +61,7 @@ services:
   - type: web
     name: roblyne-worker
     runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build:render:worker
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm run build:render:worker
     startCommand: node --enable-source-maps artifacts/api-server/dist/worker.mjs
     healthCheckPath: /healthz
     maxShutdownDelaySeconds: 60

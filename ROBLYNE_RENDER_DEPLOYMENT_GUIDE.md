@@ -20,7 +20,7 @@ Render -> **New +** -> **Web Service** -> select the ROBLYNE repository.
 | --- | --- |
 | Runtime | Node |
 | Root directory | Leave empty (repository root) |
-| Build command | `pnpm install --frozen-lockfile && pnpm run build:render:api` |
+| Build command | `pnpm install --frozen-lockfile --prod=false && pnpm run build:render:api` |
 | Start command | `pnpm run migrate && node --enable-source-maps artifacts/api-server/dist/index.mjs` |
 | Health check | `/api/readyz` |
 
@@ -49,7 +49,7 @@ Render -> **New +** -> **Static Site** -> select the same ROBLYNE repository.
 | Setting | Value |
 | --- | --- |
 | Root directory | Leave empty (repository root) |
-| Build command | `pnpm install --frozen-lockfile && pnpm run build:render:web` |
+| Build command | `pnpm install --frozen-lockfile --prod=false && pnpm run build:render:web` |
 | Publish directory | `artifacts/roblyne/dist/public` |
 
 Add these build-time variables:
@@ -92,13 +92,13 @@ Save and redeploy API. Then open the static frontend, register your account, and
 2. Create the exact DNS records Render provides in Cloudflare.
 3. Change `VITE_API_URL` to the API custom domain, redeploy the static site, then change `CORS_ALLOWED_ORIGINS` to the frontend custom domain and redeploy API.
 
-## 5. Add Redis and the worker
+## 6. Add Redis and the worker
 
 Provision Redis first, then create a normal **Web Service** (not Render Background Worker) for `roblyne-worker`:
 
 | Setting | Value |
 | --- | --- |
-| Build command | `pnpm install --frozen-lockfile && pnpm run build:render:worker` |
+| Build command | `pnpm install --frozen-lockfile --prod=false && pnpm run build:render:worker` |
 | Start command | `node --enable-source-maps artifacts/api-server/dist/worker.mjs` |
 | Health check | `/healthz` |
 
