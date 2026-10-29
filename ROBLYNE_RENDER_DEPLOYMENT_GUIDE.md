@@ -44,7 +44,7 @@ Set `S3_REGION` and `S3_FORCE_PATH_STYLE=true` only if your provider requires th
 
 ### If using Cloudflare R2 for storage
 
-Create a **separate** R2 bucket for ROBLYNE (for example `roblyne-images-prod`) and a bucket-restricted **Object Read & Write** R2 API token. Do not reuse the Airfyl bucket or credentials. Use the R2 S3 endpoint as `S3_ENDPOINT`, set `S3_REGION=auto` and `S3_FORCE_PATH_STYLE=true`, and use the bucket's public URL as `S3_PUBLIC_BASE_URL`. Without your own domain, Cloudflare provides an `r2.dev` public URL; it works for initial testing but is development-only and rate-limited. When you later own a domain, attach a Cloudflare R2 custom domain such as `media.<your-domain>` and replace only `S3_PUBLIC_BASE_URL`. Full steps are in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`.
+Create a **separate** R2 bucket for ROBLYNE (for example `roblyne-images-prod`) and a bucket-restricted **Object Read & Write** R2 API token. Do not reuse the Airfyl bucket or credentials. Use the R2 S3 endpoint as `S3_ENDPOINT`, set `S3_REGION=auto` and `S3_FORCE_PATH_STYLE=true`, and use the bucket's public URL as `S3_PUBLIC_BASE_URL`. Without your own domain, Cloudflare provides an `r2.dev` public URL; it works for initial testing but is development-only and rate-limited. **Also configure the bucket CORS policy to allow `PUT` and `Content-Type` from the exact static frontend origin**; the detailed JSON is in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`. When you later own a domain, attach a Cloudflare R2 custom domain such as `media.<your-domain>` and replace only `S3_PUBLIC_BASE_URL`. Full steps are in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`.
 
 ## 2. Create the static frontend
 

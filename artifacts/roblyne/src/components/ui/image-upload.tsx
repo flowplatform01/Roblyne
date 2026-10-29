@@ -1,8 +1,9 @@
-import React, { useCallback, useState, useRef } from 'react';
-import { UploadCloud, X, Image as ImageIcon } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { UploadCloud, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { apiUrl } from '@/lib/api-url';
+import { prepareImageForUpload } from '@/lib/image-upload-preparation';
 
 export interface ImageUploadProps {
   value?: string;
@@ -29,8 +30,15 @@ export function ImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -45,27 +53,27 @@ export function ImageUpload({
   }, []);
 
   const processFile = async (file: File) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setError(null);
-    if (!file.type.startsWith('image/')) {
-      setError("Please upload an image file (PNG, JPG, GIF, WebP).");
-      return;
-    }
-    
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image size should be less than 2MB.");
-      return;
-    }
-
-    const localPreviewUrl = URL.createObjectURL(file);
-    setPreviewUrl(localPreviewUrl);
-    setIsUploading(true);
+    setIsPreparing(true);
 
     try {
+      const prepared = await prepareImageForUpload(file, controller.signal);
+      if (controller.signal.aborted) return;
+      const localPreviewUrl = URL.createObjectURL(prepared.file);
+      setPreviewUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return localPreviewUrl;
+      });
+      setIsPreparing(false);
+      setIsUploading(true);
       const presignResponse = await fetch(apiUrl('/api/uploads/presign'), {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contentType: file.type, size: file.size }),
+        body: JSON.stringify({ contentType: prepared.file.type, size: prepared.file.size }),
       });
 
       const presignBody = await presignResponse.json().catch(() => null) as PresignResponse | { error?: string } | null;
@@ -75,8 +83,8 @@ export function ImageUpload({
 
       const uploadResponse = await fetch(presignBody.uploadUrl, {
         method: "PUT",
-        headers: { "content-type": file.type },
-        body: file,
+        headers: { "content-type": prepared.file.type },
+        body: prepared.file,
       });
       if (!uploadResponse.ok) {
         throw new Error("Image upload failed. Please try again.");
@@ -84,11 +92,18 @@ export function ImageUpload({
 
       onChange(presignBody.publicUrl);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
-      setPreviewUrl(null);
-      URL.revokeObjectURL(localPreviewUrl);
+      if (!controller.signal.aborted) {
+        setError(uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
+        setPreviewUrl((current) => {
+          if (current) URL.revokeObjectURL(current);
+          return null;
+        });
+      }
     } finally {
-      setIsUploading(false);
+      if (!controller.signal.aborted) {
+        setIsPreparing(false);
+        setIsUploading(false);
+      }
     }
   };
 
@@ -171,10 +186,11 @@ export function ImageUpload({
               <UploadCloud className="h-6 w-6" />
             </div>
             <p className="text-sm font-medium">{placeholder}</p>
-            <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 2MB</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF, WebP — large photos are optimized below 2MB</p>
           </div>
         )}
       </div>
+      {(isPreparing || isUploading) && !previewUrl && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{isPreparing ? "Preparing image…" : "Uploading image…"}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );

@@ -38,7 +38,22 @@ S3_PUBLIC_BASE_URL=https://<bucket>.<random>.r2.dev
 S3_FORCE_PATH_STYLE=true
 ```
 
-6. Deploy the API and test an image upload. Never put either R2 credential in `VITE_*` frontend variables.
+6. Configure **Bucket Settings -> CORS Policy** before testing browser uploads. Replace the example frontend origin with every real frontend origin that will upload images:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://roblyne.onrender.com"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Do not use `*` for production origins. Add the eventual `https://app.example.com` origin before switching domains, then remove temporary origins you no longer operate. This CORS rule is required because browsers upload directly to the short-lived R2 presigned URL; it does not expose the R2 credentials.
+7. Deploy the API and test an image upload while signed in. Never put either R2 credential in `VITE_*` frontend variables. ROBLYNE signs only PNG, JPEG, GIF, and WebP uploads up to 2 MB. The browser preserves files already under the limit and adaptively resizes/re-encodes supported still images above it; oversized animated GIFs are rejected rather than corrupting their animation.
 
 ### Replace the temporary R2 URL when you own a domain
 

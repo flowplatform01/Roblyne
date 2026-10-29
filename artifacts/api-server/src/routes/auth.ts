@@ -1,7 +1,8 @@
 import { Router, type IRouter, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { randomUUID } from "node:crypto";
+import { db, organizationsTable, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -44,7 +45,17 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const passwordHash = await bcrypt.hash(password, 12);
   let user;
   try {
-    [user] = await db.insert(usersTable).values({ email, passwordHash, name }).returning();
+    user = await db.transaction(async (tx) => {
+      const [createdUser] = await tx.insert(usersTable).values({ email, passwordHash, name }).returning();
+      const workspaceName = `${name.trim().slice(0, 80) || "My"}'s workspace`;
+      const slugBase = workspaceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
+      await tx.insert(organizationsTable).values({
+        name: workspaceName,
+        slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
+        ownerId: createdUser.id,
+      });
+      return createdUser;
+    });
   } catch (error: any) {
     if (error?.code === "23505") {
       res.status(409).json({ error: "Email already registered" });

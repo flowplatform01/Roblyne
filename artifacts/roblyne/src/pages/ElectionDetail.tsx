@@ -380,9 +380,12 @@ export default function ElectionDetail() {
   };
 
   const copyVotingLink = () => {
-    const url = `${window.location.origin}/elections/${election.id}/vote`;
+    const inviteSuffix = election.visibility === 'invite_only' && election.inviteCode
+      ? `?invite=${encodeURIComponent(election.inviteCode)}`
+      : '';
+    const url = `${window.location.origin}/elections/${election.id}/vote${inviteSuffix}`;
     navigator.clipboard.writeText(url);
-    toast({ title: "Link copied to clipboard" });
+    toast({ title: election.visibility === 'invite_only' ? "Invite link copied to clipboard" : "Link copied to clipboard" });
   };
 
   const copyInviteCode = () => {
@@ -459,7 +462,7 @@ export default function ElectionDetail() {
               </Link>
             </Button>
             <ShareButton
-              url={`${window.location.origin}/elections/${election.id}/vote`}
+              url={`${window.location.origin}/elections/${election.id}/vote${election.visibility === 'invite_only' && election.inviteCode ? `?invite=${encodeURIComponent(election.inviteCode)}` : ''}`}
               title={election.title}
               description={election.description || `Cast your vote in ${election.title}`}
               ctaLabel="Share Election"

@@ -27,7 +27,7 @@ import {
   initializePaymentIntent,
 } from "../lib/payment-intents";
 import { compactListMedia } from "../lib/compact-list-media";
-import { canViewElectionResults } from "../lib/election-access";
+import { canReadElection, canViewElectionResults } from "../lib/election-access";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
 import { normalizeCameroonPhone } from "../lib/phone";
 
@@ -69,6 +69,21 @@ function isUniqueViolation(error: unknown): boolean {
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
   if (!startsAt || !endsAt) return true;
   return startsAt.getTime() < endsAt.getTime();
+}
+
+function requestInviteCode(query: unknown): string | null {
+  const value = (query as Record<string, unknown> | undefined)?.invite;
+  if (typeof value !== "string") return null;
+  const code = value.trim().toUpperCase();
+  return code.length > 0 && code.length <= 64 ? code : null;
+}
+
+function canReadElectionRequest(
+  election: { visibility: string; status: string; inviteCode?: string | null },
+  viewerRole: string | null,
+  inviteCode: string | null,
+): boolean {
+  return canReadElection(election.visibility, election.status, Boolean(viewerRole), Boolean(inviteCode && election.inviteCode && inviteCode === election.inviteCode));
 }
 
 function isCandidateRemovalLocked(
@@ -212,7 +227,7 @@ router.get("/elections/:electionId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.election.orgId, req.session.userId) : null;
-  if ((row.election.visibility !== "public" || row.election.status === "draft") && !viewerRole) {
+  if (!canReadElectionRequest(row.election, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
@@ -373,12 +388,12 @@ router.get("/elections/:electionId/positions", async (req, res): Promise<void> =
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const parsed = ListPositionsParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, parsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || (election.visibility !== "public" && !viewerRole)) {
+  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -415,12 +430,12 @@ router.get("/elections/:electionId/positions/:positionId", async (req, res): Pro
   const positionId = parseInt(rawPosId, 10);
   if (isNaN(electionId) || isNaN(positionId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || (election.visibility !== "public" && !viewerRole)) {
+  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -499,12 +514,12 @@ router.get("/elections/:electionId/candidates", async (req, res): Promise<void> 
   const rawId = Array.isArray(req.params.electionId) ? req.params.electionId[0] : req.params.electionId;
   const paramParsed = ListCandidatesParams.safeParse({ electionId: parseInt(rawId, 10) });
   if (!paramParsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, paramParsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || (election.visibility !== "public" && !viewerRole)) {
+  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -565,12 +580,12 @@ router.get("/elections/:electionId/candidates/:candidateId", async (req, res): P
   const rawCandId = Array.isArray(req.params.candidateId) ? req.params.candidateId[0] : req.params.candidateId;
   const parsed = GetCandidateParams.safeParse({ electionId: parseInt(rawElId, 10), candidateId: parseInt(rawCandId, 10) });
   if (!parsed.success) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [election] = await db.select({ visibility: electionsTable.visibility, orgId: electionsTable.orgId })
+  const [election] = await db.select({ visibility: electionsTable.visibility, status: electionsTable.status, inviteCode: electionsTable.inviteCode, orgId: electionsTable.orgId })
     .from(electionsTable)
     .where(eq(electionsTable.id, parsed.data.electionId))
     .limit(1);
   const viewerRole = election && req.session?.userId ? await getOrgRole(election.orgId, req.session.userId) : null;
-  if (!election || (election.visibility !== "public" && !viewerRole)) {
+  if (!election || !canReadElectionRequest(election, viewerRole, requestInviteCode(req.query))) {
     res.status(404).json({ error: "Not found" });
     return;
   }

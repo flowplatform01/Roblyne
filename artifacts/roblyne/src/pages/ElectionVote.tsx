@@ -6,6 +6,7 @@ import {
   useGetElection, useListPositions, useListCandidates,
   useSubmitVote, useGetElectionResults,
 } from "@workspace/api-client-react";
+import type { Candidate, Election, Position } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { BallotLoadingSkeleton } from "@/components/loading/LoadingStates";
 import { openFlowPayCheckout } from "@/lib/flowpay-checkout";
 import { apiUrl } from "@/lib/api-url";
+import { useQuery } from "@tanstack/react-query";
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -48,11 +50,37 @@ export default function ElectionVote() {
     const raw = new URLSearchParams(window.location.search).get('candidateId');
     return raw ? parseInt(raw, 10) : null;
   })();
+  const inviteFromLink = new URLSearchParams(window.location.search).get('invite')?.trim().toUpperCase() || '';
+  const hasInviteLink = inviteFromLink.length > 0;
 
-  const { data: election, isLoading: isElectionLoading } = useGetElection(electionId);
-  const { data: positions, isLoading: isPositionsLoading } = useListPositions(electionId);
-  const { data: candidates, isLoading: isCandidatesLoading } = useListCandidates(electionId);
-  const { data: liveResults } = useGetElectionResults(electionId);
+  const standardElection = useGetElection(electionId, { query: { enabled: !hasInviteLink } });
+  const standardPositions = useListPositions(electionId, { query: { enabled: !hasInviteLink } });
+  const standardCandidates = useListCandidates(electionId, undefined, { query: { enabled: !hasInviteLink } });
+  const standardResults = useGetElectionResults(electionId, { query: { enabled: !hasInviteLink } });
+  const inviteResources = useQuery({
+    queryKey: ['invite-election', electionId, inviteFromLink],
+    enabled: hasInviteLink && Number.isInteger(electionId) && electionId > 0,
+    retry: false,
+    queryFn: async (): Promise<[Election, Position[], Candidate[]]> => {
+      const suffix = `?invite=${encodeURIComponent(inviteFromLink)}`;
+      const responses = await Promise.all([
+        fetch(apiUrl(`/api/elections/${electionId}${suffix}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/elections/${electionId}/positions${suffix}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/elections/${electionId}/candidates${suffix}`), { credentials: 'include' }),
+      ]);
+      if (responses.some(response => !response.ok)) throw new Error('This invite link is invalid or no longer available.');
+      const [electionData, positionsData, candidatesData] = await Promise.all(responses.map(response => response.json()));
+      return [electionData as Election, positionsData as Position[], candidatesData as Candidate[]];
+    },
+  });
+  const [inviteElection, invitePositions, inviteCandidates] = inviteResources.data ?? [];
+  const election = hasInviteLink ? inviteElection : standardElection.data;
+  const positions = hasInviteLink ? invitePositions : standardPositions.data;
+  const candidates = hasInviteLink ? inviteCandidates : standardCandidates.data;
+  const liveResults = hasInviteLink ? undefined : standardResults.data;
+  const isElectionLoading = hasInviteLink ? inviteResources.isLoading : standardElection.isLoading;
+  const isPositionsLoading = hasInviteLink ? inviteResources.isLoading : standardPositions.isLoading;
+  const isCandidatesLoading = hasInviteLink ? inviteResources.isLoading : standardCandidates.isLoading;
   const submitVote = useSubmitVote();
 
   usePageMeta(election ? {
@@ -67,7 +95,7 @@ export default function ElectionVote() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
   const [selections, setSelections] = useState<Record<number, number[]>>({});
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(inviteFromLink);
   const [voterEmail, setVoterEmail] = useState('');
   const [voteQuantity, setVoteQuantity] = useState(1);
   const [paymentAmountInput, setPaymentAmountInput] = useState('');
@@ -289,7 +317,29 @@ export default function ElectionVote() {
     );
   }
 
-  if (!election) return null;
+  if (!election) {
+    return (
+      <Layout>
+        <main className="mx-auto flex min-h-[60vh] max-w-lg items-center px-4 py-12">
+          <div className="w-full rounded-lg border bg-card p-8 text-center shadow-sm">
+            <Lock className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold">This voting page needs access</h1>
+            <p className="mt-3 text-sm text-muted-foreground">Use the complete link provided by the organizer, or enter an invite code below. Private elections remain visible only to their organization.</p>
+            <form className="mt-6 flex gap-2" onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const code = String(form.get('invite') || '').trim().toUpperCase();
+              if (code) window.location.assign(`/elections/${electionId}/vote?invite=${encodeURIComponent(code)}`);
+            }}>
+              <Input name="invite" aria-label="Invite code" placeholder="Invite code" className="font-mono" autoComplete="off" />
+              <Button type="submit">Continue</Button>
+            </form>
+            <Button asChild variant="link" className="mt-4"><Link href="/elections">Browse public elections</Link></Button>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
 
   const primaryStyle: React.CSSProperties = election.accentColor
     ? { "--primary": hexToHsl(election.accentColor) } as React.CSSProperties
