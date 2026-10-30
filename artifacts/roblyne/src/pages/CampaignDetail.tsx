@@ -551,7 +551,7 @@ export default function CampaignDetail() {
                 {campaign.requiresPayment && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Organization Earnings</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-4xl font-serif font-bold text-emerald-600">

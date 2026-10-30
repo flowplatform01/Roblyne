@@ -1032,6 +1032,11 @@ export interface CheckInInput {
   ticketCode: string;
 }
 
+export type EventAnalyticsEarningsByCurrencyItem = {
+  currency: string;
+  earnings: number;
+};
+
 export type EventAnalyticsTicketsByTypeItem = {
   ticketTypeId: number;
   name: string;
@@ -1050,6 +1055,7 @@ export interface EventAnalytics {
   checkedIn: number;
   checkInRate?: number;
   revenue?: number;
+  earningsByCurrency?: EventAnalyticsEarningsByCurrencyItem[];
   ticketsByType: EventAnalyticsTicketsByTypeItem[];
   registrationsByDay: EventAnalyticsRegistrationsByDayItem[];
 }

@@ -911,9 +911,9 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
 
   const totalVotes = elections.reduce((s: number, e: any) => s + (e.totalVotes || 0), 0);
   const totalTickets = events.reduce((s: number, e: any) => s + (e.ticketsSold || 0), 0);
-  const totalRaisedByCurrency = Array.from(campaigns.reduce((totals: Map<string, number>, campaign: any) => {
+  const totalEarningsByCurrency = Array.from(campaigns.reduce((totals: Map<string, number>, campaign: any) => {
     const currency = campaign.currency || "XAF";
-    totals.set(currency, (totals.get(currency) || 0) + Number(campaign.amountRaised || 0));
+    totals.set(currency, (totals.get(currency) || 0) + Number(campaign.revenue || 0));
     return totals;
   }, new Map<string, number>()));
   // Detect dominant currency from paid elections (fall back to XAF)
@@ -965,13 +965,13 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
               </div>
             </div>
             <div className="text-xl font-serif font-bold tabular-nums">
-              {totalRaisedByCurrency.length > 0
-                ? totalRaisedByCurrency.map(([currency, amount]) => (
+              {totalEarningsByCurrency.length > 0
+                ? totalEarningsByCurrency.map(([currency, amount]) => (
                     <div key={currency}>{formatCurrency(amount, currency)}</div>
                   ))
                 : formatCurrency(0)}
             </div>
-            <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Total Raised</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1 uppercase tracking-wide">Campaign Earnings</p>
             <p className="text-[11px] text-muted-foreground/60 mt-0.5">{campaigns.length} campaigns</p>
           </CardContent>
         </Card>
@@ -998,7 +998,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                   <TableHead className="text-right">Total Votes</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Paid Votes</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Free Votes</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Earnings</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1047,7 +1047,7 @@ function AnalyticsSection({ orgId }: { orgId: number }) {
                   <TableHead className="text-right">Tickets Sold</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Capacity</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Check-in Rate</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Earnings</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

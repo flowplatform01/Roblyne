@@ -155,9 +155,8 @@ export default function EventDetail() {
   const { i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
   const revenueByCurrency = new Map<string, number>();
-  for (const row of analytics?.ticketsByType ?? []) {
-    const currency = ticketTypes?.find(ticket => ticket.id === row.ticketTypeId)?.currency || "XAF";
-    revenueByCurrency.set(currency, (revenueByCurrency.get(currency) || 0) + Number(row.revenue || 0));
+  for (const row of analytics?.earningsByCurrency ?? []) {
+    revenueByCurrency.set(row.currency, Number(row.earnings || 0));
   }
   const revenueLabel = revenueByCurrency.size > 0
     ? Array.from(revenueByCurrency, ([currency, amount]) => formatCurrency(amount, currency, locale)).join(" · ")
@@ -870,7 +869,7 @@ export default function EventDetail() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Organization Earnings</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-4xl font-serif font-bold text-emerald-600">

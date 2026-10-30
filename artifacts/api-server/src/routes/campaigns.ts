@@ -506,22 +506,28 @@ router.get("/campaigns/:campaignId/analytics", requireAuth, requireResourceOrgRo
   const campaignId = parsed.data.campaignId;
 
   // Fetch campaign + count in parallel
-  const [[campaign], countResult, byDayResult] = await Promise.all([
+  const [[campaign], countResult, byDayResult, earningsResult] = await Promise.all([
     db.select().from(campaignsTable).where(eq(campaignsTable.id, campaignId)).limit(1),
     db.select({ count: sql<number>`count(*)::int` }).from(campaignResponsesTable).where(eq(campaignResponsesTable.campaignId, campaignId)),
     db.execute(
       sql`SELECT date_trunc('day', submitted_at)::date::text as date, count(*)::int as count FROM campaign_responses WHERE campaign_id = ${campaignId} GROUP BY 1 ORDER BY 1`
     ),
+    db.execute(sql`
+      SELECT COALESCE(SUM(org_earnings), 0)::float AS earnings
+      FROM financial_transactions
+      WHERE pillar = 'campaign' AND entity_id = ${campaignId} AND status = 'completed'
+    `),
   ]);
 
   const count = countResult[0]?.count ?? 0;
   const currentAmount = parseFloat(campaign?.currentAmount ?? "0");
+  const totalEarnings = Number((earningsResult.rows[0] as any)?.earnings ?? 0);
   const goalAmount = campaign?.goalAmount ? parseFloat(campaign.goalAmount) : null;
 
   res.json({
     campaignId,
     submissionsCount: count,
-    totalRevenue: currentAmount,
+    totalRevenue: totalEarnings,
     goalProgress: goalAmount && goalAmount > 0 ? Math.round((currentAmount / goalAmount) * 1000) / 10 : null,
     submissionsByDay: (byDayResult.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });

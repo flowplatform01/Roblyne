@@ -36,16 +36,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
         cleanupOutdatedCaches: true,
         navigateFallback: null,
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-            },
-          },
-        ],
+        runtimeCaching: [],
       },
       manifest: {
         name: 'ROBLYNE',

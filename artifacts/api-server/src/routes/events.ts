@@ -754,7 +754,7 @@ router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eve
   const eventId = parsed.data.eventId;
 
   // All aggregations in a single query; ticket type breakdown uses GROUP BY
-  const [summaryResult, ticketBreakdownResult, regByDayResult] = await Promise.all([
+  const [summaryResult, ticketBreakdownResult, regByDayResult, earningsByCurrencyResult] = await Promise.all([
     db.execute(sql`
       SELECT
         COUNT(*)::int                                                                     AS total_attendees,
@@ -775,6 +775,13 @@ router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eve
     db.execute(
       sql`SELECT date_trunc('day', issued_at)::date::text as date, count(*)::int as count FROM tickets WHERE event_id = ${eventId} GROUP BY 1 ORDER BY 1`
     ),
+    db.execute(sql`
+      SELECT currency, COALESCE(SUM(org_earnings), 0)::float AS earnings
+      FROM financial_transactions
+      WHERE pillar = 'event' AND entity_id = ${eventId} AND status = 'completed'
+      GROUP BY currency
+      ORDER BY currency
+    `),
   ]);
 
   const summary = summaryResult.rows[0] as any;
@@ -787,13 +794,18 @@ router.get("/events/:eventId/analytics", requireAuth, requireResourceOrgRole(eve
     sold: row.sold,
     revenue: row.sold * parseFloat(row.price),
   }));
+  const earningsByCurrency = (earningsByCurrencyResult.rows as any[]).map((row: any) => ({
+    currency: String(row.currency),
+    earnings: Number(row.earnings ?? 0),
+  }));
 
   res.json({
     eventId,
     totalAttendees: totalAttend,
     checkedIn: checkedInCount,
     checkInRate: totalAttend > 0 ? Math.round((checkedInCount / totalAttend) * 1000) / 10 : 0,
-    revenue: ticketsByType.reduce((sum, t) => sum + t.revenue, 0),
+    revenue: earningsByCurrency.length === 1 ? earningsByCurrency[0].earnings : 0,
+    earningsByCurrency,
     ticketsByType,
     registrationsByDay: (regByDayResult.rows ?? []).map((r: any) => ({ date: r.date, count: r.count })),
   });

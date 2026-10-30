@@ -3033,6 +3033,16 @@ components:
           type: number
         revenue:
           type: number
+        earningsByCurrency:
+          type: array
+          items:
+            type: object
+            required: [currency, earnings]
+            properties:
+              currency:
+                type: string
+              earnings:
+                type: number
         ticketsByType:
           type: array
           items:

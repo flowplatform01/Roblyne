@@ -70,17 +70,13 @@ const DevPaymentSimulator = import.meta.env.DEV
   ? lazyWithChunkRecovery(() => import('@/pages/DevPaymentSimulator'))
   : null;
 
-// Production-tuned query client:
-// - staleTime: 30s for read-heavy data (discover, lists)
-// - gcTime: 5min so navigating back feels instant
-// - retry: only on network errors, not on 4xx (user/auth errors)
-// - refetchOnWindowFocus: false prevents redundant fetches on tab switch
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      gcTime: 5 * 60_000,
+      staleTime: 2 * 60_000,
+      gcTime: 20 * 60_000,
       refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       retry: (failureCount, error: any) => {
         // Don't retry on client errors (auth, not found, validation)
         if (error?.status >= 400 && error?.status < 500) return false;

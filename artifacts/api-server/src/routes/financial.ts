@@ -961,7 +961,7 @@ router.get("/organizations/:orgId/analytics",
           SELECT
             entity_id,
             COUNT(*) FILTER (WHERE transaction_type = 'vote')::int AS paid_votes,
-            COALESCE(SUM(gross_amount), 0)::float                  AS revenue
+            COALESCE(SUM(org_earnings), 0)::float                  AS revenue
           FROM financial_transactions
           WHERE org_id = ${orgId} AND pillar = 'election' AND status = 'completed'
           GROUP BY entity_id
@@ -992,7 +992,7 @@ router.get("/organizations/:orgId/analytics",
           GROUP BY event_id
         ) t_agg ON t_agg.event_id = e.id
         LEFT JOIN (
-          SELECT entity_id, COALESCE(SUM(gross_amount), 0)::float AS revenue
+          SELECT entity_id, COALESCE(SUM(org_earnings), 0)::float AS revenue
           FROM financial_transactions
           WHERE org_id = ${orgId} AND pillar = 'event' AND status = 'completed'
           GROUP BY entity_id
@@ -1026,8 +1026,8 @@ router.get("/organizations/:orgId/analytics",
         LEFT JOIN (
           SELECT
             entity_id,
-            COALESCE(SUM(gross_amount), 0)::float  AS revenue,
-            COALESCE(AVG(gross_amount), 0)::float  AS avg_contribution,
+            COALESCE(SUM(org_earnings), 0)::float  AS revenue,
+            COALESCE(AVG(org_earnings), 0)::float  AS avg_contribution,
             COUNT(*)::int                           AS paid_contributors
           FROM financial_transactions
           WHERE org_id = ${orgId} AND pillar = 'campaign' AND status = 'completed'

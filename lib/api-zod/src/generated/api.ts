@@ -1469,6 +1469,10 @@ export const GetEventAnalyticsResponse = zod.object({
   "checkedIn": zod.number().int(),
   "checkInRate": zod.number().optional(),
   "revenue": zod.number().optional(),
+  "earningsByCurrency": zod.array(zod.object({
+  "currency": zod.string(),
+  "earnings": zod.number()
+})).optional(),
   "ticketsByType": zod.array(zod.object({
   "ticketTypeId": zod.number().int(),
   "name": zod.string(),
