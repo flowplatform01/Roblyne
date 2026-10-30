@@ -5,6 +5,7 @@ import { Layout } from './Layout';
 import { AppSidebar } from './AppSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AuthLoadingShell } from '@/components/loading/LoadingStates';
+import { loginPathForCurrentLocation } from '@/lib/auth-redirect';
 
 export function DashboardLayout({ children, orgId }: { children: React.ReactNode, orgId?: string }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -12,7 +13,7 @@ export function DashboardLayout({ children, orgId }: { children: React.ReactNode
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      setLocation('/login');
+      setLocation(loginPathForCurrentLocation());
     }
   }, [isLoading, isAuthenticated, setLocation]);
 

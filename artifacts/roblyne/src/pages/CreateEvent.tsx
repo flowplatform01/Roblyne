@@ -335,8 +335,8 @@ export default function CreateEvent() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="public">Public (Visible in discovery)</SelectItem>
-                              <SelectItem value="private">Private (Only accessible via link)</SelectItem>
-                              <SelectItem value="invite_only">Invite Only (Requires approval)</SelectItem>
+                              <SelectItem value="private">Private (Organization members only)</SelectItem>
+                              <SelectItem value="invite_only">Invite Only (Requires invite code)</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />

@@ -107,6 +107,25 @@ export default function EventRegister() {
   const inviteFromLink = new URLSearchParams(window.location.search).get('invite')?.trim().toUpperCase() || '';
   const hasInviteLink = inviteFromLink.length > 0;
 
+  const inviteVerification = useQuery({
+    queryKey: ['event-invite-verification', eventId, inviteFromLink],
+    enabled: hasInviteLink && Number.isInteger(eventId) && eventId > 0,
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch(apiUrl(`/api/events/${eventId}/invite-verification`), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ inviteCode: inviteFromLink }),
+      });
+      const body = await response.json().catch(() => null) as { error?: string; verified?: boolean } | null;
+      if (!response.ok || !body?.verified) {
+        throw new Error(body?.error || 'This invite link is invalid or no longer available.');
+      }
+      return body;
+    },
+  });
+
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [isSuccess, setIsSuccess] = useState(false);
@@ -128,13 +147,12 @@ export default function EventRegister() {
   const standardTicketTypes = useListTicketTypes(eventId, { query: { enabled: !hasInviteLink } });
   const inviteResources = useQuery({
     queryKey: ['invite-event', eventId, inviteFromLink],
-    enabled: hasInviteLink && Number.isInteger(eventId) && eventId > 0,
+    enabled: hasInviteLink && inviteVerification.isSuccess && Number.isInteger(eventId) && eventId > 0,
     retry: false,
     queryFn: async (): Promise<[EventResource, TicketType[]]> => {
-      const suffix = `?invite=${encodeURIComponent(inviteFromLink)}`;
       const responses = await Promise.all([
-        fetch(apiUrl(`/api/events/${eventId}${suffix}`), { credentials: 'include' }),
-        fetch(apiUrl(`/api/events/${eventId}/ticket-types${suffix}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/events/${eventId}`), { credentials: 'include' }),
+        fetch(apiUrl(`/api/events/${eventId}/ticket-types`), { credentials: 'include' }),
       ]);
       if (responses.some(response => !response.ok)) throw new Error('This invite link is invalid or no longer available.');
       const [eventData, ticketTypesData] = await Promise.all(responses.map(response => response.json()));
@@ -145,13 +163,20 @@ export default function EventRegister() {
   const event = hasInviteLink ? inviteEvent : standardEvent.data;
   const brandingStyle = useOrgBranding(event);
   const ticketTypes = hasInviteLink ? inviteTicketTypes : standardTicketTypes.data;
-  const isEventLoading = hasInviteLink ? inviteResources.isLoading : standardEvent.isLoading;
-  const isTicketTypesLoading = hasInviteLink ? inviteResources.isLoading : standardTicketTypes.isLoading;
+  const isEventLoading = hasInviteLink ? inviteVerification.isLoading || inviteResources.isLoading : standardEvent.isLoading;
+  const isTicketTypesLoading = hasInviteLink ? inviteVerification.isLoading || inviteResources.isLoading : standardTicketTypes.isLoading;
   const registerMutation = useRegisterForEvent();
   const { data: paymentStatus } = usePaymentStatus(paymentId, paymentStatusToken);
   const countdown = useCountdown(event?.endsAt);
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
+
+  useEffect(() => {
+    if (!inviteVerification.isSuccess || !hasInviteLink) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('invite');
+    window.history.replaceState({}, '', url.toString());
+  }, [hasInviteLink, inviteVerification.isSuccess]);
 
   useEffect(() => {
     setSelectedTicketId(null);
@@ -263,7 +288,7 @@ export default function EventRegister() {
           attendeeName: formData.name,
           attendeeEmail: formData.email,
            customerPhone: formData.phone || undefined,
-          inviteCode: event?.visibility === 'invite_only' ? inviteFromLink : undefined,
+          inviteCode: event?.visibility === 'invite_only' && !inviteVerification.isSuccess ? inviteFromLink : undefined,
           quantity: 1,
         },
       },

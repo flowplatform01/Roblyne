@@ -19,6 +19,22 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FLOWPAY_API_BASE_URL
+        sync: false
+      - key: FLOWPAY_CLIENT_ID
+        sync: false
+      - key: FLOWPAY_PUBLIC_KEY
+        sync: false
+      - key: FLOWPAY_SECRET_KEY
+        sync: false
+      - key: FLOWPAY_WEBHOOK_SECRET
+        sync: false
+      - key: FLOWPAY_PROVIDER
+        sync: false
+      - key: FLOWPAY_TIMEOUT_MS
+        sync: false
       - key: S3_ENDPOINT
         sync: false
       - key: S3_BUCKET
@@ -73,4 +89,18 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
+        sync: false
+      - key: FLOWPAY_API_BASE_URL
+        sync: false
+      - key: FLOWPAY_CLIENT_ID
+        sync: false
+      - key: FLOWPAY_PUBLIC_KEY
+        sync: false
+      - key: FLOWPAY_SECRET_KEY
+        sync: false
+      - key: FLOWPAY_WEBHOOK_SECRET
+        sync: false
+      - key: FLOWPAY_PROVIDER
+        sync: false
+      - key: FLOWPAY_TIMEOUT_MS
         sync: false

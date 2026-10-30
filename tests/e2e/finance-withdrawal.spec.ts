@@ -16,6 +16,16 @@ async function mockFinanceWorkspace(page: Page, withdrawalStatus: 201 | 400) {
       } });
     }
     if (url.pathname === "/api/organizations/7/finance/transactions") return route.fulfill({ json: { total: 0, transactions: [] } });
+    if (url.pathname === "/api/organizations/7/finance/payout-destinations") {
+      return route.fulfill({ json: [{
+        id: 20,
+        displayName: "Test Recipient",
+        payoutMethod: "mobile_money",
+        maskedTarget: "+237 67•••00",
+        currency: "XAF",
+        verificationStatus: "verified",
+      }] });
+    }
     if (url.pathname === "/api/organizations/7/finance/settlements" && route.request().method() === "GET") return route.fulfill({ json: [] });
     if (url.pathname === "/api/organizations/7/finance/settlements" && route.request().method() === "POST") {
       withdrawalRequests += 1;
@@ -32,7 +42,8 @@ async function mockFinanceWorkspace(page: Page, withdrawalStatus: 201 | 400) {
 async function openWithdrawalReview(page: Page) {
   await page.goto("/organizations/7?tab=finance");
   await page.getByLabel("Amount to withdraw").fill("50");
-  await page.getByLabel("Mobile money number").fill("670000000");
+  await page.getByLabel("Verified payout recipient").click();
+  await page.getByRole("option", { name: /Test Recipient/ }).click();
   await page.getByRole("button", { name: "Review payout" }).click();
   await expect(page.getByRole("heading", { name: "Confirm payout request" })).toBeVisible();
 }

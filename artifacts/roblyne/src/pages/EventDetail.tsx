@@ -370,6 +370,12 @@ export default function EventDetail() {
     toast({ title: event.visibility === 'invite_only' ? "Invite link copied to clipboard" : "Link copied to clipboard" });
   };
 
+  const copyInviteCode = () => {
+    if (!event.inviteCode) return;
+    navigator.clipboard.writeText(event.inviteCode);
+    toast({ title: "Invite code copied to clipboard" });
+  };
+
   const getStatusBadge = () => {
     switch (event.status) {
       case 'published': return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Published</Badge>;
@@ -410,27 +416,41 @@ export default function EventDetail() {
               )}
               {event.startsAt && <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {format(new Date(event.startsAt), 'MMM d, yyyy h:mm a')}</span>}
             </div>
+
+            {event.visibility === 'invite_only' && event.inviteCode && (
+              <div className="mt-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Invite Code (share with attendees)</div>
+                  <div className="truncate font-mono text-sm font-bold text-amber-900 dark:text-amber-200">{event.inviteCode}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={copyInviteCode} className="shrink-0 border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200">
+                  <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {event.status === 'published' && (
+            {event.status === 'published' && event.visibility !== 'private' && (
               <Button onClick={copyRegistrationLink} variant="outline">
                 <Copy className="mr-2 h-4 w-4" /> Copy Reg Link
               </Button>
             )}
             
             <Button asChild variant={event.status === 'published' ? "default" : "secondary"}>
-              <Link href={`/events/${event.id}/register`}>
+              <Link href={`/events/${event.id}/register${event.visibility === 'invite_only' && event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ''}`}>
                 <ExternalLink className="mr-2 h-4 w-4" /> View Page
               </Link>
             </Button>
-            <ShareButton
-              url={`${window.location.origin}/events/${event.id}/register${event.visibility === 'invite_only' && event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ''}`}
-              title={event.title}
-              description={event.description || `Register for ${event.title}`}
-              ctaLabel="Share Event"
-              variant="icon"
-            />
+            {event.visibility !== 'private' && (
+              <ShareButton
+                url={`${window.location.origin}/events/${event.id}/register${event.visibility === 'invite_only' && event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ''}`}
+                title={event.title}
+                description={event.description || `Register for ${event.title}`}
+                ctaLabel="Share Event"
+                variant="icon"
+              />
+            )}
             <EntityRecoveryActions kind="event" entity={event} />
             
             <DropdownMenu>
@@ -439,7 +459,13 @@ export default function EventDetail() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {event.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => setPendingStatus('published')}>
+                  <DropdownMenuItem onClick={() => {
+                    if (!ticketTypes?.length) {
+                      toast({ title: "Add a ticket type first", description: "Create at least one ticket type before publishing this event.", variant: "destructive" });
+                      return;
+                    }
+                    setPendingStatus('published');
+                  }}>
                     <Play className="mr-2 h-4 w-4 text-emerald-600" /> Publish Event
                   </DropdownMenuItem>
                 )}

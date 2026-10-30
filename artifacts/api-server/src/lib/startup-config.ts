@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { validateFlowPayConfig } from "./flowpay";
 import { isS3ImageStorageConfigured } from "./s3-image-storage";
 import { redisConfigured } from "./redis";
 
@@ -18,6 +19,11 @@ export function validateApiStartupConfig(): void {
     process.exit(1);
   }
 
+  if (isProduction && !process.env.CORS_ALLOWED_ORIGINS?.trim()) {
+    logger.fatal("CORS_ALLOWED_ORIGINS is required in production");
+    process.exit(1);
+  }
+
   if (isProduction && !isS3ImageStorageConfigured()) {
     logger.fatal("S3-compatible image storage must be configured in production");
     process.exit(1);
@@ -27,6 +33,15 @@ export function validateApiStartupConfig(): void {
     logger.warn(
       "REDIS_URL is not set in production. Shared rate limits, discovery cache, and the maintenance worker will not run across instances.",
     );
+  }
+
+  if (isProduction) {
+    try {
+      validateFlowPayConfig();
+    } catch (error) {
+      logger.fatal({ err: error }, "FlowPay production configuration is invalid");
+      process.exit(1);
+    }
   }
 }
 
@@ -38,5 +53,13 @@ export function validateWorkerStartupConfig(): void {
   if (!process.env.DATABASE_URL?.trim()) {
     logger.fatal("DATABASE_URL is required for the ROBLYNE worker");
     process.exit(1);
+  }
+  if (process.env.NODE_ENV === "production") {
+    try {
+      validateFlowPayConfig();
+    } catch (error) {
+      logger.fatal({ err: error }, "FlowPay production configuration is required for the payout worker");
+      process.exit(1);
+    }
   }
 }

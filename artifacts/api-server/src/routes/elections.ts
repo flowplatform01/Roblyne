@@ -336,6 +336,23 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
       || (current.status === "ended" && bodyParsed.data.status !== undefined && bodyParsed.data.status !== "ended");
     if (statusRollback) return { kind: "locked" as const };
 
+    if (current.status === "draft" && bodyParsed.data.status === "active") {
+      const [{ count: positionsCount }] = await tx.select({ count: sql<number>`count(*)::int` })
+        .from(positionsTable)
+        .where(eq(positionsTable.electionId, paramParsed.data.electionId));
+      if (positionsCount === 0) return { kind: "missing_positions" as const };
+
+      const incompletePositions = await tx.execute(sql`
+        SELECT COUNT(*)::int AS count
+        FROM positions p
+        WHERE p.election_id = ${paramParsed.data.electionId}
+          AND NOT EXISTS (SELECT 1 FROM candidates c WHERE c.position_id = p.id)
+      `);
+      if (Number((incompletePositions.rows[0] as { count?: number } | undefined)?.count ?? 0) > 0) {
+        return { kind: "missing_candidates" as const };
+      }
+    }
+
     let hasPendingPayment = false;
     if (changesCriticalSettings && current.status !== "draft") {
       const [pendingPayment] = await tx.select({ id: paymentIntentsTable.id })
@@ -382,6 +399,14 @@ router.patch("/elections/:electionId", requireAuth, requireResourceOrgRole(elect
     res.status(409).json({
       error: "Voting eligibility, schedule, visibility, and payment settings are locked once voting begins or ballots/payment attempts exist. Ended elections cannot be reopened.",
     });
+    return;
+  }
+  if (outcome.kind === "missing_positions") {
+    res.status(409).json({ error: "Add at least one ballot position before starting this election" });
+    return;
+  }
+  if (outcome.kind === "missing_candidates") {
+    res.status(409).json({ error: "Add at least one candidate to every ballot position before starting this election" });
     return;
   }
   void invalidateDiscoverCache();

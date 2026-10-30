@@ -122,13 +122,13 @@ export default function Settings() {
   const handleEmailNotifsChange = (checked: boolean) => {
     setEmailNotifs(checked);
     localStorage.setItem('settings_emailNotifs', checked.toString());
-      toast({ title: t("admin.settingsSaved") });
+    toast({ title: "Saved on this device" });
   };
 
   const handleActivityDigestChange = (checked: boolean) => {
     setActivityDigest(checked);
     localStorage.setItem('settings_activityDigest', checked.toString());
-      toast({ title: t("admin.settingsSaved") });
+    toast({ title: "Saved on this device" });
   };
 
   const handleLanguageChange = (value: string) => {
@@ -304,8 +304,8 @@ export default function Settings() {
             <TabsContent value="notifications" className="mt-0 focus-visible:outline-none space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif">{t("settings.emailNotifications")}</CardTitle>
-                  <CardDescription>{t("settings.emailNotificationsDescription")}</CardDescription>
+                  <CardTitle className="font-serif">Notification preferences</CardTitle>
+                  <CardDescription>Saved only in this browser. Account-wide email delivery controls are not available yet.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center justify-between space-x-4">

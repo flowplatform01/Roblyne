@@ -20,6 +20,10 @@ import { getEventRegistrationBlockReason } from "../lib/event-registration-lifec
 import { normalizeCameroonPhone } from "../lib/phone";
 import { invalidateDiscoverCache } from "../lib/discover-cache";
 import { canReadEvent } from "../lib/event-access";
+import {
+  addEventInviteVerification,
+  hasEventInviteVerification,
+} from "../lib/event-invite-verification";
 
 const router: IRouter = Router();
 const MAX_EVENT_LIST_RESULTS = 100;
@@ -33,11 +37,19 @@ function requestInviteCode(query: unknown): string | null {
 }
 
 function canReadEventRequest(
+  eventId: number,
   event: { visibility: string; status: string; inviteCode?: string | null },
   viewerRole: string | null,
   inviteCode: string | null,
+  inviteVerifications?: Record<string, number>,
 ): boolean {
-  return canReadEvent(event.visibility, event.status, Boolean(viewerRole), Boolean(inviteCode && event.inviteCode && inviteCode === event.inviteCode));
+  const inviteCodeMatches = Boolean(inviteCode && event.inviteCode && inviteCode === event.inviteCode);
+  return canReadEvent(
+    event.visibility,
+    event.status,
+    Boolean(viewerRole),
+    inviteCodeMatches || hasEventInviteVerification(inviteVerifications, eventId),
+  );
 }
 
 function hasValidTimeWindow(startsAt: Date | null | undefined, endsAt: Date | null | undefined): boolean {
@@ -142,18 +154,44 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const viewerRole = req.session?.userId ? await getOrgRole(row.event.orgId, req.session.userId) : null;
-  if (!canReadEventRequest(row.event, viewerRole, requestInviteCode(req.query))) {
+  if (!canReadEventRequest(row.event.id, row.event, viewerRole, requestInviteCode(req.query), req.session.eventInviteVerifications)) {
     res.status(404).json({ error: "Not found" }); return;
   }
 
   res.json({
     ...row.event,
     inviteCode: viewerRole === "owner" || viewerRole === "admin" ? row.event.inviteCode : null,
+    inviteVerified: row.event.visibility === "invite_only"
+      && hasEventInviteVerification(req.session.eventInviteVerifications, row.event.id),
     organizationName: row.orgName ?? null,
     organizationLogoUrl: row.orgLogoUrl ?? null,
     attendeesCount: row.attendeesCount ?? 0,
     ticketTypesCount: row.ticketTypesCount ?? 0,
   });
+});
+
+router.post("/events/:eventId/invite-verification", async (req, res): Promise<void> => {
+  const eventId = parseInt(String(req.params.eventId), 10);
+  const inviteCode = requestInviteCode({ invite: req.body?.inviteCode });
+  if (!Number.isInteger(eventId) || eventId <= 0 || !inviteCode) {
+    res.status(400).json({ error: "Enter a valid invite code" });
+    return;
+  }
+
+  const [event] = await db.select({
+    id: eventsTable.id,
+    visibility: eventsTable.visibility,
+    status: eventsTable.status,
+    inviteCode: eventsTable.inviteCode,
+  }).from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
+  if (!event || event.status === "draft" || event.visibility !== "invite_only" || inviteCode !== event.inviteCode) {
+    res.status(403).json({ error: "This invite code is invalid or no longer available" });
+    return;
+  }
+
+  req.session.eventInviteVerifications = addEventInviteVerification(req.session.eventInviteVerifications, eventId);
+  await new Promise<void>((resolve, reject) => req.session.save((error) => error ? reject(error) : resolve()));
+  res.json({ verified: true });
 });
 
 // Update event — must be org owner/admin
@@ -189,6 +227,14 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
       || (current.status === "published" && nextStatus !== undefined && !["published", "cancelled", "completed"].includes(nextStatus))
       || (["cancelled", "completed"].includes(current.status) && nextStatus !== undefined && nextStatus !== current.status);
     if (invalidStatusTransition) return { kind: "locked" as const };
+
+    if (current.status === "draft" && nextStatus === "published") {
+      const [ticketType] = await tx.select({ id: ticketTypesTable.id })
+        .from(ticketTypesTable)
+        .where(eq(ticketTypesTable.eventId, paramParsed.data.eventId))
+        .limit(1);
+      if (!ticketType) return { kind: "missing_ticket_types" as const };
+    }
 
     const timeChanged = (currentValue: Date | null, nextValue: Date | undefined) =>
       nextValue !== undefined && currentValue?.getTime() !== nextValue.getTime();
@@ -231,6 +277,10 @@ router.patch("/events/:eventId", requireAuth, requireResourceOrgRole(eventsTable
     res.status(409).json({
       error: "Schedule, capacity, visibility, and attendee location details cannot be changed after registrations or a pending payment exist. Cancel the event rather than rewriting information for existing attendees.",
     });
+    return;
+  }
+  if (outcome.kind === "missing_ticket_types") {
+    res.status(409).json({ error: "Add at least one ticket type before publishing this event" });
     return;
   }
   void invalidateDiscoverCache();
@@ -283,7 +333,7 @@ router.get("/events/:eventId/ticket-types", async (req, res): Promise<void> => {
     .where(eq(eventsTable.id, parsed.data.eventId))
     .limit(1);
   const viewerRole = event && req.session?.userId ? await getOrgRole(event.orgId, req.session.userId) : null;
-  if (!event || !canReadEventRequest(event, viewerRole, requestInviteCode(req.query))) {
+  if (!event || !canReadEventRequest(parsed.data.eventId, event, viewerRole, requestInviteCode(req.query), req.session.eventInviteVerifications)) {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -467,7 +517,7 @@ router.post("/events/:eventId/register", async (req, res): Promise<void> => {
 
   // ── Invite code check ─────────────────────────────────────────────────
   if (event.visibility === "invite_only") {
-    if (!inviteCode || inviteCode !== event.inviteCode) {
+    if (inviteCode !== event.inviteCode && !hasEventInviteVerification(req.session.eventInviteVerifications, paramParsed.data.eventId)) {
       res.status(403).json({ error: "A valid invite code is required to register for this event" });
       return;
     }

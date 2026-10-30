@@ -25,6 +25,7 @@ import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 import { useTranslation } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
+import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -33,6 +34,7 @@ export default function Login() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const returnPath = getSafeAuthReturnPath();
   const loginSchema = z.object({
     email: z.string().email(t("auth.emailValidation")),
     password: z.string().min(1, t("auth.passwordRequired")),
@@ -48,9 +50,9 @@ export default function Login() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      setLocation(user?.isPlatformAdmin ? "/admin" : "/dashboard");
+      setLocation(returnPath ?? (user?.isPlatformAdmin ? "/admin" : "/dashboard"));
     }
-  }, [isAuthenticated, user?.isPlatformAdmin, setLocation]);
+  }, [isAuthenticated, returnPath, user?.isPlatformAdmin, setLocation]);
 
   function onSubmit(values: z.infer<typeof loginSchema>) {
     login.mutate(
@@ -63,7 +65,7 @@ export default function Login() {
              title: t("auth.welcomeBack"),
              description: t("auth.signInSuccess"),
           });
-          setLocation(loggedInUser.isPlatformAdmin ? "/admin" : "/dashboard");
+          setLocation(returnPath ?? (loggedInUser.isPlatformAdmin ? "/admin" : "/dashboard"));
         },
         onError: (error) => {
           toast({
@@ -125,9 +127,6 @@ export default function Login() {
                       <FormItem>
                         <div className="flex items-center justify-between">
                           <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.password")}</FormLabel>
-                          <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-                            {t("auth.forgotPassword")}
-                          </Link>
                         </div>
                         <FormControl>
                           <Input 
@@ -152,7 +151,7 @@ export default function Login() {
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">
                  {t("auth.noAccount")}{" "}
-                <Link href="/register" className="text-primary font-medium hover:underline transition-all">
+                <Link href={`/register${window.location.search}`} className="text-primary font-medium hover:underline transition-all">
                    {t("auth.createAccount")}
                 </Link>
               </p>

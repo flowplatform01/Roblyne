@@ -450,7 +450,7 @@ export default function ElectionDetail() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {election.status === 'active' && (
+            {election.status === 'active' && election.visibility !== 'private' && (
               <Button onClick={copyVotingLink} variant="outline">
                 <Copy className="mr-2 h-4 w-4" /> Copy Voting Link
               </Button>
@@ -461,13 +461,15 @@ export default function ElectionDetail() {
                 <ExternalLink className="mr-2 h-4 w-4" /> View Voting Page
               </Link>
             </Button>
-            <ShareButton
-              url={`${window.location.origin}/elections/${election.id}/vote${election.visibility === 'invite_only' && election.inviteCode ? `?invite=${encodeURIComponent(election.inviteCode)}` : ''}`}
-              title={election.title}
-              description={election.description || `Cast your vote in ${election.title}`}
-              ctaLabel="Share Election"
-              variant="icon"
-            />
+            {election.visibility !== 'private' && (
+              <ShareButton
+                url={`${window.location.origin}/elections/${election.id}/vote${election.visibility === 'invite_only' && election.inviteCode ? `?invite=${encodeURIComponent(election.inviteCode)}` : ''}`}
+                title={election.title}
+                description={election.description || `Cast your vote in ${election.title}`}
+                ctaLabel="Share Election"
+                variant="icon"
+              />
+            )}
             <EntityRecoveryActions kind="election" entity={election} />
             
             <DropdownMenu>
@@ -476,7 +478,17 @@ export default function ElectionDetail() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {election.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => setPendingStatus('active')}>
+                  <DropdownMenuItem onClick={() => {
+                    if (!positions?.length) {
+                      toast({ title: "Add a ballot position first", description: "Create at least one position before starting this election.", variant: "destructive" });
+                      return;
+                    }
+                    if (positions.some(position => !candidates?.some(candidate => candidate.positionId === position.id))) {
+                      toast({ title: "Complete every ballot position", description: "Add at least one candidate to every position before starting this election.", variant: "destructive" });
+                      return;
+                    }
+                    setPendingStatus('active');
+                  }}>
                     <Play className="mr-2 h-4 w-4 text-emerald-600" /> Start Election
                   </DropdownMenuItem>
                 )}

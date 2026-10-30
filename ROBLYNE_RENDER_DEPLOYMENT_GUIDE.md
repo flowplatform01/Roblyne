@@ -114,7 +114,7 @@ Set the same `REDIS_URL` on API. In production, ROBLYNE automatically stops its 
 
 FlowPay works through `roblyne-api`; it does **not** need a separate Render service or the ROBLYNE worker. Configure it only when FlowPay has issued your production access and you are ready to validate real payments.
 
-Add these **API-service** environment variables in Render:
+Add these environment variables to **both the API and worker services** in Render. The worker creates and polls FlowPay payouts, so it needs the same server-side FlowPay credentials as the API.
 
 ```text
 FLOWPAY_API_BASE_URL=<FlowPay production API base URL>
@@ -126,7 +126,7 @@ FLOWPAY_PROVIDER=FAPSHI
 FLOWPAY_TIMEOUT_MS=15000
 ```
 
-These are the valid names used by the current deployment and ROBLYNE adapter. With `NODE_ENV=production`, ROBLYNE always uses the production payment path, so `FLOWPAY_ENVIRONMENT` is not needed. `FLOWPAY_CLIENT_SECRET` is not read by ROBLYNE; it is harmless if already present, but `FLOWPAY_SECRET_KEY` is the required value. Do not put payment credentials on the static site or worker, and never use `VITE_*` for them. `FLOWPAY_PROVIDER` and `FLOWPAY_TIMEOUT_MS` are optional; the defaults are `FAPSHI` and 15 seconds.
+These are the valid names used by the current deployment and ROBLYNE adapter. With `NODE_ENV=production`, ROBLYNE always uses the production payment path, so `FLOWPAY_ENVIRONMENT` is not needed. `FLOWPAY_CLIENT_SECRET` is not read by ROBLYNE; it is harmless if already present, but `FLOWPAY_SECRET_KEY` is the required value. Never put these credentials on the static site or use `VITE_*`; they belong only on the API and worker. `FLOWPAY_PROVIDER` and `FLOWPAY_TIMEOUT_MS` are optional; the defaults are `FAPSHI` and 15 seconds.
 
 ### FlowPay Mode 1 payouts
 

@@ -20,6 +20,11 @@ import { normalizeCameroonPhone, maskPhoneNumber } from "../lib/phone";
 
 const router: IRouter = Router();
 
+function normalizeCurrency(value: unknown, fallback = "XAF"): string {
+  const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : fallback;
+}
+
 function toCsvValue(value: unknown): string {
   const s = String(value ?? "");
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -28,6 +33,7 @@ function toCsvValue(value: unknown): string {
 function formatTxn(row: any) {
   return {
     ...row,
+    currency: normalizeCurrency(row.currency),
     grossAmount: parseFloat(row.grossAmount ?? "0"),
     commissionRate: parseFloat(row.commissionRate ?? "0"),
     commissionAmount: parseFloat(row.commissionAmount ?? "0"),
@@ -38,6 +44,7 @@ function formatTxn(row: any) {
 function formatSettlement(row: any) {
   return {
     ...row,
+    currency: normalizeCurrency(row.currency),
     amount: parseFloat(row.amount ?? "0"),
   };
 }
@@ -51,7 +58,7 @@ function maskPayoutTarget(target: string): string {
 function formatPayoutDestination(row: any) {
   return {
     id: row.id, displayName: row.displayName, payoutMethod: row.payoutMethod,
-    maskedTarget: row.maskedTarget, currency: row.currency,
+    maskedTarget: row.maskedTarget, currency: normalizeCurrency(row.currency),
     verificationStatus: row.verificationStatus, confirmationUrl: row.confirmationUrl,
     lastVerifiedAt: row.lastVerifiedAt, createdAt: row.createdAt, updatedAt: row.updatedAt,
   };
@@ -280,7 +287,7 @@ router.get("/organizations/:orgId/finance",
     const { balancesByCurrency, byPillar } = await getOrgFinanceSummary(orgId);
 
     const formatBalance = (row: any) => ({
-      currency: String(row.currency),
+      currency: normalizeCurrency(row.currency),
       totalRevenue: parseFloat(row.total_revenue ?? "0"),
       totalCommissionPaid: parseFloat(row.total_commission_paid ?? "0"),
       totalOrgEarnings: parseFloat(row.total_org_earnings ?? "0"),
@@ -313,7 +320,7 @@ router.get("/organizations/:orgId/finance",
       balancesByCurrency: currencyBalances,
       byPillar: (byPillar as any[]).map((p: any) => ({
         pillar: p.pillar,
-        currency: String(p.currency),
+        currency: normalizeCurrency(p.currency),
         revenue: parseFloat(p.revenue ?? "0"),
         earnings: parseFloat(p.earnings ?? "0"),
         count: parseInt(p.count ?? "0"),
@@ -486,7 +493,7 @@ router.get("/admin/finance/stats", async (_req, res): Promise<void> => {
   `);
 
   const currencyStats = (byCurrencyRows as any[]).map((row) => ({
-    currency: String(row.currency),
+    currency: normalizeCurrency(row.currency),
     total_platform_revenue: parseFloat(row.total_platform_revenue ?? "0"),
     total_commission_collected: parseFloat(row.total_commission_collected ?? "0"),
     total_org_earnings: parseFloat(row.total_org_earnings ?? "0"),
@@ -506,9 +513,9 @@ router.get("/admin/finance/stats", async (_req, res): Promise<void> => {
     revenue_this_week: unambiguousCurrencyStats?.revenue_this_week ?? null,
     revenue_this_month: unambiguousCurrencyStats?.revenue_this_month ?? null,
     byCurrency: currencyStats,
-    byPillar: (byPillar as any[]).map((row) => ({ ...row, currency: String(row.currency) })),
-    pendingSettlements: (pendingSettlements as any[]).map((row) => ({ ...row, currency: String(row.currency) })),
-    revenueByDay: (revenueByDay as any[]).map((row) => ({ ...row, currency: String(row.currency) })),
+    byPillar: (byPillar as any[]).map((row) => ({ ...row, currency: normalizeCurrency(row.currency) })),
+    pendingSettlements: (pendingSettlements as any[]).map((row) => ({ ...row, currency: normalizeCurrency(row.currency) })),
+    revenueByDay: (revenueByDay as any[]).map((row) => ({ ...row, currency: normalizeCurrency(row.currency) })),
   });
 });
 
@@ -1041,7 +1048,7 @@ router.get("/organizations/:orgId/analytics",
         startsAt: row.startsAt,
         endsAt: row.endsAt,
         requiresPayment: row.requiresPayment,
-        currency: row.currency ?? "XAF",
+        currency: normalizeCurrency(row.currency),
         totalVotes: total,
         paidVotes,
         freeVotes: total - paidVotes,
@@ -1079,7 +1086,7 @@ router.get("/organizations/:orgId/analytics",
         type: row.type,
         startsAt: row.startsAt,
         endsAt: row.endsAt,
-        currency: row.currency ?? "XAF",
+        currency: normalizeCurrency(row.currency),
         goalAmount,
         amountRaised,
         revenue: row.revenue ?? 0,

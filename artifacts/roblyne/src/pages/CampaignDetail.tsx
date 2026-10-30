@@ -250,7 +250,7 @@ export default function CampaignDetail() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {campaign.status === 'active' && (
+            {campaign.status === 'active' && campaign.visibility !== 'private' && (
               <Button onClick={copyFormLink} variant="outline">
                 <Copy className="mr-2 h-4 w-4" /> Copy Form Link
               </Button>
@@ -258,16 +258,18 @@ export default function CampaignDetail() {
             
             <Button asChild variant={campaign.status === 'active' ? "default" : "secondary"}>
               <Link href={`/campaigns/${campaign.id}/participate`}>
-                <ExternalLink className="mr-2 h-4 w-4" /> View Public Form
+                <ExternalLink className="mr-2 h-4 w-4" /> {campaign.visibility === 'private' ? 'Preview Form' : 'View Public Form'}
               </Link>
             </Button>
-            <ShareButton
-              url={`${window.location.origin}/campaigns/${campaign.id}/participate`}
-              title={campaign.title}
-              description={campaign.description || `Participate in ${campaign.title}`}
-              ctaLabel="Share Campaign"
-              variant="icon"
-            />
+            {campaign.visibility !== 'private' && (
+              <ShareButton
+                url={`${window.location.origin}/campaigns/${campaign.id}/participate`}
+                title={campaign.title}
+                description={campaign.description || `Participate in ${campaign.title}`}
+                ctaLabel="Share Campaign"
+                variant="icon"
+              />
+            )}
             <EntityRecoveryActions kind="campaign" entity={campaign} />
             
             <DropdownMenu>

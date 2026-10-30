@@ -25,6 +25,7 @@ import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 import { useTranslation } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
+import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -33,6 +34,7 @@ export default function Register() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const returnPath = getSafeAuthReturnPath();
   const registerSchema = z.object({
     name: z.string().min(1, t("auth.nameRequired")),
     email: z.string().email(t("auth.emailValidation")),
@@ -50,9 +52,9 @@ export default function Register() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/dashboard");
+      setLocation(returnPath ?? "/dashboard");
     }
-  }, [isAuthenticated, setLocation]);
+  }, [isAuthenticated, returnPath, setLocation]);
 
   function onSubmit(values: z.infer<typeof registerSchema>) {
     registerMutation.mutate(
@@ -65,7 +67,7 @@ export default function Register() {
              title: t("auth.accountCreated"),
              description: t("auth.welcomeToEvenum"),
           });
-          setLocation("/dashboard");
+          setLocation(returnPath ?? "/dashboard");
         },
         onError: (error) => {
           toast({
@@ -164,7 +166,7 @@ export default function Register() {
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">
                  {t("auth.alreadyHaveAccount")}{" "}
-                <Link href="/login" className="text-primary font-medium hover:underline transition-all">
+                <Link href={`/login${window.location.search}`} className="text-primary font-medium hover:underline transition-all">
                    {t("auth.signInLink")}
                 </Link>
               </p>

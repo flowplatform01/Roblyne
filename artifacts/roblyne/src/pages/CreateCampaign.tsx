@@ -345,6 +345,37 @@ export default function CreateCampaign() {
             </Card>
 
             <Card>
+              <CardHeader>
+                <CardTitle>Access & Visibility</CardTitle>
+                <CardDescription>Choose who can discover and participate in this campaign.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="visibility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Campaign Visibility</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select visibility" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="public">Public (Visible in discovery)</SelectItem>
+                          <SelectItem value="private">Private (Organization members only)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Private campaigns are not listed publicly and only organization members can participate.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>Form Builder</CardTitle>

@@ -4,6 +4,7 @@ declare module "express-session" {
   interface SessionData {
     userId: number;
     electionInviteVerifications?: Record<string, number>;
+    eventInviteVerifications?: Record<string, number>;
   }
 }
 

@@ -24,7 +24,7 @@ For the ROBLYNE FlowPay application, confirm all of the following in Flow Admin 
 - The application uses Mode 1 / platform-revenue collection, so FlowPay has a settled balance from which it can execute revenue payouts.
 - The FlowPay confirmation gateway URL is public and uses HTTPS; new recipients can complete the confirmation page.
 
-No ROBLYNE secret is placed in the static frontend or worker. The API uses the existing `FLOWPAY_*` credentials. The worker needs only `DATABASE_URL` and `REDIS_URL`; it calls FlowPay through the same server-side adapter.
+No ROBLYNE secret is placed in the static frontend. The API and worker both use the same server-side `FLOWPAY_*` credentials: the worker creates and polls provider payouts directly through the shared adapter. The worker therefore requires `DATABASE_URL`, `REDIS_URL`, and the production `FLOWPAY_*` values. It deliberately refuses to start in production if those payment credentials are missing or invalid.
 
 ## Release sequence
 
