@@ -85,6 +85,24 @@ export async function scheduleFlowPayPayout(settlementId: number, attempt = 0, d
   );
 }
 
+export async function schedulePlatformWithdrawal(withdrawalId: number, attempt = 0, delay = 0): Promise<void> {
+  if (!flowPayPayoutQueue) {
+    throw new Error("The FlowPay payout worker is unavailable. Try again after Redis and the worker are healthy.");
+  }
+  await flowPayPayoutQueue.add(
+    "reconcile-platform-withdrawal",
+    { withdrawalId, attempt },
+    {
+      jobId: `platform-withdrawal-${withdrawalId}-${attempt}`,
+      delay,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+    },
+  );
+}
+
 async function holdsMaintenanceSchedulerLock(): Promise<boolean> {
   const redis = await getRedis();
   if (!redis) return true;

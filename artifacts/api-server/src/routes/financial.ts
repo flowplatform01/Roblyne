@@ -6,7 +6,7 @@ import { Router, type IRouter } from "express";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import {
-  db, financialTransactionsTable, settlementsTable, settlementAllocationsTable, payoutDestinationsTable, commissionConfigsTable, organizationsTable,
+  db, financialTransactionsTable, settlementsTable, settlementAllocationsTable, payoutDestinationsTable, platformPayoutDestinationsTable, platformWithdrawalsTable, platformWithdrawalAllocationsTable, commissionConfigsTable, organizationsTable,
   electionsTable, votesTable, voteSelectionsTable, eventsTable, ticketsTable, ticketTypesTable, campaignsTable, campaignResponsesTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
@@ -15,8 +15,9 @@ import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
 import { getAvailableSettlementAmount, isFullySettled, planSettlementAllocations } from "../lib/settlement-allocation";
 import { createFlowPayRecipient, getFlowPayRecipient } from "../lib/flowpay";
-import { isFlowPayPayoutQueueAvailable, scheduleFlowPayPayout } from "../lib/jobs";
+import { isFlowPayPayoutQueueAvailable, scheduleFlowPayPayout, schedulePlatformWithdrawal } from "../lib/jobs";
 import { normalizeCameroonPhone, maskPhoneNumber } from "../lib/phone";
+import { formatPlatformWithdrawal } from "../lib/platform-withdrawals";
 
 const router: IRouter = Router();
 
@@ -428,6 +429,145 @@ router.get("/organizations/:orgId/finance/export",
 // ── ADMIN FINANCIAL ENDPOINTS ──────────────────────────────────────────────
 
 router.use("/admin/finance", requirePlatformAdmin);
+
+function formatPlatformDestination(row: any) {
+  return {
+    id: row.id, displayName: row.displayName, payoutMethod: row.payoutMethod,
+    maskedTarget: row.maskedTarget, currency: normalizeCurrency(row.currency),
+    verificationStatus: row.verificationStatus, confirmationUrl: row.confirmationUrl,
+    lastVerifiedAt: row.lastVerifiedAt, createdAt: row.createdAt, updatedAt: row.updatedAt,
+  };
+}
+
+router.get("/admin/finance/platform-withdrawals/summary", async (_req, res): Promise<void> => {
+  const { rows } = await db.execute(sql`
+    WITH reserved AS (
+      SELECT pwa.financial_transaction_id, SUM(pwa.amount) AS amount
+      FROM platform_withdrawal_allocations pwa
+      INNER JOIN platform_withdrawals pw ON pw.id = pwa.platform_withdrawal_id
+      WHERE pw.status IN ('queued', 'processing', 'completed')
+      GROUP BY pwa.financial_transaction_id
+    )
+    SELECT ft.currency,
+      COALESCE(SUM(ft.commission_amount), 0)::float AS total_commission,
+      COALESCE(SUM(reserved.amount), 0)::float AS reserved_or_paid,
+      COALESCE(SUM(GREATEST(ft.commission_amount - COALESCE(reserved.amount, 0), 0)), 0)::float AS available
+    FROM financial_transactions ft
+    LEFT JOIN reserved ON reserved.financial_transaction_id = ft.id
+    WHERE ft.status = 'completed'
+    GROUP BY ft.currency
+    ORDER BY ft.currency
+  `);
+  res.json(rows.map((row: any) => ({ ...row, currency: normalizeCurrency(row.currency) })));
+});
+
+router.get("/admin/finance/platform-payout-destinations", async (_req, res): Promise<void> => {
+  const destinations = await db.select().from(platformPayoutDestinationsTable)
+    .orderBy(desc(platformPayoutDestinationsTable.updatedAt));
+  res.json(destinations.map(formatPlatformDestination));
+});
+
+router.post("/admin/finance/platform-payout-destinations", async (req, res): Promise<void> => {
+  const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim() : "";
+  const payoutMethod = req.body?.payoutMethod;
+  const rawTarget = typeof req.body?.payoutTarget === "string" ? req.body.payoutTarget.trim() : "";
+  const currency = normalizeCurrency(req.body?.currency);
+  if (displayName.length < 2 || displayName.length > 120) { res.status(400).json({ error: "Recipient name must be between 2 and 120 characters" }); return; }
+  if (!['mobile_money', 'bank_transfer'].includes(payoutMethod)) { res.status(400).json({ error: "Choose a valid payout method" }); return; }
+  if (!rawTarget || rawTarget.length > 180) { res.status(400).json({ error: "Enter a valid payout target" }); return; }
+  const payoutTarget = payoutMethod === "mobile_money" ? normalizeCameroonPhone(rawTarget) : rawTarget;
+  if (!payoutTarget) { res.status(400).json({ error: "Enter a valid Cameroon mobile-money number" }); return; }
+  try {
+    const externalRecipientId = `roblyne-platform-${randomUUID()}`;
+    const recipient = await createFlowPayRecipient({ externalRecipientId, displayName, payoutTarget, payoutMethod, currency });
+    const [created] = await db.insert(platformPayoutDestinationsTable).values({
+      provider: "flowpay", externalRecipientId: recipient.externalRecipientId, displayName, payoutMethod,
+      maskedTarget: maskPayoutTarget(payoutTarget), currency, verificationStatus: recipient.verificationStatus,
+      confirmationUrl: recipient.confirmationUrl, lastVerifiedAt: recipient.verificationStatus === "verified" ? new Date() : null,
+      createdByUserId: req.session.userId!,
+    }).returning();
+    res.status(201).json(formatPlatformDestination(created));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : "Could not create payout recipient" });
+  }
+});
+
+router.get("/admin/finance/platform-withdrawals", async (_req, res): Promise<void> => {
+  const rows = await db.select({ withdrawal: platformWithdrawalsTable, destination: platformPayoutDestinationsTable })
+    .from(platformWithdrawalsTable)
+    .innerJoin(platformPayoutDestinationsTable, eq(platformWithdrawalsTable.payoutDestinationId, platformPayoutDestinationsTable.id))
+    .orderBy(desc(platformWithdrawalsTable.requestedAt)).limit(100);
+  res.json(rows.map(({ withdrawal, destination }) => formatPlatformWithdrawal(withdrawal, destination)));
+});
+
+router.post("/admin/finance/platform-withdrawals", async (req, res): Promise<void> => {
+  const payoutDestinationId = Number(req.body?.payoutDestinationId);
+  const amount = Number(req.body?.amount);
+  const currency = normalizeCurrency(req.body?.currency);
+  if (!Number.isInteger(payoutDestinationId) || payoutDestinationId <= 0) { res.status(400).json({ error: "Choose a saved platform payout recipient" }); return; }
+  if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount * 100) !== amount * 100) { res.status(400).json({ error: "Enter a valid amount with at most two decimal places" }); return; }
+  if (!isFlowPayPayoutQueueAvailable()) { res.status(503).json({ error: "Platform payout processing is temporarily unavailable. Check Redis and the worker, then retry." }); return; }
+  try {
+    const [destination] = await db.select().from(platformPayoutDestinationsTable).where(and(
+      eq(platformPayoutDestinationsTable.id, payoutDestinationId), eq(platformPayoutDestinationsTable.provider, "flowpay"),
+    )).limit(1);
+    if (!destination) { res.status(404).json({ error: "Saved platform payout recipient not found" }); return; }
+    const recipient = await getFlowPayRecipient(destination.externalRecipientId);
+    const [refreshedDestination] = await db.update(platformPayoutDestinationsTable).set({
+      verificationStatus: recipient.verificationStatus,
+      lastVerifiedAt: recipient.verificationStatus === "verified" ? new Date() : destination.lastVerifiedAt,
+      updatedAt: new Date(),
+    }).where(eq(platformPayoutDestinationsTable.id, destination.id)).returning();
+    if (refreshedDestination.verificationStatus !== "verified") { res.status(409).json({ error: "Verify the platform payout recipient in FlowPay before requesting a withdrawal" }); return; }
+    if (normalizeCurrency(refreshedDestination.currency) !== currency) { res.status(400).json({ error: "The payout recipient currency must match the withdrawal currency" }); return; }
+    const withdrawal = await db.transaction(async (tx) => {
+      const ledgerResult = await tx.execute(sql`
+        SELECT id, commission_amount::text AS commission_amount
+        FROM financial_transactions
+        WHERE status = 'completed' AND currency = ${currency}
+        ORDER BY created_at ASC, id ASC
+        FOR UPDATE
+      `);
+      const transactionIds = (ledgerResult.rows as Array<{ id: number | string }>).map((row) => Number(row.id));
+      const allocationResult = transactionIds.length ? await tx.execute(sql`
+        SELECT pwa.financial_transaction_id, SUM(pwa.amount)::text AS allocated_amount
+        FROM platform_withdrawal_allocations pwa
+        INNER JOIN platform_withdrawals pw ON pw.id = pwa.platform_withdrawal_id
+        WHERE pwa.financial_transaction_id IN (${sql.join(transactionIds.map((id) => sql`${id}`), sql`, `)})
+          AND pw.status IN ('queued', 'processing', 'completed')
+        GROUP BY pwa.financial_transaction_id
+      `) : { rows: [] };
+      const allocatedByTransaction = new Map(
+        (allocationResult.rows as Array<{ financial_transaction_id: number | string; allocated_amount: string }>)
+          .map((row) => [Number(row.financial_transaction_id), Number(row.allocated_amount)]),
+      );
+      let remaining = Math.round(amount * 100);
+      const allocations: Array<{ transactionId: number; amount: string }> = [];
+      for (const row of ledgerResult.rows as Array<{ id: number | string; commission_amount: string }>) {
+        const available = Math.round((Number(row.commission_amount) - (allocatedByTransaction.get(Number(row.id)) ?? 0)) * 100);
+        const allocated = Math.min(available, remaining);
+        if (allocated > 0) allocations.push({ transactionId: Number(row.id), amount: (allocated / 100).toFixed(2) });
+        remaining -= allocated;
+        if (remaining === 0) break;
+      }
+      if (remaining !== 0) throw Object.assign(new Error("Insufficient available platform commission balance"), { code: "INSUFFICIENT_COMMISSION" });
+      const [created] = await tx.insert(platformWithdrawalsTable).values({
+        amount: amount.toFixed(2), currency, status: "queued", payoutDestinationId: refreshedDestination.id,
+        payoutProvider: "flowpay", payoutIdempotencyKey: `roblyne-platform-withdrawal-${randomUUID()}`,
+        requestedByUserId: req.session.userId!,
+      }).returning();
+      await tx.insert(platformWithdrawalAllocationsTable).values(allocations.map((allocation) => ({
+        platformWithdrawalId: created.id, financialTransactionId: allocation.transactionId, amount: allocation.amount,
+      })));
+      return created;
+    });
+    await schedulePlatformWithdrawal(withdrawal.id);
+    res.status(201).json(formatPlatformWithdrawal(withdrawal, refreshedDestination));
+  } catch (error: any) {
+    const status = error?.code === "INSUFFICIENT_COMMISSION" ? 409 : 400;
+    res.status(status).json({ error: error instanceof Error ? error.message : "Could not create platform withdrawal" });
+  }
+});
 
 /**
  * GET /api/admin/finance/stats

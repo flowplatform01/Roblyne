@@ -2,6 +2,7 @@ import { pgTable, serial, text, integer, timestamp, decimal, index, uniqueIndex 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
+import { usersTable } from "./users";
 
 // Commission configuration — one row per pillar, plus a "global" fallback
 export const commissionConfigsTable = pgTable("commission_configs", {
@@ -119,6 +120,60 @@ export const settlementAllocationsTable = pgTable("settlement_allocations", {
   transactionIdx: index("settlement_allocations_financial_transaction_id_idx").on(table.financialTransactionId),
   settlementTransactionUnique: uniqueIndex("settlement_allocations_settlement_transaction_uq")
     .on(table.settlementId, table.financialTransactionId),
+}));
+
+export const platformPayoutDestinationsTable = pgTable("platform_payout_destinations", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull().default("flowpay"),
+  externalRecipientId: text("external_recipient_id").notNull(),
+  displayName: text("display_name").notNull(),
+  payoutMethod: text("payout_method").notNull(),
+  maskedTarget: text("masked_target").notNull(),
+  currency: text("currency").notNull().default("XAF"),
+  verificationStatus: text("verification_status").notNull().default("pending"),
+  confirmationUrl: text("confirmation_url"),
+  lastVerifiedAt: timestamp("last_verified_at"),
+  createdByUserId: integer("created_by_user_id").notNull().references(() => usersTable.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  externalRecipientIdx: uniqueIndex("platform_payout_destinations_provider_recipient_uq")
+    .on(table.provider, table.externalRecipientId),
+}));
+
+export const platformWithdrawalsTable = pgTable("platform_withdrawals", {
+  id: serial("id").primaryKey(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("XAF"),
+  status: text("status").notNull().default("queued"),
+  payoutDestinationId: integer("payout_destination_id").notNull().references(() => platformPayoutDestinationsTable.id),
+  payoutProvider: text("payout_provider").notNull().default("flowpay"),
+  providerPayoutId: text("provider_payout_id"),
+  providerPayoutStatus: text("provider_payout_status"),
+  payoutIdempotencyKey: text("payout_idempotency_key").notNull(),
+  failureReason: text("failure_reason"),
+  requestedByUserId: integer("requested_by_user_id").notNull().references(() => usersTable.id),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  statusIdx: index("platform_withdrawals_status_idx").on(table.status),
+  payoutDestinationIdx: index("platform_withdrawals_destination_idx").on(table.payoutDestinationId),
+  providerPayoutIdx: index("platform_withdrawals_provider_payout_idx").on(table.providerPayoutId),
+  idempotencyIdx: uniqueIndex("platform_withdrawals_idempotency_uq").on(table.payoutIdempotencyKey),
+}));
+
+export const platformWithdrawalAllocationsTable = pgTable("platform_withdrawal_allocations", {
+  id: serial("id").primaryKey(),
+  platformWithdrawalId: integer("platform_withdrawal_id").notNull().references(() => platformWithdrawalsTable.id, { onDelete: "cascade" }),
+  financialTransactionId: integer("financial_transaction_id").notNull().references(() => financialTransactionsTable.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  withdrawalIdx: index("platform_withdrawal_allocations_withdrawal_idx").on(table.platformWithdrawalId),
+  transactionIdx: index("platform_withdrawal_allocations_transaction_idx").on(table.financialTransactionId),
+  withdrawalTransactionUnique: uniqueIndex("platform_withdrawal_allocations_withdrawal_transaction_uq")
+    .on(table.platformWithdrawalId, table.financialTransactionId),
 }));
 
 export const insertCommissionConfigSchema = createInsertSchema(commissionConfigsTable).omit({ id: true, updatedAt: true });

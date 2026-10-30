@@ -13,6 +13,10 @@ This audit reviewed the deployed architecture, client lifecycle behavior, servic
 - **Payments:** every paid event ticket, campaign contribution, and paid vote creates a durable payment intent and a linked financial ledger row before checkout. FlowPay webhooks are stored idempotently; direct session reconciliation is the fallback when webhook delivery is delayed or unavailable.
 - **Finance:** `financial_transactions` is the central ledger. `settlement_allocations` reserves explicit portions of completed organization earnings for payouts. The organization Finance summary aggregates completed ledger rows by currency and pillar; Platform Admin separately aggregates gross collection and platform commission.
 
+### Platform-admin commission controls
+
+Platform commission withdrawals are now a separate financial boundary. `platform_payout_destinations`, `platform_withdrawals`, and `platform_withdrawal_allocations` never share organization payout recipients, settlements, or `org_earnings`. A withdrawal can reserve only the unallocated portion of completed `commission_amount` ledger rows in its requested currency. The FlowPay worker uses provider idempotency and completes the record only on provider-confirmed success; a failed payout releases its commission reservations for a later, explicit retry.
+
 ## Findings and corrections
 
 ### PWA and loading behavior

@@ -6,7 +6,8 @@ import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { reconcilePendingPaymentIntent } from "./lib/payment-intents";
 import { schedulePaymentRecovery } from "./lib/jobs";
 import { POLL_DELAY_MS, processFlowPaySettlementPayout } from "./lib/flowpay-payouts";
-import { scheduleFlowPayPayout } from "./lib/jobs";
+import { PLATFORM_PAYOUT_POLL_DELAY_MS, processPlatformWithdrawal } from "./lib/platform-withdrawals";
+import { scheduleFlowPayPayout, schedulePlatformWithdrawal } from "./lib/jobs";
 import { logger } from "./lib/logger";
 import { closeRedis, pingRedis, recordMaintenanceWorkerHeartbeat } from "./lib/redis";
 import { validateWorkerStartupConfig } from "./lib/startup-config";
@@ -77,13 +78,22 @@ const paymentRecoveryWorker = new Worker(
 const flowPayPayoutWorker = new Worker(
   "evenum-flowpay-payouts",
   async (job) => {
-    if (job.name !== "reconcile-flowpay-payout") throw new Error(`Unknown FlowPay payout job: ${job.name}`);
-    const settlementId = Number(job.data?.settlementId);
     const attempt = Number(job.data?.attempt ?? 0);
-    if (!Number.isInteger(settlementId) || settlementId <= 0) throw new Error("Invalid FlowPay payout job");
-    const result = await processFlowPaySettlementPayout(settlementId);
-    if (result.shouldPoll && attempt < 20) await scheduleFlowPayPayout(settlementId, attempt + 1, POLL_DELAY_MS);
-    return { settlementId, attempt, ...result };
+    if (job.name === "reconcile-flowpay-payout") {
+      const settlementId = Number(job.data?.settlementId);
+      if (!Number.isInteger(settlementId) || settlementId <= 0) throw new Error("Invalid FlowPay payout job");
+      const result = await processFlowPaySettlementPayout(settlementId);
+      if (result.shouldPoll && attempt < 20) await scheduleFlowPayPayout(settlementId, attempt + 1, POLL_DELAY_MS);
+      return { settlementId, attempt, ...result };
+    }
+    if (job.name === "reconcile-platform-withdrawal") {
+      const withdrawalId = Number(job.data?.withdrawalId);
+      if (!Number.isInteger(withdrawalId) || withdrawalId <= 0) throw new Error("Invalid platform withdrawal job");
+      const result = await processPlatformWithdrawal(withdrawalId);
+      if (result.shouldPoll && attempt < 20) await schedulePlatformWithdrawal(withdrawalId, attempt + 1, PLATFORM_PAYOUT_POLL_DELAY_MS);
+      return { withdrawalId, attempt, ...result };
+    }
+    throw new Error(`Unknown FlowPay payout job: ${job.name}`);
   },
   {
     connection: { url: redisUrl, maxRetriesPerRequest: null },

@@ -854,7 +854,7 @@ function PlatformSupportSection() {
   );
 }
 
-type FinanceView = 'overview' | 'settlements' | 'balances' | 'transactions' | 'commissions';
+type FinanceView = 'overview' | 'settlements' | 'balances' | 'transactions' | 'commissions' | 'withdrawals';
 
 function FinancePagination({
   page,
@@ -915,6 +915,18 @@ function FinanceAdminSection() {
 
   const { data: orgBalances, isLoading: isLoadingBalances } = useListOrgBalances({ query: { queryKey: getListOrgBalancesQueryKey() } });
   const { data: commissionConfigs, isLoading: isLoadingConfigs } = useListCommissionConfigs({ query: { queryKey: getListCommissionConfigsQueryKey() } });
+  const { data: platformBalances = [] } = useQuery<any[]>({
+    queryKey: ['admin', 'finance', 'platform-withdrawals', 'summary'],
+    queryFn: () => customFetch(`${API_BASE}/api/admin/finance/platform-withdrawals/summary`),
+  });
+  const { data: platformDestinations = [] } = useQuery<any[]>({
+    queryKey: ['admin', 'finance', 'platform-payout-destinations'],
+    queryFn: () => customFetch(`${API_BASE}/api/admin/finance/platform-payout-destinations`),
+  });
+  const { data: platformWithdrawals = [], isLoading: isLoadingPlatformWithdrawals } = useQuery<any[]>({
+    queryKey: ['admin', 'finance', 'platform-withdrawals'],
+    queryFn: () => customFetch(`${API_BASE}/api/admin/finance/platform-withdrawals`),
+  });
 
   const formatCurrency = (amount: number, currency: string = "XAF") =>
     formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
@@ -986,6 +998,42 @@ function FinanceAdminSection() {
 
   const [editingConfigPillar, setEditingConfigPillar] = useState<string | null>(null);
   const [editRate, setEditRate] = useState<string>("");
+  const [platformWithdrawalOpen, setPlatformWithdrawalOpen] = useState(false);
+  const [platformDestinationId, setPlatformDestinationId] = useState("");
+  const [platformWithdrawalAmount, setPlatformWithdrawalAmount] = useState("");
+  const [platformRecipientOpen, setPlatformRecipientOpen] = useState(false);
+  const [platformRecipientName, setPlatformRecipientName] = useState("");
+  const [platformRecipientTarget, setPlatformRecipientTarget] = useState("");
+  const [platformRecipientCurrency, setPlatformRecipientCurrency] = useState("XAF");
+
+  const invalidatePlatformWithdrawals = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'finance', 'platform-withdrawals'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'finance', 'platform-payout-destinations'] });
+  };
+  const createPlatformWithdrawal = useMutation({
+    mutationFn: ({ payoutDestinationId, amount, currency }: { payoutDestinationId: number; amount: number; currency: string }) =>
+      customFetch(`${API_BASE}/api/admin/finance/platform-withdrawals`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payoutDestinationId, amount, currency }),
+      }),
+    onSuccess: () => {
+      invalidatePlatformWithdrawals();
+      setPlatformWithdrawalOpen(false); setPlatformDestinationId(''); setPlatformWithdrawalAmount('');
+      toast({ title: 'Platform commission withdrawal queued', description: 'FlowPay will confirm the payout before it is marked complete.' });
+    },
+    onError: (e: any) => toast({ variant: 'destructive', title: 'Withdrawal was not created', description: e?.data?.error || 'Try again after checking the available balance and recipient verification.' }),
+  });
+  const createPlatformRecipient = useMutation({
+    mutationFn: () => customFetch(`${API_BASE}/api/admin/finance/platform-payout-destinations`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: platformRecipientName, payoutTarget: platformRecipientTarget, payoutMethod: 'mobile_money', currency: platformRecipientCurrency }),
+    }),
+    onSuccess: () => {
+      invalidatePlatformWithdrawals();
+      setPlatformRecipientOpen(false); setPlatformRecipientName(''); setPlatformRecipientTarget('');
+      toast({ title: 'Platform recipient saved', description: 'Complete FlowPay verification before requesting a withdrawal.' });
+    },
+    onError: (e: any) => toast({ variant: 'destructive', title: 'Recipient was not saved', description: e?.data?.error || 'Check the mobile-money number and try again.' }),
+  });
 
   const updateConfig = useMutation({
     mutationFn: ({ pillar, rate }: { pillar: string; rate: number }) =>
@@ -1031,6 +1079,7 @@ function FinanceAdminSection() {
         <Button type="button" size="sm" variant={financeView === 'settlements' ? 'default' : 'outline'} aria-pressed={financeView === 'settlements'} onClick={() => setFinanceView('settlements')} className="gap-2"><Coins className="h-4 w-4" />Settlements</Button>
         <Button type="button" size="sm" variant={financeView === 'balances' ? 'default' : 'outline'} aria-pressed={financeView === 'balances'} onClick={() => setFinanceView('balances')} className="gap-2"><Wallet className="h-4 w-4" />Balances</Button>
         <Button type="button" size="sm" variant={financeView === 'transactions' ? 'default' : 'outline'} aria-pressed={financeView === 'transactions'} onClick={() => setFinanceView('transactions')} className="gap-2"><Receipt className="h-4 w-4" />Transactions</Button>
+        <Button type="button" size="sm" variant={financeView === 'withdrawals' ? 'default' : 'outline'} aria-pressed={financeView === 'withdrawals'} onClick={() => setFinanceView('withdrawals')} className="gap-2"><Wallet className="h-4 w-4" />Commission withdrawals</Button>
         <Button type="button" size="sm" variant={financeView === 'commissions' ? 'default' : 'outline'} aria-pressed={financeView === 'commissions'} onClick={() => setFinanceView('commissions')} className="gap-2"><Settings className="h-4 w-4" />Commission rates</Button>
       </div>
       <div hidden={financeView !== 'overview'} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -1237,6 +1286,43 @@ function FinanceAdminSection() {
           </Card>
         </div>
       </div>
+
+      <Card hidden={financeView !== 'withdrawals'} aria-label="Platform commission withdrawals" className="border-border/50 shadow-sm">
+        <CardHeader className="border-b border-border/40">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-serif">Platform commission withdrawals</CardTitle>
+              <CardDescription className="mt-1">Only completed commission earnings can be withdrawn. Organization earnings and recipients are never used here.</CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2">
+            <Dialog open={platformRecipientOpen} onOpenChange={setPlatformRecipientOpen}>
+              <DialogTrigger asChild><Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" />Add recipient</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Add platform payout recipient</DialogTitle><DialogDescription>This recipient belongs only to ROBLYNE platform commission withdrawals.</DialogDescription></DialogHeader>
+                <div className="space-y-4 py-2"><div className="space-y-2"><Label htmlFor="platform-recipient-name">Recipient name</Label><Input id="platform-recipient-name" value={platformRecipientName} onChange={(event) => setPlatformRecipientName(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="platform-recipient-target">Cameroon mobile-money number</Label><Input id="platform-recipient-target" inputMode="tel" placeholder="+237 6XX XXX XXX" value={platformRecipientTarget} onChange={(event) => setPlatformRecipientTarget(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="platform-recipient-currency">Currency</Label><Input id="platform-recipient-currency" maxLength={3} value={platformRecipientCurrency} onChange={(event) => setPlatformRecipientCurrency(event.target.value.toUpperCase())} /></div></div>
+                <DialogFooter><Button variant="outline" onClick={() => setPlatformRecipientOpen(false)}>Cancel</Button><Button disabled={platformRecipientName.trim().length < 2 || !platformRecipientTarget.trim() || createPlatformRecipient.isPending} onClick={() => createPlatformRecipient.mutate()}>{createPlatformRecipient.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save recipient</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={platformWithdrawalOpen} onOpenChange={setPlatformWithdrawalOpen}>
+              <DialogTrigger asChild><Button size="sm"><Wallet className="mr-2 h-4 w-4" />Withdraw commission</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Withdraw platform commission</DialogTitle><DialogDescription>FlowPay must verify the selected platform recipient. The worker submits and reconciles this payout.</DialogDescription></DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2"><Label>Verified recipient</Label><Select value={platformDestinationId} onValueChange={setPlatformDestinationId}><SelectTrigger><SelectValue placeholder="Select recipient" /></SelectTrigger><SelectContent>{platformDestinations.filter((destination: any) => destination.verificationStatus === 'verified').map((destination: any) => <SelectItem key={destination.id} value={String(destination.id)}>{destination.displayName} · {destination.maskedTarget} · {destination.currency}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label htmlFor="platform-withdrawal-amount">Amount</Label><Input id="platform-withdrawal-amount" inputMode="decimal" placeholder="0.00" value={platformWithdrawalAmount} onChange={(event) => setPlatformWithdrawalAmount(event.target.value)} /></div>
+                  {!platformDestinations.some((destination: any) => destination.verificationStatus === 'verified') && <p className="text-sm text-amber-700">Add and verify a platform payout recipient in FlowPay before requesting a withdrawal.</p>}
+                </div>
+                <DialogFooter><Button variant="outline" onClick={() => setPlatformWithdrawalOpen(false)}>Cancel</Button><Button disabled={!platformDestinationId || !Number(platformWithdrawalAmount) || createPlatformWithdrawal.isPending} onClick={() => { const destination = platformDestinations.find((item: any) => item.id === Number(platformDestinationId)); if (destination) createPlatformWithdrawal.mutate({ payoutDestinationId: destination.id, amount: Number(platformWithdrawalAmount), currency: destination.currency }); }}>{createPlatformWithdrawal.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm withdrawal</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 p-5">
+          <div className="grid gap-3 sm:grid-cols-3">{platformBalances.map((balance: any) => <Card key={balance.currency} className="shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Available commission · {balance.currency}</p><p className="mt-1 text-lg font-semibold">{formatCurrency(balance.available, balance.currency)}</p><p className="mt-1 text-xs text-muted-foreground">Reserved or paid: {formatCurrency(balance.reserved_or_paid, balance.currency)}</p></CardContent></Card>)}</div>
+          <div className="rounded-md border"><Table><TableHeader><TableRow><TableHead>Requested</TableHead><TableHead>Recipient</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Provider</TableHead></TableRow></TableHeader><TableBody>{isLoadingPlatformWithdrawals ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Loading withdrawals…</TableCell></TableRow> : !platformWithdrawals.length ? <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No platform commission withdrawals yet</TableCell></TableRow> : platformWithdrawals.map((withdrawal: any) => <TableRow key={withdrawal.id}><TableCell className="text-sm">{format(new Date(withdrawal.requestedAt), 'MMM d, yyyy')}</TableCell><TableCell>{withdrawal.destination?.displayName}<div className="text-xs text-muted-foreground">{withdrawal.destination?.maskedTarget}</div></TableCell><TableCell className="font-medium">{formatCurrency(withdrawal.amount, withdrawal.currency)}</TableCell><TableCell><Badge variant={withdrawal.status === 'completed' ? 'secondary' : withdrawal.status === 'failed' ? 'destructive' : 'outline'}>{withdrawal.status}</Badge>{withdrawal.failureReason && <div className="mt-1 max-w-48 text-xs text-destructive">{withdrawal.failureReason}</div>}</TableCell><TableCell className="text-xs text-muted-foreground">{withdrawal.providerPayoutStatus || 'queued'}</TableCell></TableRow>)}</TableBody></Table></div>
+        </CardContent>
+      </Card>
 
       {/* Settlements Table */}
       <Card hidden={financeView !== 'settlements'} aria-label="Settlements" role="region" className="border-border/50 shadow-sm">

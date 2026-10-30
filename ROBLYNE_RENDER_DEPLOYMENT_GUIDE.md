@@ -143,3 +143,11 @@ Use the exact Render API URL now, and later replace it with `https://api.<your-d
 Save, redeploy the **API only**, then use a FlowPay signed test webhook or a provider-approved controlled payment. Verify the webhook delivery is `200`, the payment changes from pending only after confirmed status, and replaying a delivery does not duplicate the ticket, vote, campaign contribution, or financial record. Keep paid features closed until this production check succeeds.
 
 For the complete contract, fallback behavior, and troubleshooting steps, see `ROBLYNE_DEPLOYMENT_RUNBOOK.md`.
+
+### Platform commission withdrawals
+
+Platform Admin withdrawals are separate from organization settlements. After deploying the migration, open **Platform Admin → Finance → Commission withdrawals** and create a dedicated **platform** FlowPay recipient. Do not reuse an organization recipient for the platform.
+
+The available amount is calculated only from completed `financial_transactions.commission_amount`. Each request creates explicit commission allocations before it reaches the worker, so two administrators cannot withdraw the same commission balance. The worker creates or polls the FlowPay payout with an idempotency key and marks it complete only after FlowPay confirms success. A failed payout releases its allocation; request a new withdrawal only after resolving the recipient or provider issue.
+
+This flow needs no additional environment variable beyond the FlowPay and Redis/worker values above. Run `pnpm run migrate` as part of the API deployment before using it, and verify the worker health endpoint is healthy before submitting a production withdrawal.
