@@ -36,11 +36,12 @@ export function ImageUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => () => {
     abortRef.current?.abort();
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -68,6 +69,7 @@ export function ImageUpload({
       const localPreviewUrl = URL.createObjectURL(prepared.file);
       setPreviewUrl((current) => {
         if (current) URL.revokeObjectURL(current);
+        previewUrlRef.current = localPreviewUrl;
         return localPreviewUrl;
       });
       setIsPreparing(false);
@@ -110,6 +112,7 @@ export function ImageUpload({
         setError(timedOut ? "The upload timed out. Check your connection and try again." : uploadError instanceof Error ? uploadError.message : "Failed to upload the file.");
         setPreviewUrl((current) => {
           if (current) URL.revokeObjectURL(current);
+          previewUrlRef.current = null;
           return null;
         });
       }
@@ -142,6 +145,7 @@ export function ImageUpload({
     onChange(undefined);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
+      previewUrlRef.current = null;
       setPreviewUrl(null);
     }
     if (inputRef.current) {

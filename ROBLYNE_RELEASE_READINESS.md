@@ -2,7 +2,9 @@
 
 Assessment date: 2026-10-29
 
-## Status: CONDITIONALLY READY
+## Status: BLOCKED FOR LAUNCH
+
+The 2026-10-30 production-reality audit established two critical facts: the former shared upload self-abort is fixed in source, but the configured R2 bucket rejects preflight from the deployed frontend origin with HTTP 403. No authenticated deployed-browser upload or provider-authorized withdrawal was executed in this audit.
 
 No unresolved confirmed P0/P1 source-code issue remains after the invite-only event repair. However, production onboarding must not be called fully verified until the required controlled external checks below are complete.
 
@@ -20,9 +22,10 @@ No unresolved confirmed P0/P1 source-code issue remains after the invite-only ev
 
 ## Required actions before real organizational onboarding
 
-1. Deploy the reviewed change to staging, using a shared frontend/API domain configuration.
+1. Apply the R2 CORS policy in `ROBLYNE_UPLOAD_SYSTEM_AUDIT.md`, deploy the reviewed upload fix, and complete an authenticated deployed-browser upload/save/reload/replacement check.
 2. Complete the sandbox and browser matrix in `ROBLYNE_END_TO_END_VERIFICATION.md` without live money or real election data.
-3. Confirm R2 bucket CORS for the exact staging frontend origin and test uploads in a signed-in browser.
+3. Reproduce and resolve the reported election route failure with its production request ID/log evidence.
+4. Verify a provider-authorized sandbox withdrawal lifecycle; an organization withdrawal currently creates an internal settlement request and does not itself transfer funds.
 4. Run the concurrency harness against a fresh disposable database; retain its generated report as release evidence.
 5. Verify Redis worker readiness/recovery in staging if `REDIS_URL` will be enabled in production.
 6. Re-run production artifact checks on Node 22 and complete non-destructive API/frontend/worker smoke tests after deployment.

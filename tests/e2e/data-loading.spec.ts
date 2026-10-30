@@ -47,6 +47,29 @@ test("home shell renders before its bounded discovery request completes", async 
   await expect(page.getByRole("link", { name: discoveryItem.title }).first()).toBeVisible();
 });
 
+test("home content is not blocked by a slow session lookup", async ({ page }) => {
+  let releaseAuth: (() => void) | undefined;
+  const authGate = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+
+  await page.route("http://roblyne.test/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/auth/me") {
+      await authGate;
+      return route.fulfill({ status: 401, json: { error: "Unauthenticated" } });
+    }
+    if (url.pathname === "/api/discover") return route.fulfill({ json: { items: [], featured: [], trending: [] } });
+    if (url.pathname === "/api/admin/platform-settings/public") return route.fulfill({ json: {} });
+    return route.fulfill({ json: {} });
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("h1").first()).toBeVisible();
+  await expect(page.getByLabel("Preparing ROBLYNE")).not.toBeVisible();
+  releaseAuth?.();
+});
+
 test("finance entry does not fetch inactive engine lists", async ({ page }) => {
   const engineListRequests: string[] = [];
 

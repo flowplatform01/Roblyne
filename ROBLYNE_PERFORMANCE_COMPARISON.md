@@ -19,3 +19,9 @@
 ## Measurement method
 
 The new Playwright scenarios use controlled API interception to count requests and delay discovery deliberately. The final `pnpm test:e2e` run passed all five scenarios. This validates request intent and progressive rendering, not network performance.
+
+## Production-reality update
+
+The public API measurements on 2026-10-30 were: `GET /api/discover?limit=12` 2.215s cache miss, public platform settings 454ms, and unauthenticated `GET /api/auth/me` 923ms. The reported long mobile skeleton was not the discovery UI: public `Layout` blocked the entire home route on the auth lookup. Public content now renders while that lookup completes in the background; protected dashboard routes retain their separate authorization gate. A new browser test holds `/api/auth/me` open and proves the home heading remains visible.
+
+These are point-in-time endpoint measurements, not a load test or a claim about all users' network latency.
