@@ -1179,7 +1179,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
       const response = await fetch(apiUrl(`/api/organizations/${orgId}/finance/payout-destinations`), { credentials: "include" });
       const body = await response.json();
       if (!response.ok) throw new Error(body?.error || "Could not load payout recipients");
-      return body as Array<any>;
+      return Array.isArray(body) ? body : [];
     },
   });
   const createPayoutDestination = useMutation({
@@ -1233,7 +1233,9 @@ function FinanceSection({ orgId }: { orgId: number }) {
     ? withdrawalCurrency
     : availableBalances[0]?.currency ?? "";
   const selectedBalance = availableBalances.find((balance) => balance.currency === selectedCurrency);
-  const payoutDestinations = (payoutDestinationsQuery.data ?? []).filter((destination) => destination.currency === selectedCurrency);
+  const payoutDestinations = Array.isArray(payoutDestinationsQuery.data)
+    ? payoutDestinationsQuery.data.filter((destination) => destination.currency === selectedCurrency)
+    : [];
   const selectedPayoutDestination = payoutDestinations.find((destination) => String(destination.id) === payoutDestinationId);
   const requestedAmount = withdrawalAmount.trim() ? Number(withdrawalAmount) : Number.NaN;
   const withdrawalAmountIsValid = Number.isFinite(requestedAmount)

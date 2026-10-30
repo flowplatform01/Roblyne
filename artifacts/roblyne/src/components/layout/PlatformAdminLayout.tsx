@@ -6,7 +6,7 @@ import { EvenumLogo } from "@/components/branding/EvenumLogo";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +78,7 @@ export function PlatformAdminLayout({ children }: { children: React.ReactNode })
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-9 w-9 rounded-full p-0" aria-label={user?.name ?? t("admin.platformWorkspace")}>
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.name ?? "Profile"} />
                     <AvatarFallback className="bg-primary/10 text-primary">
                       {user?.name?.charAt(0).toUpperCase() ?? <ShieldCheck className="h-4 w-4" />}
                     </AvatarFallback>
