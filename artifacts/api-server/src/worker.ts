@@ -5,6 +5,8 @@ import { Worker } from "bullmq";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { reconcilePendingPaymentIntent } from "./lib/payment-intents";
 import { schedulePaymentRecovery } from "./lib/jobs";
+import { POLL_DELAY_MS, processFlowPaySettlementPayout } from "./lib/flowpay-payouts";
+import { scheduleFlowPayPayout } from "./lib/jobs";
 import { logger } from "./lib/logger";
 import { closeRedis, pingRedis, recordMaintenanceWorkerHeartbeat } from "./lib/redis";
 import { validateWorkerStartupConfig } from "./lib/startup-config";
@@ -72,6 +74,25 @@ const paymentRecoveryWorker = new Worker(
   },
 );
 
+const flowPayPayoutWorker = new Worker(
+  "evenum-flowpay-payouts",
+  async (job) => {
+    if (job.name !== "reconcile-flowpay-payout") throw new Error(`Unknown FlowPay payout job: ${job.name}`);
+    const settlementId = Number(job.data?.settlementId);
+    const attempt = Number(job.data?.attempt ?? 0);
+    if (!Number.isInteger(settlementId) || settlementId <= 0) throw new Error("Invalid FlowPay payout job");
+    const result = await processFlowPaySettlementPayout(settlementId);
+    if (result.shouldPoll && attempt < 20) await scheduleFlowPayPayout(settlementId, attempt + 1, POLL_DELAY_MS);
+    return { settlementId, attempt, ...result };
+  },
+  {
+    connection: { url: redisUrl, maxRetriesPerRequest: null },
+    concurrency: 2,
+    limiter: { max: 30, duration: 60_000 },
+    lockDuration: 120_000,
+  },
+);
+
 const heartbeatInterval = setInterval(() => {
   void recordMaintenanceWorkerHeartbeat();
 }, 15_000);
@@ -83,6 +104,8 @@ worker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id, n
 worker.on("error", (error) => logger.error({ err: error }, "Background worker error"));
 paymentRecoveryWorker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id }, "Payment recovery job failed"));
 paymentRecoveryWorker.on("error", (error) => logger.error({ err: error }, "Payment recovery worker error"));
+flowPayPayoutWorker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id }, "FlowPay payout worker job failed"));
+flowPayPayoutWorker.on("error", (error) => logger.error({ err: error }, "FlowPay payout worker error"));
 
 const healthServer = http.createServer((req, res) => {
   if (req.url === "/healthz" || req.url === "/") {
@@ -118,6 +141,7 @@ async function shutdown(signal: string): Promise<void> {
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   await worker.close();
   await paymentRecoveryWorker.close();
+  await flowPayPayoutWorker.close();
   await closeRedis();
   await closeDatabasePool();
   process.exit(0);

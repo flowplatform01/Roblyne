@@ -128,6 +128,10 @@ FLOWPAY_TIMEOUT_MS=15000
 
 These are the valid names used by the current deployment and ROBLYNE adapter. With `NODE_ENV=production`, ROBLYNE always uses the production payment path, so `FLOWPAY_ENVIRONMENT` is not needed. `FLOWPAY_CLIENT_SECRET` is not read by ROBLYNE; it is harmless if already present, but `FLOWPAY_SECRET_KEY` is the required value. Do not put payment credentials on the static site or worker, and never use `VITE_*` for them. `FLOWPAY_PROVIDER` and `FLOWPAY_TIMEOUT_MS` are optional; the defaults are `FAPSHI` and 15 seconds.
 
+### FlowPay Mode 1 payouts
+
+ROBLYNE uses FlowPay saved recipients for organization withdrawals. Before enabling withdrawals, configure the ROBLYNE application in Flow Admin with an active application, enabled `PAYOUT` capability, recipient provisioning enabled, a positive recipient-profile limit, and provider payout access. Deploy the API and worker together and run migrations first. See `ROBLYNE_FLOWPAY_MODE1_PAYOUT_RUNBOOK.md` for the controlled release check; a settlement is completed only after FlowPay confirms payout success.
+
 In the FlowPay merchant/admin dashboard, configure the production webhook URL as:
 
 ```text

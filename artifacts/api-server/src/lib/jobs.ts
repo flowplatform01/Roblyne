@@ -24,6 +24,14 @@ export const paymentRecoveryQueue = queueConnection
   ? new Queue("evenum-payment-recovery", { connection: queueConnection })
   : null;
 
+export const flowPayPayoutQueue = queueConnection
+  ? new Queue("evenum-flowpay-payouts", { connection: queueConnection })
+  : null;
+
+export function isFlowPayPayoutQueueAvailable(): boolean {
+  return flowPayPayoutQueue !== null;
+}
+
 if (maintenanceQueue) {
   maintenanceQueue.on("error", (error) => {
     logger.warn({ err: error }, "Maintenance queue Redis error; API continues without crashing");
@@ -33,6 +41,12 @@ if (maintenanceQueue) {
 if (paymentRecoveryQueue) {
   paymentRecoveryQueue.on("error", (error) => {
     logger.warn({ err: error }, "Payment recovery queue Redis error");
+  });
+}
+
+if (flowPayPayoutQueue) {
+  flowPayPayoutQueue.on("error", (error) => {
+    logger.warn({ err: error }, "FlowPay payout queue Redis error");
   });
 }
 
@@ -47,6 +61,24 @@ export async function schedulePaymentRecovery(paymentIntentId: number, attempt =
       delay,
       attempts: 3,
       backoff: { type: "exponential", delay: 5_000 },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+    },
+  );
+}
+
+export async function scheduleFlowPayPayout(settlementId: number, attempt = 0, delay = 0): Promise<void> {
+  if (!flowPayPayoutQueue) {
+    throw new Error("The FlowPay payout worker is unavailable. Try again after Redis and the worker are healthy.");
+  }
+  await flowPayPayoutQueue.add(
+    "reconcile-flowpay-payout",
+    { settlementId, attempt },
+    {
+      jobId: `flowpay-payout-${settlementId}-${attempt}`,
+      delay,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 10_000 },
       removeOnComplete: 1000,
       removeOnFail: 5000,
     },
@@ -123,6 +155,11 @@ export async function closeQueues(): Promise<void> {
       logger.warn({ err: error }, "Could not close payment recovery queue cleanly");
     });
   }
+  if (flowPayPayoutQueue) {
+    await flowPayPayoutQueue.close().catch((error: unknown) => {
+      logger.warn({ err: error }, "Could not close FlowPay payout queue cleanly");
+    });
+  }
 }
 
 export async function queueInfrastructureStatus(): Promise<{
@@ -148,6 +185,7 @@ export async function queueInfrastructureStatus(): Promise<{
     queues: {
       maintenance: await readCounts(maintenanceQueue),
       paymentRecovery: await readCounts(paymentRecoveryQueue),
+      flowPayPayouts: await readCounts(flowPayPayoutQueue),
     },
   };
 }

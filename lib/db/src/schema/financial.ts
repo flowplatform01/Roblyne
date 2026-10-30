@@ -65,6 +65,15 @@ export const settlementsTable = pgTable("settlements", {
   transactionCount: integer("transaction_count").notNull().default(0),
   payoutMethod: text("payout_method"),
   payoutAccount: text("payout_account"),
+  // FlowPay Mode 1 payout metadata. The actual payout target stays with FlowPay;
+  // ROBLYNE persists only its saved-recipient reference and a masked display value.
+  payoutDestinationId: integer("payout_destination_id"),
+  payoutProvider: text("payout_provider"),
+  providerPayoutId: text("provider_payout_id"),
+  providerPayoutStatus: text("provider_payout_status"),
+  payoutIdempotencyKey: text("payout_idempotency_key"),
+  payoutFailureReason: text("payout_failure_reason"),
+  payoutAttemptedAt: timestamp("payout_attempted_at"),
   notes: text("notes"),
   releasedAt: timestamp("released_at"),
   completedAt: timestamp("completed_at"),
@@ -72,6 +81,29 @@ export const settlementsTable = pgTable("settlements", {
 }, (table) => ({
   orgIdIdx: index("settlements_org_id_idx").on(table.orgId),
   statusIdx: index("settlements_status_idx").on(table.status),
+  providerPayoutIdIdx: index("settlements_provider_payout_id_idx").on(table.providerPayoutId),
+}));
+
+// A reusable organization-owned payout target. Raw account/phone details are sent
+// directly to FlowPay during provisioning and are not retained in ROBLYNE.
+export const payoutDestinationsTable = pgTable("payout_destinations", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("flowpay"),
+  externalRecipientId: text("external_recipient_id").notNull(),
+  displayName: text("display_name").notNull(),
+  payoutMethod: text("payout_method").notNull(),
+  maskedTarget: text("masked_target").notNull(),
+  currency: text("currency").notNull().default("XAF"),
+  verificationStatus: text("verification_status").notNull().default("pending"),
+  confirmationUrl: text("confirmation_url"),
+  lastVerifiedAt: timestamp("last_verified_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  orgIdIdx: index("payout_destinations_org_id_idx").on(table.orgId),
+  externalRecipientIdx: uniqueIndex("payout_destinations_provider_recipient_uq")
+    .on(table.provider, table.externalRecipientId),
 }));
 
 // A settlement may claim only part of one or more ledger transactions. Keep

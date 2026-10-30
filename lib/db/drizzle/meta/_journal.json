@@ -22,6 +22,13 @@
       "when": 1793275200000,
       "tag": "0002_scale_read_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793361600000,
+      "tag": "0003_flowpay_mode1_payouts",
+      "breakpoints": true
     }
   ]
 }

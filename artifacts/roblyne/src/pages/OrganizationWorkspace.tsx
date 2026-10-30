@@ -20,7 +20,6 @@ import {
   useListOrgTransactions,
   useListOrgSettlements,
   useGetOrgAnalytics,
-  useRequestOrgWithdrawal,
   getGetOrgFinanceSummaryQueryKey,
   getListOrgTransactionsQueryKey,
   getListOrgSettlementsQueryKey,
@@ -43,7 +42,7 @@ import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
 import { ShareButton } from "@/components/branding/ShareButton";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { formatCurrency as formatCurrencyValue } from "@/lib/currency";
 import { apiUrl } from "@/lib/api-url";
@@ -1156,9 +1155,10 @@ function FinanceSection({ orgId }: { orgId: number }) {
   const { toast } = useToast();
   const { i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const requestWithdrawal = useRequestOrgWithdrawal();
   const [payoutMethod, setPayoutMethod] = useState<"bank_transfer" | "mobile_money">("mobile_money");
-  const [payoutAccount, setPayoutAccount] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [payoutTarget, setPayoutTarget] = useState("");
+  const [payoutDestinationId, setPayoutDestinationId] = useState("");
   const [withdrawalNotes, setWithdrawalNotes] = useState("");
   const [withdrawalCurrency, setWithdrawalCurrency] = useState("");
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
@@ -1172,6 +1172,57 @@ function FinanceSection({ orgId }: { orgId: number }) {
   );
   
   const { data: settlements, isLoading: isLoadingSettlements, isError: isSettlementsError, refetch: refetchSettlements } = useListOrgSettlements(orgId, { query: { enabled: !!orgId, queryKey: getListOrgSettlementsQueryKey(orgId) } });
+  const payoutDestinationsQuery = useQuery({
+    queryKey: ["payout-destinations", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const response = await fetch(apiUrl(`/api/organizations/${orgId}/finance/payout-destinations`), { credentials: "include" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error || "Could not load payout recipients");
+      return body as Array<any>;
+    },
+  });
+  const createPayoutDestination = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(apiUrl(`/api/organizations/${orgId}/finance/payout-destinations`), {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: recipientName.trim(), payoutMethod, payoutTarget: payoutTarget.trim(), currency: selectedCurrency || "XAF" }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error || "Could not save payout recipient");
+      return body as any;
+    },
+    onSuccess: (destination) => {
+      payoutDestinationsQuery.refetch();
+      setPayoutDestinationId(String(destination.id));
+      setRecipientName("");
+      setPayoutTarget("");
+      if (destination.confirmationUrl) window.open(destination.confirmationUrl, "_blank", "noopener,noreferrer");
+      toast({ title: destination.verificationStatus === "verified" ? "Payout recipient saved" : "Verify your payout recipient", description: destination.confirmationUrl ? "FlowPay verification opened in a new tab. Return here and refresh the recipient once complete." : "This recipient needs FlowPay verification before it can receive payouts." });
+    },
+    onError: (error: Error) => toast({ title: "Could not save recipient", description: error.message, variant: "destructive" }),
+  });
+  const refreshPayoutDestination = useMutation({
+    mutationFn: async (destinationId: number) => {
+      const response = await fetch(apiUrl(`/api/organizations/${orgId}/finance/payout-destinations/${destinationId}/refresh`), { method: "POST", credentials: "include" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error || "Could not refresh payout recipient");
+      return body as any;
+    },
+    onSuccess: () => { void payoutDestinationsQuery.refetch(); toast({ title: "Payout recipient refreshed" }); },
+    onError: (error: Error) => toast({ title: "Could not refresh recipient", description: error.message, variant: "destructive" }),
+  });
+  const requestWithdrawal = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(apiUrl(`/api/organizations/${orgId}/finance/settlements`), {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Math.round(requestedAmount * 100) / 100, currency: selectedCurrency, payoutDestinationId: Number(payoutDestinationId), notes: withdrawalNotes.trim() || null }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error || "Could not submit payout request");
+      return body as any;
+    },
+  });
 
   const formatCurrency = (amount: number, currency: string = "XAF") => {
     return formatCurrencyValue(amount, currency, i18n.language.startsWith("fr") ? "fr-FR" : "en-US");
@@ -1182,6 +1233,8 @@ function FinanceSection({ orgId }: { orgId: number }) {
     ? withdrawalCurrency
     : availableBalances[0]?.currency ?? "";
   const selectedBalance = availableBalances.find((balance) => balance.currency === selectedCurrency);
+  const payoutDestinations = (payoutDestinationsQuery.data ?? []).filter((destination) => destination.currency === selectedCurrency);
+  const selectedPayoutDestination = payoutDestinations.find((destination) => String(destination.id) === payoutDestinationId);
   const requestedAmount = withdrawalAmount.trim() ? Number(withdrawalAmount) : Number.NaN;
   const withdrawalAmountIsValid = Number.isFinite(requestedAmount)
     && requestedAmount > 0
@@ -1240,48 +1293,39 @@ function FinanceSection({ orgId }: { orgId: number }) {
       });
       return;
     }
+    if (!selectedPayoutDestination || selectedPayoutDestination.verificationStatus !== "verified") {
+      toast({ title: "Choose a verified payout recipient", description: "Save and verify a recipient with FlowPay before requesting a payout.", variant: "destructive" });
+      return;
+    }
     setWithdrawalReviewOpen(true);
   };
 
   const submitWithdrawalRequest = () => {
-    if (!selectedBalance || !withdrawalAmountIsValid || !payoutAccount.trim()) {
+    if (!selectedBalance || !withdrawalAmountIsValid || !selectedPayoutDestination) {
       setWithdrawalReviewOpen(false);
       return;
     }
-    requestWithdrawal.mutate(
-      {
-        orgId,
-        data: {
-          amount: Math.round(requestedAmount * 100) / 100,
-          currency: selectedCurrency,
-          payoutMethod,
-          payoutAccount: payoutAccount.trim(),
-          notes: withdrawalNotes.trim() || null,
-        },
-      },
-      {
+    requestWithdrawal.mutate(undefined, {
         onSuccess: (settlement) => {
           setWithdrawalReviewOpen(false);
           queryClient.invalidateQueries({ queryKey: getGetOrgFinanceSummaryQueryKey(orgId) });
           queryClient.invalidateQueries({ queryKey: getListOrgSettlementsQueryKey(orgId) });
           queryClient.invalidateQueries({ queryKey: getListOrgTransactionsQueryKey(orgId, { limit: 50, pillar: pillarFilter !== "all" ? pillarFilter as any : undefined }) });
-          setPayoutAccount("");
           setWithdrawalNotes("");
           setWithdrawalAmount("");
           toast({
             title: "Withdrawal request submitted",
-            description: `${formatCurrency(settlement.amount, settlement.currency)} is now being processed.`,
+            description: `${formatCurrency(settlement.amount, settlement.currency)} is queued with FlowPay and will complete only after provider confirmation.`,
           });
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
           toast({
             title: "Withdrawal request failed",
-            description: error?.data?.error || "Could not submit the withdrawal request. Please try again.",
+            description: error.message || "Could not submit the withdrawal request. Please try again.",
             variant: "destructive",
           });
         },
-      },
-    );
+      });
   };
 
   if (isLoadingSummary) {
@@ -1342,7 +1386,27 @@ function FinanceSection({ orgId }: { orgId: number }) {
               </div>
             </div>
           </div>
-          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.5fr_1.5fr_auto] items-end">
+          <div className="mb-4 rounded-lg border border-border/60 bg-background/70 p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-medium">Saved payout recipients</p>
+                <p className="text-xs text-muted-foreground">FlowPay holds and verifies the full account target; ROBLYNE retains only a masked reference.</p>
+              </div>
+              {selectedPayoutDestination && selectedPayoutDestination.verificationStatus !== "verified" && (
+                <Button type="button" size="sm" variant="outline" onClick={() => refreshPayoutDestination.mutate(Number(selectedPayoutDestination.id))} disabled={refreshPayoutDestination.isPending}>Refresh verification</Button>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+              <Input value={recipientName} onChange={(event) => setRecipientName(event.target.value)} placeholder="Recipient name" maxLength={120} disabled={createPayoutDestination.isPending} />
+              <Select value={payoutMethod} onValueChange={(value) => setPayoutMethod(value as typeof payoutMethod)} disabled={createPayoutDestination.isPending}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="mobile_money">Mobile money</SelectItem><SelectItem value="bank_transfer">Bank transfer</SelectItem></SelectContent>
+              </Select>
+              <Input value={payoutTarget} onChange={(event) => setPayoutTarget(event.target.value)} placeholder={payoutMethod === "mobile_money" ? "Mobile money number" : "Bank account details"} maxLength={160} disabled={createPayoutDestination.isPending} />
+              <Button type="button" variant="outline" onClick={() => createPayoutDestination.mutate()} disabled={createPayoutDestination.isPending || recipientName.trim().length < 2 || payoutTarget.trim().length < 6}>{createPayoutDestination.isPending ? "Saving…" : "Save recipient"}</Button>
+            </div>
+          </div>
+          <form onSubmit={handleWithdrawal} className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.5fr_1.5fr_auto] items-end">
             <div className="space-y-1.5">
               <Label htmlFor="withdrawal-currency">Currency</Label>
               <Select
@@ -1383,27 +1447,17 @@ function FinanceSection({ orgId }: { orgId: number }) {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="payout-method">Payout method</Label>
-              <Select value={payoutMethod} onValueChange={(value) => setPayoutMethod(value as typeof payoutMethod)}>
-                <SelectTrigger id="payout-method"><SelectValue /></SelectTrigger>
+              <Label htmlFor="payout-destination">Verified payout recipient</Label>
+              <Select value={payoutDestinationId} onValueChange={setPayoutDestinationId} disabled={requestWithdrawal.isPending || payoutDestinationsQuery.isLoading}>
+                <SelectTrigger id="payout-destination"><SelectValue placeholder="Choose a saved recipient" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mobile_money">Mobile money</SelectItem>
-                  <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                  {payoutDestinations.map((destination) => (
+                    <SelectItem key={destination.id} value={String(destination.id)} disabled={destination.verificationStatus !== "verified"}>
+                      {destination.displayName} · {destination.maskedTarget} ({destination.verificationStatus})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="payout-account">{payoutMethod === "mobile_money" ? "Mobile money number" : "Bank account details"}</Label>
-              <Input
-                id="payout-account"
-                value={payoutAccount}
-                onChange={(event) => setPayoutAccount(event.target.value)}
-                placeholder={payoutMethod === "mobile_money" ? "e.g. 6XXXXXXXX" : "Account name and number"}
-                required
-                minLength={3}
-                maxLength={160}
-                disabled={requestWithdrawal.isPending}
-              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="withdrawal-notes">Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -1416,7 +1470,7 @@ function FinanceSection({ orgId }: { orgId: number }) {
                 disabled={requestWithdrawal.isPending}
               />
             </div>
-            <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || !payoutAccount.trim() || !withdrawalAmountIsValid}>
+            <Button type="submit" disabled={requestWithdrawal.isPending || !selectedBalance || selectedPayoutDestination?.verificationStatus !== "verified" || !withdrawalAmountIsValid}>
               {requestWithdrawal.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowUpRight className="mr-2 h-4 w-4" />}
               Review payout
             </Button>
@@ -1438,11 +1492,11 @@ function FinanceSection({ orgId }: { orgId: number }) {
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Payout method</span>
-              <strong>{payoutMethod === "mobile_money" ? "Mobile money" : "Bank transfer"}</strong>
+              <strong>{selectedPayoutDestination?.payoutMethod === "mobile_money" ? "Mobile money" : "Bank transfer"}</strong>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-muted-foreground">Destination</span>
-              <strong className="break-all">{payoutAccount.trim()}</strong>
+              <strong className="break-all">{selectedPayoutDestination ? `${selectedPayoutDestination.displayName} · ${selectedPayoutDestination.maskedTarget}` : "No recipient selected"}</strong>
             </div>
             {remainingAfterWithdrawal !== null && (
               <div className="flex justify-between gap-4 border-t pt-3">
@@ -1452,12 +1506,12 @@ function FinanceSection({ orgId }: { orgId: number }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            ROBLYNE records payout requests but does not transfer funds from this screen. Provider fees, if any, are handled separately by your bank or mobile-money provider.
+            ROBLYNE sends this request to FlowPay using the verified saved recipient. The payout is completed only after FlowPay confirms success.
           </p>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={requestWithdrawal.isPending}>Back to form</AlertDialogCancel>
             <AlertDialogAction
-              disabled={requestWithdrawal.isPending || !withdrawalAmountIsValid || !payoutAccount.trim()}
+              disabled={requestWithdrawal.isPending || !withdrawalAmountIsValid || selectedPayoutDestination?.verificationStatus !== "verified"}
               onClick={submitWithdrawalRequest}
             >
               {requestWithdrawal.isPending ? "Submitting…" : "Submit payout request"}

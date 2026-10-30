@@ -4,8 +4,9 @@
 
 import { Router, type IRouter } from "express";
 import { eq, sql, and, desc, inArray } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import {
-  db, financialTransactionsTable, settlementsTable, settlementAllocationsTable, commissionConfigsTable, organizationsTable,
+  db, financialTransactionsTable, settlementsTable, settlementAllocationsTable, payoutDestinationsTable, commissionConfigsTable, organizationsTable,
   electionsTable, votesTable, voteSelectionsTable, eventsTable, ticketsTable, ticketTypesTable, campaignsTable, campaignResponsesTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
@@ -13,6 +14,9 @@ import { requireOrgRole } from "../middlewares/orgAccess";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
 import { getAvailableSettlementAmount, isFullySettled, planSettlementAllocations } from "../lib/settlement-allocation";
+import { createFlowPayRecipient, getFlowPayRecipient } from "../lib/flowpay";
+import { isFlowPayPayoutQueueAvailable, scheduleFlowPayPayout } from "../lib/jobs";
+import { normalizeCameroonPhone, maskPhoneNumber } from "../lib/phone";
 
 const router: IRouter = Router();
 
@@ -38,6 +42,21 @@ function formatSettlement(row: any) {
   };
 }
 
+function maskPayoutTarget(target: string): string {
+  const trimmed = target.trim();
+  if (trimmed.length <= 4) return "****";
+  return `${trimmed.slice(0, 2)}••••${trimmed.slice(-2)}`;
+}
+
+function formatPayoutDestination(row: any) {
+  return {
+    id: row.id, displayName: row.displayName, payoutMethod: row.payoutMethod,
+    maskedTarget: row.maskedTarget, currency: row.currency,
+    verificationStatus: row.verificationStatus, confirmationUrl: row.confirmationUrl,
+    lastVerifiedAt: row.lastVerifiedAt, createdAt: row.createdAt, updatedAt: row.updatedAt,
+  };
+}
+
 /**
  * Public fee rates are used only for transparent net-amount estimates.
  * The payment pipeline recalculates the authoritative commission at settlement time.
@@ -54,8 +73,67 @@ router.get("/finance/commission-rates", async (_req, res): Promise<void> => {
 
 // ── ORG FINANCIAL WORKSPACE ────────────────────────────────────────────────
 
+router.get("/organizations/:orgId/finance/payout-destinations", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const orgId = parseInt(String(req.params.orgId), 10);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const destinations = await db.select().from(payoutDestinationsTable)
+    .where(eq(payoutDestinationsTable.orgId, orgId)).orderBy(desc(payoutDestinationsTable.updatedAt));
+  res.json(destinations.map(formatPayoutDestination));
+});
+
+router.post("/organizations/:orgId/finance/payout-destinations", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const orgId = parseInt(String(req.params.orgId), 10);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim() : "";
+  const payoutMethod = req.body?.payoutMethod;
+  const rawTarget = typeof req.body?.payoutTarget === "string" ? req.body.payoutTarget.trim() : "";
+  const currency = typeof req.body?.currency === "string" ? req.body.currency.trim().toUpperCase() : "XAF";
+  if (displayName.length < 2 || displayName.length > 120) { res.status(400).json({ error: "Recipient name must be between 2 and 120 characters" }); return; }
+  if (!["mobile_money", "bank_transfer"].includes(payoutMethod)) { res.status(400).json({ error: "Choose a valid payout method" }); return; }
+  if (!/^[A-Z]{3}$/.test(currency)) { res.status(400).json({ error: "Choose a valid three-letter payout currency" }); return; }
+  const payoutTarget = payoutMethod === "mobile_money" ? normalizeCameroonPhone(rawTarget) : rawTarget;
+  if (!payoutTarget || payoutTarget.length < 6 || payoutTarget.length > 160) {
+    res.status(400).json({ error: payoutMethod === "mobile_money" ? "Enter a valid mobile-money number" : "Enter valid bank account details" }); return;
+  }
+  const externalRecipientId = `roblyne-org-${orgId}-${randomUUID()}`;
+  try {
+    const recipient = await createFlowPayRecipient({ externalRecipientId, displayName, payoutTarget, payoutMethod, currency });
+    const [created] = await db.insert(payoutDestinationsTable).values({
+      orgId, provider: "flowpay", externalRecipientId: recipient.externalRecipientId, displayName, payoutMethod,
+      maskedTarget: payoutMethod === "mobile_money" ? maskPhoneNumber(payoutTarget) : maskPayoutTarget(payoutTarget),
+      currency: recipient.currency, verificationStatus: recipient.verificationStatus,
+      confirmationUrl: recipient.confirmationUrl,
+      lastVerifiedAt: recipient.verificationStatus === "verified" ? new Date() : null,
+    }).returning();
+    res.status(201).json(formatPayoutDestination(created));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : "Could not save payout recipient" });
+  }
+});
+
+router.post("/organizations/:orgId/finance/payout-destinations/:destinationId/refresh", requireAuth, requireOrgRole(["owner", "admin"]), async (req, res): Promise<void> => {
+  const orgId = parseInt(String(req.params.orgId), 10);
+  const destinationId = parseInt(String(req.params.destinationId), 10);
+  if (isNaN(orgId) || isNaN(destinationId)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [destination] = await db.select().from(payoutDestinationsTable).where(and(
+    eq(payoutDestinationsTable.id, destinationId), eq(payoutDestinationsTable.orgId, orgId),
+  )).limit(1);
+  if (!destination) { res.status(404).json({ error: "Payout recipient not found" }); return; }
+  try {
+    const recipient = await getFlowPayRecipient(destination.externalRecipientId);
+    const [updated] = await db.update(payoutDestinationsTable).set({
+      verificationStatus: recipient.verificationStatus,
+      lastVerifiedAt: recipient.verificationStatus === "verified" ? new Date() : destination.lastVerifiedAt,
+      updatedAt: new Date(),
+    }).where(eq(payoutDestinationsTable.id, destination.id)).returning();
+    res.json(formatPayoutDestination(updated));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : "Could not refresh payout recipient" });
+  }
+});
+
 /**
- * Request a payout for a chosen amount of available organization earnings.
+ * Request a provider-confirmed payout for a chosen amount of available organization earnings.
  * Ledger row locks and explicit allocations make simultaneous requests safe.
  */
 router.post("/organizations/:orgId/finance/settlements",
@@ -65,21 +143,15 @@ router.post("/organizations/:orgId/finance/settlements",
     const orgId = parseInt(String(req.params.orgId), 10);
     if (isNaN(orgId)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-    const payoutMethod = req.body?.payoutMethod;
-    const payoutAccount = typeof req.body?.payoutAccount === "string"
-      ? req.body.payoutAccount.trim()
-      : "";
+    const payoutDestinationId = Number(req.body?.payoutDestinationId);
     const requestedCurrency = typeof req.body?.currency === "string"
       ? req.body.currency.trim().toUpperCase()
       : null;
     const notes = typeof req.body?.notes === "string" ? req.body.notes.trim() : null;
     const requestedAmount = Number(req.body?.amount);
 
-    if (!["bank_transfer", "mobile_money"].includes(payoutMethod)) {
-      res.status(400).json({ error: "Choose a valid payout method" }); return;
-    }
-    if (payoutAccount.length < 3 || payoutAccount.length > 160) {
-      res.status(400).json({ error: "Payout account must be between 3 and 160 characters" }); return;
+    if (!Number.isInteger(payoutDestinationId) || payoutDestinationId <= 0) {
+      res.status(400).json({ error: "Choose a verified saved payout recipient" }); return;
     }
     if (requestedCurrency !== null && !/^[A-Z]{3}$/.test(requestedCurrency)) {
       res.status(400).json({ error: "Choose a valid three-letter payout currency" }); return;
@@ -90,8 +162,26 @@ router.post("/organizations/:orgId/finance/settlements",
     if (!Number.isFinite(requestedAmount)) {
       res.status(400).json({ error: "Enter a valid withdrawal amount" }); return;
     }
+    if (!isFlowPayPayoutQueueAvailable()) {
+      res.status(503).json({ error: "Payout processing is temporarily unavailable. Please try again when the worker is healthy." }); return;
+    }
 
     try {
+      const [destination] = await db.select().from(payoutDestinationsTable).where(and(
+        eq(payoutDestinationsTable.id, payoutDestinationId),
+        eq(payoutDestinationsTable.orgId, orgId),
+        eq(payoutDestinationsTable.provider, "flowpay"),
+      )).limit(1);
+      if (!destination) { res.status(404).json({ error: "Saved payout recipient not found" }); return; }
+      const recipient = await getFlowPayRecipient(destination.externalRecipientId);
+      const [refreshedDestination] = await db.update(payoutDestinationsTable).set({
+        verificationStatus: recipient.verificationStatus,
+        lastVerifiedAt: recipient.verificationStatus === "verified" ? new Date() : destination.lastVerifiedAt,
+        updatedAt: new Date(),
+      }).where(eq(payoutDestinationsTable.id, destination.id)).returning();
+      if (refreshedDestination.verificationStatus !== "verified") {
+        res.status(409).json({ error: "Verify the saved payout recipient in FlowPay before requesting a payout" }); return;
+      }
       const settlement = await db.transaction(async (tx) => {
         const currencyFilter = requestedCurrency
           ? sql`AND currency = ${requestedCurrency}`
@@ -144,10 +234,18 @@ router.post("/organizations/:orgId/finance/settlements",
             currency,
             status: "pending_settlement",
             transactionCount: allocations.length,
-            payoutMethod,
-            payoutAccount,
+            payoutMethod: refreshedDestination.payoutMethod,
+            payoutAccount: refreshedDestination.maskedTarget,
+            payoutDestinationId: refreshedDestination.id,
+            payoutProvider: "flowpay",
+            providerPayoutStatus: "queued",
             notes: notes || null,
           })
+          .returning();
+
+        const [configured] = await tx.update(settlementsTable)
+          .set({ payoutIdempotencyKey: `roblyne-settlement-${created.id}` })
+          .where(eq(settlementsTable.id, created.id))
           .returning();
 
         await tx.insert(settlementAllocationsTable).values(allocations.map((allocation) => ({
@@ -156,9 +254,10 @@ router.post("/organizations/:orgId/finance/settlements",
           amount: allocation.amount,
         })));
 
-        return created;
+        return configured;
       });
 
+      await scheduleFlowPayPayout(settlement.id);
       res.status(201).json(formatSettlement(settlement));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not create withdrawal request";
@@ -501,11 +600,15 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
   try {
     const settlement = await db.transaction(async (tx) => {
     const [current] = await tx
-      .select({ id: settlementsTable.id, status: settlementsTable.status })
+      .select({ id: settlementsTable.id, status: settlementsTable.status, payoutProvider: settlementsTable.payoutProvider })
       .from(settlementsTable)
       .where(eq(settlementsTable.id, id))
       .limit(1);
     if (!current) return null;
+
+    if (current.payoutProvider === "flowpay") {
+      throw Object.assign(new Error("FlowPay settlements are completed only by provider-confirmed reconciliation"), { code: "FLOWPAY_SETTLEMENT_MANAGED" });
+    }
 
     const allowedNext: Record<string, string[]> = {
       pending_settlement: ["ready"],
@@ -578,6 +681,10 @@ router.patch("/admin/finance/settlements/:id", async (req, res): Promise<void> =
     }
     if (err?.code === "SETTLEMENT_CONCURRENT_UPDATE") {
       res.status(409).json({ error: "This settlement changed while you were updating it. Refresh and try again." });
+      return;
+    }
+    if (err?.code === "FLOWPAY_SETTLEMENT_MANAGED") {
+      res.status(409).json({ error: "This FlowPay payout is managed automatically and can be completed only after provider confirmation." });
       return;
     }
     throw err;

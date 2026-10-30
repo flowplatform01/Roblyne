@@ -14,6 +14,26 @@ export interface FlowPayTransaction {
   raw: Record<string, unknown>;
 }
 
+export type FlowPayRecipientVerificationStatus = "pending" | "verified" | "rejected" | "suspended";
+export type FlowPayPayoutStatus = "pending" | "queued" | "processing" | "success" | "failed";
+
+export interface FlowPayRecipient {
+  id: string;
+  externalRecipientId: string;
+  verificationStatus: FlowPayRecipientVerificationStatus;
+  currency: string;
+  confirmationUrl: string | null;
+}
+
+export interface FlowPayPayout {
+  id: string;
+  reference: string;
+  status: FlowPayPayoutStatus;
+  amount: number;
+  currency: string;
+  raw: Record<string, unknown>;
+}
+
 interface FlowPayConfig {
   baseUrl: string;
   clientId: string;
@@ -95,6 +115,145 @@ function firstString(...values: unknown[]): string | null {
     if (typeof value === "string" && value.trim()) return value.trim();
   }
   return null;
+}
+
+function flowPayApiPath(path: string): string {
+  const baseUrl = getConfig().baseUrl;
+  return baseUrl.endsWith("/api/v1")
+    ? `${baseUrl}${path}`
+    : `${baseUrl}/api/v1${path}`;
+}
+
+function flowPayHeaders(idempotencyKey?: string): Record<string, string> {
+  const config = getConfig();
+  return {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "x-flowpay-client-id": config.clientId,
+    "x-flowpay-public-key": config.publicKey,
+    "x-flowpay-secret-key": config.secretKey,
+    ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+  };
+}
+
+async function flowPayRequest(path: string, init: RequestInit, idempotencyKey?: string): Promise<unknown> {
+  const config = getConfig();
+  const response = await fetch(flowPayApiPath(path), {
+    ...init,
+    headers: { ...flowPayHeaders(idempotencyKey), ...init.headers },
+    signal: AbortSignal.timeout(config.timeoutMs),
+  });
+  const responseText = await response.text();
+  let body: unknown = null;
+  try {
+    body = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    body = responseText;
+  }
+  if (!response.ok) {
+    const errorBody = asRecord(body);
+    const message = firstString(errorBody.message, errorBody.error, errorBody.detail)
+      || `FlowPay returned HTTP ${response.status}`;
+    throw new FlowPayRequestError(message, response.status === 408 || response.status === 429 || response.status >= 500, response.status);
+  }
+  return body;
+}
+
+function normalizeRecipientStatus(value: unknown): FlowPayRecipientVerificationStatus {
+  const status = String(value ?? "").toLowerCase();
+  if (status === "verified") return "verified";
+  if (status === "rejected") return "rejected";
+  if (status === "suspended") return "suspended";
+  return "pending";
+}
+
+function normalizePayoutStatus(value: unknown): FlowPayPayoutStatus {
+  const status = String(value ?? "").toLowerCase();
+  if (["success", "succeeded", "completed"].includes(status)) return "success";
+  if (["failed", "cancelled", "canceled"].includes(status)) return "failed";
+  if (status === "processing") return "processing";
+  if (status === "queued") return "queued";
+  return "pending";
+}
+
+export async function createFlowPayRecipient(input: {
+  externalRecipientId: string;
+  displayName: string;
+  payoutTarget: string;
+  payoutMethod: "mobile_money" | "bank_transfer";
+  currency: string;
+}): Promise<FlowPayRecipient> {
+  const body = await flowPayRequest("/destination-profiles", {
+    method: "POST",
+    body: JSON.stringify({
+      externalRecipientId: input.externalRecipientId,
+      payoutTarget: input.payoutTarget,
+      settlementStrategy: "TWO_STEP_MIRROR",
+      regionalCurrency: input.currency,
+      // Let FlowPay select the configured mobile-money rail. ROBLYNE must not
+      // guess MTN versus Orange from a phone number.
+      ...(input.payoutMethod === "bank_transfer" ? { paymentMethod: "BANK_TRANSFER" } : {}),
+      providerMetadata: { displayName: input.displayName },
+    }),
+  }, `roblyne-recipient:${input.externalRecipientId}`);
+  const value = asRecord(body);
+  return {
+    id: firstString(value.id) || input.externalRecipientId,
+    externalRecipientId: firstString(value.externalRecipientId) || input.externalRecipientId,
+    verificationStatus: normalizeRecipientStatus(value.verificationStatus),
+    currency: firstString(value.regionalCurrency) || input.currency,
+    confirmationUrl: firstString(value.confirmationUrl),
+  };
+}
+
+export async function getFlowPayRecipient(externalRecipientId: string): Promise<FlowPayRecipient> {
+  const body = await flowPayRequest(`/destination-profiles/${encodeURIComponent(externalRecipientId)}`, { method: "GET" });
+  const value = asRecord(body);
+  return {
+    id: firstString(value.id) || externalRecipientId,
+    externalRecipientId: firstString(value.externalRecipientId) || externalRecipientId,
+    verificationStatus: normalizeRecipientStatus(value.verificationStatus),
+    currency: firstString(value.regionalCurrency) || "XAF",
+    confirmationUrl: null,
+  };
+}
+
+export async function createFlowPayPayout(input: {
+  amount: number;
+  currency: string;
+  reference: string;
+  externalRecipientId: string;
+  idempotencyKey: string;
+  metadata: Record<string, unknown>;
+}): Promise<FlowPayPayout> {
+  const body = await flowPayRequest("/payouts", {
+    method: "POST",
+    body: JSON.stringify({
+      amount: input.amount,
+      currency: input.currency,
+      reference: input.reference,
+      externalRecipientId: input.externalRecipientId,
+      metadata: input.metadata,
+    }),
+  }, input.idempotencyKey);
+  return normalizePayout(body, input.reference);
+}
+
+export async function getFlowPayPayout(payoutId: string): Promise<FlowPayPayout> {
+  const body = await flowPayRequest(`/payouts/${encodeURIComponent(payoutId)}`, { method: "GET" });
+  return normalizePayout(body, payoutId);
+}
+
+function normalizePayout(body: unknown, fallbackReference: string): FlowPayPayout {
+  const value = asRecord(body);
+  return {
+    id: firstString(value.id, value.flowpayReference) || fallbackReference,
+    reference: firstString(value.reference) || fallbackReference,
+    status: normalizePayoutStatus(value.status),
+    amount: Number(value.amount ?? 0),
+    currency: firstString(value.currency) || "XAF",
+    raw: value,
+  };
 }
 
 export function normalizeFlowPayStatus(value: unknown): FlowPayPaymentStatus {
