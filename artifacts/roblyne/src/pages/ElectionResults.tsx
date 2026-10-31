@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trophy, FileSignature, CheckCircle2, Users, ArrowRight, Activity, TrendingUp, Building2, ExternalLink } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getElectionShareUrl } from "@/lib/share-url";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { ElectionCountdown } from "@/components/elections/ElectionCountdown";
 import { hexToHsl } from "@/lib/branding";
@@ -29,13 +30,14 @@ export default function ElectionResults() {
     return () => clearTimeout(t);
   }, []);
 
-  const shareUrl = `${window.location.origin}/elections/${electionId}/results`;
+  const publicUrl = `${window.location.origin}/elections/${electionId}/results`;
+  const shareUrl = election?.visibility === "public" ? getElectionShareUrl(electionId, "results") : publicUrl;
 
   usePageMeta(election ? {
     title: `${election.title} — Official Results`,
     description: `View the official results for ${election.title}. Powered by ROBLYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
-    url: shareUrl,
+    url: publicUrl,
   } : null);
 
 
@@ -140,7 +142,7 @@ export default function ElectionResults() {
 
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <ShareButton
-              url={`${window.location.origin}/elections/${electionId}/results`}
+              url={shareUrl}
               title={election.title + ' — Results'}
               description={`Official results for ${election.title}`}
               className="h-12 px-6 bg-transparent border-white/30 text-white hover:bg-white/10 hover:border-white/50 hover:text-white rounded-sm"

@@ -17,6 +17,7 @@ import {
   Building2, ExternalLink,
 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getCampaignShareUrl } from "@/lib/share-url";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { hexToHsl } from "@/lib/branding";
 import { useToast } from '@/hooks/use-toast';
@@ -76,13 +77,14 @@ export default function CampaignParticipate() {
     }
   }, [paymentStatus, paymentId, toast, t]);
 
-  const shareUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
+  const publicUrl = `${window.location.origin}/campaigns/${campaignId}/participate`;
+  const shareUrl = campaign?.visibility === "public" ? getCampaignShareUrl(campaignId) : publicUrl;
 
   usePageMeta(campaign ? {
     title: campaign.title,
     description: campaign.description || `Participate in ${campaign.title} — join the campaign on ROBLYNE.`,
     image: (campaign as any).heroImageUrl || campaign.coverImageUrl || null,
-    url: shareUrl,
+    url: publicUrl,
   } : null);
 
   const handleFieldChange = (id: string, value: any) => {

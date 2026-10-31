@@ -6,6 +6,7 @@ import { useGetCandidate, useGetElection, useListPositions } from "@workspace/ap
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getCandidateShareUrl } from "@/lib/share-url";
 import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Loader2, Vote, Building2, ArrowLeft, User } from "lucide-react";
 import { PublicPageLoadingSkeleton } from "@/components/loading/LoadingStates";
@@ -20,7 +21,8 @@ export default function CandidateProfile() {
   const { data: positions } = useListPositions(electionId);
 
   const position = positions?.find(p => p.id === candidate?.positionId);
-  const shareUrl = `${window.location.origin}/candidates/${electionId}/${candidateId}`;
+  const publicUrl = `${window.location.origin}/candidates/${electionId}/${candidateId}`;
+  const shareUrl = election?.visibility === "public" ? getCandidateShareUrl(electionId, candidateId) : publicUrl;
 
   usePageMeta(candidate && election ? {
     title: position
@@ -29,7 +31,7 @@ export default function CandidateProfile() {
     description: candidate.bio || `Meet ${candidate.name}, a candidate for ${position?.title || 'office'} in ${election.title}. View their profile and platform on ROBLYNE.`,
     image: candidate.photoUrl || null,
     type: "profile",
-    url: shareUrl,
+    url: publicUrl,
   } : null);
 
   if (isCandidateLoading || isElectionLoading) {

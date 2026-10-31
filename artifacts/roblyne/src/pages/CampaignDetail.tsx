@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2, Megaphone, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Copy, FormInput, ListFilter, Download, Eye, Save, Plus, Trash2 } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getCampaignShareUrl } from "@/lib/share-url";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -263,7 +264,9 @@ export default function CampaignDetail() {
             </Button>
             {campaign.visibility !== 'private' && (
               <ShareButton
-                url={`${window.location.origin}/campaigns/${campaign.id}/participate`}
+                url={campaign.visibility === "public"
+                  ? getCampaignShareUrl(campaign.id)
+                  : `${window.location.origin}/campaigns/${campaign.id}/participate`}
                 title={campaign.title}
                 description={campaign.description || `Participate in ${campaign.title}`}
                 ctaLabel="Share Campaign"

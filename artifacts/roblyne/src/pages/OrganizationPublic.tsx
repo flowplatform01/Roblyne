@@ -6,6 +6,7 @@ import { useGetPublicOrganization } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getOrganizationShareUrl } from "@/lib/share-url";
 import { BrandedHero } from "@/components/branding/BrandedHero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Vote, CalendarDays, Megaphone, ExternalLink, Globe } from "lucide-react";
@@ -18,13 +19,14 @@ export default function OrganizationPublic() {
   const { t } = useTranslation();
 
   const { data: org, isLoading } = useGetPublicOrganization(orgId);
-  const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
+  const publicUrl = `${window.location.origin}/organizations/${orgId}/public`;
+  const shareUrl = getOrganizationShareUrl(orgId);
 
   usePageMeta(org ? {
     title: `${org.name} · ROBLYNE`,
     description: org.description || `${org.name} uses ROBLYNE to run elections, events, and campaigns. Explore their public profile.`,
     image: org.logoUrl || null,
-    url: shareUrl,
+    url: publicUrl,
   } : null);
 
   if (isLoading) {

@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AccentColorPicker } from "@/components/branding/AccentColorPicker";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getOrganizationShareUrl } from "@/lib/share-url";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -534,7 +535,8 @@ function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
   const [accentColor, setAccentColor] = useState(org.accentColor ?? '#4F46E5');
   const [theme, setTheme] = useState<'evenum' | 'light' | 'dark'>(org.theme ?? 'evenum');
 
-  const shareUrl = `${window.location.origin}/organizations/${orgId}/public`;
+  const publicUrl = `${window.location.origin}/organizations/${orgId}/public`;
+  const shareUrl = getOrganizationShareUrl(orgId);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -678,11 +680,11 @@ function SettingsSection({ org, orgId }: { org: any; orgId: number }) {
         <CardContent className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium">Share your organization page</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{shareUrl}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{publicUrl}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" asChild>
-              <a href={shareUrl} target="_blank" rel="noreferrer">
+              <a href={publicUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="mr-2 h-3.5 w-3.5" /> Preview
               </a>
             </Button>

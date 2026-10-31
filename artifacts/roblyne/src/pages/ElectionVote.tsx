@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getElectionShareUrl } from "@/lib/share-url";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { ElectionCountdown } from "@/components/elections/ElectionCountdown";
 import { hexToHsl } from "@/lib/branding";
@@ -193,7 +194,8 @@ export default function ElectionVote() {
   const lifecycleState = election?.status === "ended"
     ? "ended"
     : electionClock.lifecycleState;
-  const shareUrl = `${window.location.origin}/elections/${electionId}/vote`;
+  const publicUrl = `${window.location.origin}/elections/${electionId}/vote`;
+  const shareUrl = election?.visibility === "public" ? getElectionShareUrl(electionId) : publicUrl;
 
   // ── Selection logic ───────────────────────────────────────────────────────
   // Single-select positions auto-switch (no error); multi-select enforces the cap.
@@ -605,7 +607,9 @@ export default function ElectionVote() {
                 </Link>
               </Button>
               <ShareButton
-                url={`${window.location.origin}/elections/${electionId}/results`}
+                url={election.visibility === "public"
+                  ? getElectionShareUrl(electionId, "results")
+                  : `${window.location.origin}/elections/${electionId}/results`}
                 title={`${election.title} — Results`}
                 description={`I just voted in ${election.title}. See the live results.`}
                 ctaLabel="Share Results"

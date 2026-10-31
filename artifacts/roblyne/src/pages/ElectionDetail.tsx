@@ -36,6 +36,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Pencil, Users, Vote, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Trash2, Key, Shield, UserPlus, Save, Coins, CreditCard } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getElectionShareUrl } from "@/lib/share-url";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -463,7 +464,9 @@ export default function ElectionDetail() {
             </Button>
             {election.visibility !== 'private' && (
               <ShareButton
-                url={`${window.location.origin}/elections/${election.id}/vote${election.visibility === 'invite_only' && election.inviteCode ? `?invite=${encodeURIComponent(election.inviteCode)}` : ''}`}
+                url={election.visibility === "public"
+                  ? getElectionShareUrl(election.id)
+                  : `${window.location.origin}/elections/${election.id}/vote${election.inviteCode ? `?invite=${encodeURIComponent(election.inviteCode)}` : ""}`}
                 title={election.title}
                 description={election.description || `Cast your vote in ${election.title}`}
                 ctaLabel="Share Election"

@@ -33,6 +33,7 @@ DATABASE_URL=<your Iven PostgreSQL connection URL>
 SESSION_SECRET=<Render-generated value or long random secret>
 PLATFORM_ADMIN_BOOTSTRAP_SECRET=<long random one-time secret>
 CORS_ALLOWED_ORIGINS=<leave blank until you create the static frontend>
+PUBLIC_WEB_URL=<leave blank until you create the static frontend>
 S3_ENDPOINT=<storage endpoint>
 S3_BUCKET=<bucket name>
 S3_ACCESS_KEY_ID=<access key>
@@ -79,9 +80,10 @@ On the API service, replace `CORS_ALLOWED_ORIGINS` with the static site's public
 
 ```text
 CORS_ALLOWED_ORIGINS=https://roblyne-web.onrender.com
+PUBLIC_WEB_URL=https://roblyne-web.onrender.com
 ```
 
-Save and redeploy API. Then open the static frontend, register your account, and sign in. The browser communicates directly with the public API URL embedded as `VITE_API_URL`.
+`PUBLIC_WEB_URL` is not a browser setting. The API uses it to redirect public share links and produce resource-specific Open Graph previews for campaigns, events, elections, candidates, and organization profiles. Save and redeploy API. Then open the static frontend, register your account, and sign in. The browser communicates directly with the public API URL embedded as `VITE_API_URL`.
 
 ## 4. Make your first platform administrator
 

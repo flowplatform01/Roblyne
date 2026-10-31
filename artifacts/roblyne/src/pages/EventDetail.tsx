@@ -31,6 +31,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Pencil, Trash2, Users, CalendarDays, ArrowLeft, MoreVertical, Play, Square, ExternalLink, BarChart3, Clock, Copy, Ticket, CheckCircle2, QrCode, Download, Camera, Keyboard, Save } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getEventShareUrl } from "@/lib/share-url";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -443,7 +444,9 @@ export default function EventDetail() {
             </Button>
             {event.visibility !== 'private' && (
               <ShareButton
-                url={`${window.location.origin}/events/${event.id}/register${event.visibility === 'invite_only' && event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ''}`}
+                url={event.visibility === "public"
+                  ? getEventShareUrl(event.id)
+                  : `${window.location.origin}/events/${event.id}/register${event.inviteCode ? `?invite=${encodeURIComponent(event.inviteCode)}` : ""}`}
                 title={event.title}
                 description={event.description || `Register for ${event.title}`}
                 ctaLabel="Share Event"

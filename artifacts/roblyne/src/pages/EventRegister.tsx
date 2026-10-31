@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CalendarDays, MapPin, Clock, AlertCircle, CheckCircle2, Ticket, ShieldCheck, ArrowRight, Video, ChevronDown, ChevronUp, Building2, ExternalLink, Bookmark, Download, Printer } from "lucide-react";
 import { ShareButton } from "@/components/branding/ShareButton";
+import { getEventShareUrl } from "@/lib/share-url";
 import { PublicHeroBackdrop } from "@/components/branding/PublicHeroBackdrop";
 import { useOrgBranding } from "@/lib/branding";
 import { QRCodeSVG } from "qrcode.react";
@@ -259,13 +260,14 @@ export default function EventRegister() {
     }
   }, [paymentStatus, paymentId]);
 
-  const shareUrl = `${window.location.origin}/events/${eventId}/register`;
+  const publicUrl = `${window.location.origin}/events/${eventId}/register`;
+  const shareUrl = event?.visibility === "public" ? getEventShareUrl(eventId) : publicUrl;
 
   usePageMeta(event ? {
     title: event.title,
     description: event.description || `Register for ${event.title} — secure your spot on ROBLYNE.`,
     image: (event as any).heroImageUrl || event.coverImageUrl || null,
-    url: shareUrl,
+    url: publicUrl,
   } : null);
 
   const handleRegister = (e: React.FormEvent) => {

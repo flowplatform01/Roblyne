@@ -17,14 +17,19 @@ export interface ShareButtonProps {
   className?: string;
 }
 
-function buildWhatsAppUrl(url: string, title?: string): string {
-  const text = title ? `${title}\n${url}` : url;
+export function buildShareText(url: string, title?: string, description?: string): string {
+  return [title?.trim(), description?.trim(), url.trim()].filter((value, index, values) => Boolean(value) && values.indexOf(value) === index).join("\n\n");
+}
+
+function buildWhatsAppUrl(url: string, title?: string, description?: string): string {
+  const text = buildShareText(url, title, description);
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
-function buildTelegramUrl(url: string, title?: string): string {
+function buildTelegramUrl(url: string, title?: string, description?: string): string {
   const params = new URLSearchParams({ url });
-  if (title) params.set("text", title);
+  const text = [title?.trim(), description?.trim()].filter(Boolean).join("\n\n");
+  if (text) params.set("text", text);
   return `https://t.me/share/url?${params}`;
 }
 
@@ -56,6 +61,7 @@ export function ShareButton({
   const { toast } = useToast();
   const { t } = useTranslation();
   const resolvedCtaLabel = ctaLabel ?? t("sharing.share");
+  const shareText = buildShareText(url, title, description);
 
   // Close popover on outside click
   useEffect(() => {
@@ -72,10 +78,10 @@ export function ShareButton({
   async function copyToClipboard() {
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(shareText);
       } else {
         const input = document.createElement("textarea");
-        input.value = url;
+        input.value = shareText;
         input.setAttribute("readonly", "");
         input.style.position = "fixed";
         input.style.opacity = "0";
@@ -102,7 +108,7 @@ export function ShareButton({
     // Use the native share sheet if available (mobile)
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
-        await navigator.share({ title, text: description, url });
+        await navigator.share({ title, text: shareText });
         return;
       } catch (err: any) {
         // User cancelled — don't fall through to popover
@@ -122,7 +128,7 @@ export function ShareButton({
       label: t("sharing.shareOnWhatsApp"),
       icon: <MessageCircle className="w-4 h-4 text-green-600" />,
       action: () => {
-        window.open(buildWhatsAppUrl(url, title), "_blank", "noopener,noreferrer");
+        window.open(buildWhatsAppUrl(url, title, description), "_blank", "noopener,noreferrer");
         setOpen(false);
       },
     },
@@ -131,7 +137,7 @@ export function ShareButton({
       label: t("sharing.shareOnTelegram"),
       icon: <Send className="w-4 h-4 text-sky-500" />,
       action: () => {
-        window.open(buildTelegramUrl(url, title), "_blank", "noopener,noreferrer");
+        window.open(buildTelegramUrl(url, title, description), "_blank", "noopener,noreferrer");
         setOpen(false);
       },
     },
