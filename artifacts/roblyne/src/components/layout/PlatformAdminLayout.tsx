@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "wouter";
 import { useLogout } from "@workspace/api-client-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { clearAuthSnapshot, useAuth } from "@/contexts/AuthContext";
 import { EvenumLogo } from "@/components/branding/EvenumLogo";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -28,6 +28,7 @@ export function PlatformAdminLayout({ children }: { children: React.ReactNode })
   const handleLogout = () => {
     logout.mutate(undefined, {
       onSuccess: () => {
+        clearAuthSnapshot();
         window.location.href = import.meta.env.BASE_URL;
       },
       onError: () => {

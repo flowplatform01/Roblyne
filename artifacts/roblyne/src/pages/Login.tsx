@@ -31,7 +31,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const login = useLogin();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, isSessionUnavailable, retrySession } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
@@ -89,6 +89,11 @@ export default function Login() {
         <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-secondary/30 rounded-full blur-[150px] pointer-events-none translate-x-1/3 translate-y-1/3" />
         
         <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          {isSessionUnavailable && (
+            <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
+              We could not restore your session. You can sign in below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
+            </div>
+          )}
           <div className="mb-10 text-center">
             <div className="flex justify-center mb-6">
               <EvenumAuthMark />

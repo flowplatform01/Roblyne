@@ -31,7 +31,7 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const registerMutation = useRegister();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading, isSessionUnavailable, retrySession } = useAuth();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
@@ -91,6 +91,11 @@ export default function Register() {
         <div className="absolute bottom-1/4 left-0 w-[600px] h-[600px] bg-secondary/30 rounded-full blur-[150px] pointer-events-none -translate-x-1/2" />
         
         <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          {isSessionUnavailable && (
+            <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
+              We could not restore your session. You can create an account below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
+            </div>
+          )}
           <div className="mb-10 text-center">
             <div className="flex justify-center mb-6">
               <EvenumAuthMark />
