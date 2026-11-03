@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -31,14 +32,19 @@ const address = server.address();
 assert(address && typeof address !== "string");
 
 try {
-  await run(process.execPath, ["scripts/generate-seo-static.mjs"], {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      PUBLIC_WEB_URL: "https://www.roblyne.test",
-      VITE_API_URL: `http://127.0.0.1:${address.port}`,
-    },
-  });
+  const repositoryRoot = process.cwd();
+  const generator = join(repositoryRoot, "scripts", "generate-seo-static.mjs");
+  const environment = {
+    ...process.env,
+    PUBLIC_WEB_URL: "https://www.roblyne.test",
+    VITE_API_URL: `http://127.0.0.1:${address.port}`,
+  };
+  for (const cwd of [repositoryRoot, join(repositoryRoot, "artifacts", "roblyne")]) {
+    await run(process.execPath, [generator], {
+      cwd,
+      env: environment,
+    });
+  }
 
   const campaignHtml = await readFile("artifacts/roblyne/dist/public/campaigns/7/participate/index.html", "utf8");
   const sitemap = await readFile("artifacts/roblyne/dist/public/sitemap.xml", "utf8");

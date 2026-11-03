@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const webOrigin = (process.env.PUBLIC_WEB_URL ?? "").trim().replace(/\/+$/, "");
 const apiOrigin = (process.env.VITE_API_URL ?? "").trim().replace(/\/+$/, "");
-const outputDir = join(process.cwd(), "artifacts", "roblyne", "dist", "public");
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const outputDir = join(repositoryRoot, "artifacts", "roblyne", "dist", "public");
 
 if (!webOrigin || !apiOrigin) {
   if (process.env.NODE_ENV === "production" || webOrigin || apiOrigin) {
