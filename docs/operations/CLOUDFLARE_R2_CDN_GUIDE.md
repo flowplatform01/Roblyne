@@ -26,12 +26,15 @@ When you buy or connect a domain, replace only `S3_PUBLIC_BASE_URL` with the R2 
 
 ## R2 CORS: needed for browser uploads
 
-In **R2 → `roblyne-images-prod` → Settings → CORS Policy**, save this policy. Replace the example origin with the exact frontend origin. Add `http://localhost:5173` only while developing locally; do not leave wildcard origins in production.
+In **R2 → `roblyne-images-prod` → Settings → CORS Policy**, save this policy. `https://roblyne.com` is the current production web origin. Keep `https://roblyne.onrender.com` only while that Render URL remains an active, supported frontend; remove it after redirecting or retiring it. Add `http://localhost:5173` only while developing locally; do not leave wildcard origins in production.
 
 ```json
 [
   {
-    "AllowedOrigins": ["https://roblyne.onrender.com"],
+    "AllowedOrigins": [
+      "https://roblyne.com",
+      "https://roblyne.onrender.com"
+    ],
     "AllowedMethods": ["PUT"],
     "AllowedHeaders": ["Content-Type"],
     "ExposeHeaders": ["ETag"],
@@ -40,7 +43,7 @@ In **R2 → `roblyne-images-prod` → Settings → CORS Policy**, save this poli
 ]
 ```
 
-This permits a browser to upload an image to a URL already signed by ROBLYNE. It does not make bucket writing public.
+This permits a browser to upload an image to a URL already signed by ROBLYNE. It does not make bucket writing public. As verified on 3 November 2026, `https://media.roblyne.com` accepted this preflight from `https://roblyne.onrender.com` but rejected `https://roblyne.com`; saving the policy above fixes that exact production upload blocker.
 
 ## Recommended production image CDN (when you have a domain)
 
