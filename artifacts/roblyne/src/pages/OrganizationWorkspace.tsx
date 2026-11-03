@@ -1264,8 +1264,9 @@ function FinanceSection({ orgId }: { orgId: number }) {
     switch(status) {
       case 'pending_settlement': return <Badge variant="secondary" className="bg-slate-100 text-slate-800 hover:bg-slate-100">Pending</Badge>;
        case 'ready': return <Badge variant="secondary" className="bg-primary/15 text-primary border-primary/25 hover:bg-primary/20 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/15">Ready</Badge>;
-      case 'released': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Released</Badge>;
-      case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
+       case 'released': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">Released</Badge>;
+       case 'completed': return <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Completed</Badge>;
+       case 'failed': return <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Failed</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -1690,6 +1691,9 @@ function FinanceSection({ orgId }: { orgId: number }) {
                         </TableCell>
                         <TableCell>
                           {getSettlementBadge(s.status)}
+                          {s.status === "failed" && s.payoutFailureReason && (
+                            <p className="mt-1 max-w-48 text-xs text-destructive">{s.payoutFailureReason}</p>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

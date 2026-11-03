@@ -52,7 +52,8 @@ export const registerBodyPasswordMin = 8;
 export const RegisterBody = zod.object({
   "email": zod.string(),
   "password": zod.string().min(registerBodyPasswordMin),
-  "name": zod.string().min(1)
+  "name": zod.string().min(1),
+  "legalDocumentIds": zod.array(zod.number().int()).default([])
 })
 
 export const RegisterResponse = zod.object({

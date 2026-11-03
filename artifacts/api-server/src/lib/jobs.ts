@@ -32,6 +32,10 @@ export function isFlowPayPayoutQueueAvailable(): boolean {
   return flowPayPayoutQueue !== null;
 }
 
+export async function isFlowPayPayoutQueueReady(): Promise<boolean> {
+  return flowPayPayoutQueue !== null && await hasFreshMaintenanceWorkerHeartbeat();
+}
+
 if (maintenanceQueue) {
   maintenanceQueue.on("error", (error) => {
     logger.warn({ err: error }, "Maintenance queue Redis error; API continues without crashing");
@@ -67,7 +71,7 @@ export async function schedulePaymentRecovery(paymentIntentId: number, attempt =
   );
 }
 
-export async function scheduleFlowPayPayout(settlementId: number, attempt = 0, delay = 0): Promise<void> {
+export async function scheduleFlowPayPayout(settlementId: number, attempt = 0, delay = 0, recoveryKey?: string): Promise<void> {
   if (!flowPayPayoutQueue) {
     throw new Error("The FlowPay payout worker is unavailable. Try again after Redis and the worker are healthy.");
   }
@@ -75,7 +79,7 @@ export async function scheduleFlowPayPayout(settlementId: number, attempt = 0, d
     "reconcile-flowpay-payout",
     { settlementId, attempt },
     {
-      jobId: `flowpay-payout-${settlementId}-${attempt}`,
+      jobId: `flowpay-payout-${settlementId}-${attempt}${recoveryKey ? `-${recoveryKey}` : ""}`,
       delay,
       attempts: 3,
       backoff: { type: "exponential", delay: 10_000 },

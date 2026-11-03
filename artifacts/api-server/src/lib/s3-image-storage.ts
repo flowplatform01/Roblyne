@@ -79,6 +79,7 @@ export async function createImageUploadUrl(contentType: string, size: number): P
     Bucket: config.bucket,
     Key: key,
     ContentType: contentType,
+    CacheControl: "public, max-age=31536000, immutable",
   });
 
   return {

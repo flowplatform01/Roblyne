@@ -21,6 +21,32 @@ services:
         sync: false
       - key: PUBLIC_WEB_URL
         sync: false
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_OAUTH_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_OAUTH_TENANT
+        sync: false
+      - key: LINKEDIN_OAUTH_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: DISCORD_OAUTH_CLIENT_ID
+        sync: false
+      - key: DISCORD_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: FLOWPAY_API_BASE_URL
@@ -58,8 +84,25 @@ services:
         value: "22.12.0"
       - key: VITE_API_URL
         sync: false
+      - key: PUBLIC_WEB_URL
+        sync: false
     headers:
       - path: /index.html
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /campaigns/*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /events/*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /elections/*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /candidates/*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /organizations/*
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
       - path: /sw.js

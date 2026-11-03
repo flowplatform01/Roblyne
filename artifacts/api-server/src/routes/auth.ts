@@ -1,8 +1,8 @@
 import { Router, type IRouter, type Request } from "express";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, organizationsTable, usersTable } from "@workspace/db";
+import { db, legalAcceptancesTable, legalDocumentsTable, organizationsTable, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -33,7 +33,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { password, name } = parsed.data;
+  const { password, name, legalDocumentIds } = parsed.data;
   const email = parsed.data.email.trim().toLowerCase();
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
@@ -46,6 +46,22 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   let user;
   try {
     user = await db.transaction(async (tx) => {
+      const publishedDocuments = await tx.select().from(legalDocumentsTable).where(and(
+        eq(legalDocumentsTable.status, "published"),
+        lte(legalDocumentsTable.effectiveAt, new Date()),
+      ));
+      const requiredByType = new Map<string, typeof publishedDocuments[number]>();
+      for (const document of publishedDocuments) {
+        const current = requiredByType.get(document.documentType);
+        if (!current || document.version > current.version) requiredByType.set(document.documentType, document);
+      }
+      const requiredDocuments = [...requiredByType.values()];
+      if (!["terms", "privacy"].every((documentType) => requiredByType.has(documentType))) {
+        throw new Error("Registration is temporarily unavailable while the required legal documents are being published");
+      }
+      if (requiredDocuments.some((document) => !legalDocumentIds.includes(document.id))) {
+        throw new Error("Accept the current Terms of Service and Privacy Policy before creating an account");
+      }
       const [createdUser] = await tx.insert(usersTable).values({ email, passwordHash, name }).returning();
       const workspaceName = `${name.trim().slice(0, 80) || "My"}'s workspace`;
       const slugBase = workspaceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
@@ -54,11 +70,23 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
         ownerId: createdUser.id,
       });
+      if (requiredDocuments.length) {
+        await tx.insert(legalAcceptancesTable).values(requiredDocuments.map((document) => ({
+          userId: createdUser.id,
+          legalDocumentId: document.id,
+          documentType: document.documentType,
+          documentVersion: document.version,
+        })));
+      }
       return createdUser;
     });
   } catch (error: any) {
     if (error?.code === "23505") {
       res.status(409).json({ error: "Email already registered" });
+      return;
+    }
+    if (error instanceof Error && (error.message.startsWith("Accept the current") || error.message.startsWith("Registration is temporarily unavailable"))) {
+      res.status(400).json({ error: error.message });
       return;
     }
     throw error;
@@ -86,7 +114,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const { password } = parsed.data;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-  if (!user) {
+  if (!user || !user.passwordHash) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
@@ -197,6 +225,10 @@ router.post("/auth/change-password", async (req, res): Promise<void> => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
   if (!user) {
     res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (!user.passwordHash) {
+    res.status(400).json({ error: "Set a password through account recovery before changing it" });
     return;
   }
 

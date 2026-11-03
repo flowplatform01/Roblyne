@@ -145,6 +145,7 @@ export interface RegisterInput {
   password: string;
   /** @minLength 1 */
   name: string;
+  legalDocumentIds?: number[];
 }
 
 export interface LoginInput {
@@ -1813,4 +1814,3 @@ export type GetPaymentStatusParams = {
  */
 statusToken: string;
 };
-

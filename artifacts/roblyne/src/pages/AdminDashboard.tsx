@@ -46,8 +46,9 @@ import { useTranslation } from 'react-i18next';
 import { formatCurrency as formatCurrencyValue } from '@/lib/currency';
 import { AdminLoadingSkeleton } from '@/components/loading/LoadingStates';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LegalDocumentsPanel } from '@/components/admin/LegalDocumentsPanel';
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-const ADMIN_SECTIONS = ['organizations', 'users', 'finance', 'governance', 'operations'] as const;
+const ADMIN_SECTIONS = ['organizations', 'users', 'finance', 'governance', 'operations', 'legal'] as const;
 type AdminSection = (typeof ADMIN_SECTIONS)[number];
 
 function readAdminSection(): AdminSection {
@@ -396,6 +397,10 @@ export default function AdminDashboard() {
               <ShieldCheck className="h-3.5 w-3.5" />
               {t("admin.supportTitle")}
             </TabsTrigger>
+            <TabsTrigger value="legal" className="gap-2">
+              <Receipt className="h-3.5 w-3.5" />
+              Legal
+            </TabsTrigger>
           </TabsList>
 
           {/* Organizations */}
@@ -694,6 +699,9 @@ export default function AdminDashboard() {
           </TabsContent>
           <TabsContent value="operations" className="mt-4">
             <PlatformSupportSection />
+          </TabsContent>
+          <TabsContent value="legal" className="mt-4">
+            <LegalDocumentsPanel />
           </TabsContent>
         </Tabs>
 

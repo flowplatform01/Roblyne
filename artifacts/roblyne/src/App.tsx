@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LegalAcceptanceGate } from '@/components/auth/LegalAcceptanceGate';
 import { RouteLoadingShell } from '@/components/loading/LoadingStates';
 import { ThemeProvider } from 'next-themes';
 
@@ -44,6 +45,8 @@ function lazyWithChunkRecovery<T extends ComponentType<any>>(
 const Home = lazyWithChunkRecovery(() => import('@/pages/Home'));
 const Login = lazyWithChunkRecovery(() => import('@/pages/Login'));
 const Register = lazyWithChunkRecovery(() => import('@/pages/Register'));
+const PasswordReset = lazyWithChunkRecovery(() => import('@/pages/PasswordReset'));
+const LegalDocument = lazyWithChunkRecovery(() => import('@/pages/LegalDocument'));
 const Dashboard = lazyWithChunkRecovery(() => import('@/pages/Dashboard'));
 const CreateOrganization = lazyWithChunkRecovery(() => import('@/pages/CreateOrganization'));
 const OrganizationWorkspace = lazyWithChunkRecovery(() => import('@/pages/OrganizationWorkspace'));
@@ -101,6 +104,8 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/password-reset" component={PasswordReset} />
+        <Route path="/legal/:documentType" component={LegalDocument} />
 
         {/* Authed Workspace Pages */}
         <Route path="/dashboard" component={Dashboard} />
@@ -152,7 +157,9 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <Router />
+              <LegalAcceptanceGate>
+                <Router />
+              </LegalAcceptanceGate>
             </WouterRouter>
             <Toaster />
           </TooltipProvider>

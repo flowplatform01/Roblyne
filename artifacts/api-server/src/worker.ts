@@ -5,7 +5,7 @@ import { Worker } from "bullmq";
 import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { reconcilePendingPaymentIntent } from "./lib/payment-intents";
 import { schedulePaymentRecovery } from "./lib/jobs";
-import { POLL_DELAY_MS, processFlowPaySettlementPayout } from "./lib/flowpay-payouts";
+import { POLL_DELAY_MS, claimStalledFlowPaySettlementIds, processFlowPaySettlementPayout } from "./lib/flowpay-payouts";
 import { PLATFORM_PAYOUT_POLL_DELAY_MS, processPlatformWithdrawal } from "./lib/platform-withdrawals";
 import { scheduleFlowPayPayout, schedulePlatformWithdrawal } from "./lib/jobs";
 import { logger } from "./lib/logger";
@@ -109,6 +109,21 @@ const heartbeatInterval = setInterval(() => {
 heartbeatInterval.unref();
 void recordMaintenanceWorkerHeartbeat();
 
+async function recoverStalledFlowPayPayouts(): Promise<void> {
+  const settlementIds = await claimStalledFlowPaySettlementIds();
+  const recoveryKey = `recovery-${Math.floor(Date.now() / 60_000)}`;
+  for (const settlementId of settlementIds) {
+    await scheduleFlowPayPayout(settlementId, 0, 0, recoveryKey);
+  }
+  if (settlementIds.length) logger.warn({ settlementIds }, "Requeued stalled FlowPay settlements for idempotent recovery");
+}
+
+void recoverStalledFlowPayPayouts().catch((error) => logger.error({ err: error }, "Could not recover stalled FlowPay settlements at worker startup"));
+const payoutRecoveryInterval = setInterval(() => {
+  void recoverStalledFlowPayPayouts().catch((error) => logger.error({ err: error }, "Could not recover stalled FlowPay settlements"));
+}, 60_000);
+payoutRecoveryInterval.unref();
+
 worker.on("completed", (job) => logger.info({ jobId: job.id, name: job.name }, "Background job completed"));
 worker.on("failed", (job, error) => logger.error({ err: error, jobId: job?.id, name: job?.name }, "Background job failed"));
 worker.on("error", (error) => logger.error({ err: error }, "Background worker error"));
@@ -148,6 +163,7 @@ healthServer.keepAliveTimeout = 65_000;
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "Stopping background worker");
   clearInterval(heartbeatInterval);
+  clearInterval(payoutRecoveryInterval);
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   await worker.close();
   await paymentRecoveryWorker.close();

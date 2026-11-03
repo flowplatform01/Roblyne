@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refetch]);
 
   const user = fetchedUser ?? snapshotUser;
+  const errorStatus = (error as { status?: number } | null)?.status;
 
   return (
     <AuthContext.Provider
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading: isLoading && !snapshotUser,
         isAuthenticated: !!user,
-        isSessionUnavailable: isError,
+        isSessionUnavailable: isError && errorStatus !== 401,
         retrySession: () => { void refetch(); },
       }}
     >

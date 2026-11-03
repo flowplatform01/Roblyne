@@ -17,7 +17,12 @@ export async function processFlowPaySettlementPayout(settlementId: number): Prom
 }> {
   const [settlement] = await db.select().from(settlementsTable)
     .where(eq(settlementsTable.id, settlementId)).limit(1);
-  if (!settlement || settlement.payoutProvider !== "flowpay" || settlement.status === "completed") {
+  if (
+    !settlement
+    || settlement.payoutProvider !== "flowpay"
+    || settlement.status === "completed"
+    || settlement.status === "failed"
+  ) {
     return { status: "skipped", shouldPoll: false };
   }
   if (!settlement.payoutDestinationId || !settlement.payoutIdempotencyKey) {
@@ -30,7 +35,7 @@ export async function processFlowPaySettlementPayout(settlementId: number): Prom
       eq(payoutDestinationsTable.id, settlement.payoutDestinationId),
       eq(payoutDestinationsTable.orgId, settlement.orgId),
     )).limit(1);
-  if (!destination || destination.verificationStatus !== "verified") {
+  if ((!destination || destination.verificationStatus !== "verified") && !settlement.providerPayoutId) {
     await markPayoutFailure(settlementId, "The saved payout recipient is not verified");
     return { status: "failed", shouldPoll: false };
   }
@@ -58,11 +63,19 @@ export async function processFlowPaySettlementPayout(settlementId: number): Prom
       await completeProviderConfirmedSettlement(settlementId);
       return { status: payout.status, shouldPoll: false };
     }
-    return { status: payout.status, shouldPoll: payout.status !== "failed" };
+    if (payout.status === "failed") {
+      await markPayoutFailure(settlementId, "FlowPay reported a failed payout");
+      return { status: payout.status, shouldPoll: false };
+    }
+    return { status: payout.status, shouldPoll: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "FlowPay payout request failed";
-    await markPayoutFailure(settlementId, message);
-    return { status: "failed", shouldPoll: false };
+    await db.update(settlementsTable).set({
+      providerPayoutStatus: "processing",
+      payoutFailureReason: message.slice(0, 500),
+      payoutAttemptedAt: new Date(),
+    }).where(eq(settlementsTable.id, settlementId));
+    return { status: "processing", shouldPoll: true };
   }
 }
 
@@ -100,11 +113,38 @@ export async function completeProviderConfirmedSettlement(settlementId: number):
 }
 
 async function markPayoutFailure(settlementId: number, reason: string): Promise<void> {
-  await db.update(settlementsTable).set({
-    providerPayoutStatus: "failed",
-    payoutFailureReason: reason.slice(0, 500),
-    payoutAttemptedAt: new Date(),
-  }).where(eq(settlementsTable.id, settlementId));
+  await db.transaction(async (tx) => {
+    await tx.update(settlementsTable).set({
+      status: "failed",
+      providerPayoutStatus: "failed",
+      payoutFailureReason: reason.slice(0, 500),
+      payoutAttemptedAt: new Date(),
+    }).where(eq(settlementsTable.id, settlementId));
+    await tx.delete(settlementAllocationsTable)
+      .where(eq(settlementAllocationsTable.settlementId, settlementId));
+  });
+}
+
+export async function claimStalledFlowPaySettlementIds(limit = 100): Promise<number[]> {
+  const rows = await db.execute(sql`
+    WITH stale_settlements AS (
+      SELECT id
+      FROM settlements
+      WHERE payout_provider = 'flowpay'
+        AND status IN ('pending_settlement', 'ready')
+        AND provider_payout_status IN ('queued', 'dispatch_failed', 'pending', 'processing')
+        AND (payout_attempted_at IS NULL OR payout_attempted_at < now() - interval '2 minutes')
+      ORDER BY created_at ASC
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE settlements
+    SET payout_attempted_at = now()
+    FROM stale_settlements
+    WHERE settlements.id = stale_settlements.id
+    RETURNING settlements.id
+  `);
+  return (rows.rows as Array<{ id: number | string }>).map((row) => Number(row.id));
 }
 
 export { POLL_DELAY_MS };

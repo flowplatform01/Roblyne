@@ -2100,6 +2100,11 @@ components:
         name:
           type: string
           minLength: 1
+        legalDocumentIds:
+          type: array
+          items:
+            type: integer
+          default: []
 
     LoginInput:
       type: object

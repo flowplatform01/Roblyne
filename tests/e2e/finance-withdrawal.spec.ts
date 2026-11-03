@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function mockFinanceWorkspace(page: Page, withdrawalStatus: 201 | 400) {
+async function mockFinanceWorkspace(page: Page, withdrawalStatus: 201 | 202 | 400) {
   let withdrawalRequests = 0;
   await page.route("http://roblyne.test/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -29,8 +29,8 @@ async function mockFinanceWorkspace(page: Page, withdrawalStatus: 201 | 400) {
     if (url.pathname === "/api/organizations/7/finance/settlements" && route.request().method() === "GET") return route.fulfill({ json: [] });
     if (url.pathname === "/api/organizations/7/finance/settlements" && route.request().method() === "POST") {
       withdrawalRequests += 1;
-      return route.fulfill(withdrawalStatus === 201
-        ? { status: 201, json: { id: 12, amount: 50, currency: "XAF", status: "pending_settlement" } }
+      return route.fulfill(withdrawalStatus !== 400
+        ? { status: withdrawalStatus, json: { id: 12, amount: 50, currency: "XAF", status: "pending_settlement" } }
         : { status: 400, json: { error: "Requested amount exceeds the available balance" } });
     }
     if (url.pathname === "/api/admin/platform-settings/public") return route.fulfill({ json: {} });
@@ -61,6 +61,15 @@ test("withdrawal failure is explicit and never reports success", async ({ page }
 
 test("withdrawal request success is submitted once and shown as pending", async ({ page }) => {
   const withdrawalRequests = await mockFinanceWorkspace(page, 201);
+  await openWithdrawalReview(page);
+  await page.getByRole("button", { name: "Submit payout request" }).click();
+
+  await expect(page.getByText("Withdrawal request submitted", { exact: true })).toBeVisible();
+  expect(withdrawalRequests()).toBe(1);
+});
+
+test("a recoverable queue handoff remains an explicit submitted withdrawal", async ({ page }) => {
+  const withdrawalRequests = await mockFinanceWorkspace(page, 202);
   await openWithdrawalReview(page);
   await page.getByRole("button", { name: "Submit payout request" }).click();
 

@@ -5,7 +5,7 @@ import helmet from "helmet";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pinoHttp from "pino-http";
-import { apiLimiter, authLimiter, flowPayWebhookLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
+import { apiLimiter, authLimiter, flowPayWebhookLimiter, passwordResetLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordRequest } from "./lib/metrics";
@@ -90,6 +90,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
   const host = req.get("host");
   const requestOrigin = host ? `${req.protocol}://${host}` : undefined;
   if (!isWriteRequestOriginAllowed({
@@ -143,6 +144,7 @@ app.use(
 app.use("/api/payments/webhooks/flowpay", flowPayWebhookLimiter);
 app.use("/api", apiLimiter);
 app.use("/api/auth", authLimiter);
+app.use("/api/auth/password-reset/request", passwordResetLimiter);
 app.use("/api", writeLimiter);
 // Dedicated tighter limit on public search/discover to prevent scraping
 app.use(["/api/search", "/api/discover"], searchLimiter);

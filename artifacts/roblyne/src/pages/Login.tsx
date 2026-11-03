@@ -26,6 +26,7 @@ import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 import { useTranslation } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
 import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
+import { SocialLogin } from "@/components/auth/SocialLogin";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -35,6 +36,14 @@ export default function Login() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
+  const authError = new URLSearchParams(window.location.search).get("authError");
+  const socialError = authError?.endsWith("_account_link_required")
+    ? "This email already has a ROBLYNE account. Sign in with your password, then contact support to link the provider."
+    : authError?.endsWith("_cancelled")
+      ? "Social sign-in was cancelled."
+      : authError
+        ? "Social sign-in could not be completed. Please try again."
+        : null;
   const loginSchema = z.object({
     email: z.string().email(t("auth.emailValidation")),
     password: z.string().min(1, t("auth.passwordRequired")),
@@ -94,6 +103,11 @@ export default function Login() {
               We could not restore your session. You can sign in below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
             </div>
           )}
+          {socialError && (
+            <div role="alert" className="mb-6 rounded-sm border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
+              {socialError}
+            </div>
+          )}
           <div className="mb-10 text-center">
             <div className="flex justify-center mb-6">
               <EvenumAuthMark />
@@ -132,6 +146,7 @@ export default function Login() {
                       <FormItem>
                         <div className="flex items-center justify-between">
                           <FormLabel className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{t("auth.password")}</FormLabel>
+                          <Link href="/password-reset" className="text-sm text-primary hover:underline">{t("auth.forgotPassword")}</Link>
                         </div>
                         <FormControl>
                           <Input 
@@ -152,6 +167,7 @@ export default function Login() {
                   </Button>
                 </form>
               </Form>
+              <SocialLogin returnTo={returnPath ?? "/dashboard"} />
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">

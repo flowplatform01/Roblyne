@@ -26,6 +26,11 @@ import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
 import { useTranslation } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
 import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
+import { SocialLogin } from "@/components/auth/SocialLogin";
+import { Checkbox } from "@/components/ui/checkbox";
+import { apiUrl } from "@/lib/api-url";
+
+type LegalRequirement = { id: number; documentType: "terms" | "privacy"; title: string; version: number };
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -35,6 +40,9 @@ export default function Register() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
+  const [legalRequirements, setLegalRequirements] = React.useState<LegalRequirement[]>([]);
+  const [missingLegalDocumentTypes, setMissingLegalDocumentTypes] = React.useState<string[]>([]);
+  const [acceptedLegalDocumentIds, setAcceptedLegalDocumentIds] = React.useState<number[]>([]);
   const registerSchema = z.object({
     name: z.string().min(1, t("auth.nameRequired")),
     email: z.string().email(t("auth.emailValidation")),
@@ -56,9 +64,29 @@ export default function Register() {
     }
   }, [isAuthenticated, returnPath, setLocation]);
 
+  React.useEffect(() => {
+    const controller = new AbortController();
+    void fetch(apiUrl("/api/legal/requirements"), { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : { documents: [] })
+      .then((body: { documents?: LegalRequirement[]; missingDocumentTypes?: string[] }) => {
+        setLegalRequirements(Array.isArray(body.documents) ? body.documents : []);
+        setMissingLegalDocumentTypes(Array.isArray(body.missingDocumentTypes) ? body.missingDocumentTypes : []);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   function onSubmit(values: z.infer<typeof registerSchema>) {
+    if (legalRequirements.some((document) => !acceptedLegalDocumentIds.includes(document.id))) {
+      toast({
+        variant: "destructive",
+        title: "Review the legal documents",
+        description: "Accept the current Terms of Service and Privacy Policy to create an account.",
+      });
+      return;
+    }
     registerMutation.mutate(
-      { data: values },
+      { data: { ...values, legalDocumentIds: acceptedLegalDocumentIds } },
       {
         onSuccess: async (registeredUser) => {
           queryClient.setQueryData(getGetMeQueryKey(), registeredUser);
@@ -125,6 +153,28 @@ export default function Register() {
                       </FormItem>
                     )}
                   />
+                  {legalRequirements.length > 0 && (
+                    <div className="space-y-3 rounded-sm border border-border/70 bg-muted/20 p-4 text-sm">
+                      {legalRequirements.map((document) => {
+                        const checked = acceptedLegalDocumentIds.includes(document.id);
+                        return (
+                          <label key={document.id} className="flex cursor-pointer items-start gap-3 leading-relaxed">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(value) => setAcceptedLegalDocumentIds((current) => value
+                                ? [...new Set([...current, document.id])]
+                                : current.filter((id) => id !== document.id))}
+                              aria-label={`Accept ${document.title}`}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              I have read and accept the <a href={`/legal/${document.documentType}`} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2">{document.title}</a> (version {document.version}).
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                   <FormField
                     control={form.control}
                     name="email"
@@ -161,12 +211,14 @@ export default function Register() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full h-14 text-lg font-medium mt-4 shadow-md hover:shadow-lg transition-all" disabled={registerMutation.isPending}>
+                  {missingLegalDocumentTypes.length > 0 && <p role="alert" className="text-sm text-muted-foreground">New account registration will open after ROBLYNE publishes its required legal documents.</p>}
+                  <Button type="submit" className="w-full h-14 text-lg font-medium mt-4 shadow-md hover:shadow-lg transition-all" disabled={registerMutation.isPending || missingLegalDocumentTypes.length > 0}>
                      {registerMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t("auth.createAccountButton")}
                     {!registerMutation.isPending && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
               </Form>
+              {missingLegalDocumentTypes.length === 0 && <SocialLogin returnTo={returnPath ?? "/dashboard"} />}
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">

@@ -73,7 +73,7 @@ export function ImageUpload({
         return localPreviewUrl;
       });
       setIsPreparing(false);
-    setIsUploading(true);
+      setIsUploading(true);
       const fetchWithDeadline = async (input: RequestInfo | URL, init: RequestInit) => {
         const timeout = window.setTimeout(() => {
           timedOut = true;

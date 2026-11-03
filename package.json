@@ -17,6 +17,7 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --workspace-concurrency=1 --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:api": "pnpm --filter @workspace/api-server run test",
     "test:e2e": "playwright test",
+    "test:seo": "node scripts/test-seo-static.mjs",
     "verify:stack": "pnpm --filter @workspace/scripts run verify:stack",
     "verify:render:artifacts": "node scripts/verify-render-artifacts.mjs"
   },

@@ -103,6 +103,15 @@ export const authLimiter = rateLimit({
   store: createRedisStore("evenum:ratelimit:auth") as never,
 });
 
+export const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: isDev ? 10_000 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many password-reset requests. Please wait before trying again." },
+  store: createRedisStore("evenum:ratelimit:password-reset") as never,
+});
+
 // Brute-force protection for the first-administrator setup code.
 export const bootstrapLimiter = rateLimit({
   windowMs: 60 * 1000,

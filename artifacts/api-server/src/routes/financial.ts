@@ -15,7 +15,7 @@ import { requirePlatformAdmin } from "../middlewares/platformAdmin";
 import { getCommissionRate, getOrgFinanceSummary, seedDefaultCommissionConfigs } from "../lib/commission-engine";
 import { getAvailableSettlementAmount, isFullySettled, planSettlementAllocations } from "../lib/settlement-allocation";
 import { createFlowPayRecipient, getFlowPayRecipient } from "../lib/flowpay";
-import { isFlowPayPayoutQueueAvailable, scheduleFlowPayPayout, schedulePlatformWithdrawal } from "../lib/jobs";
+import { isFlowPayPayoutQueueReady, scheduleFlowPayPayout, schedulePlatformWithdrawal } from "../lib/jobs";
 import { normalizeCameroonPhone, maskPhoneNumber } from "../lib/phone";
 import { formatPlatformWithdrawal } from "../lib/platform-withdrawals";
 
@@ -170,7 +170,7 @@ router.post("/organizations/:orgId/finance/settlements",
     if (!Number.isFinite(requestedAmount)) {
       res.status(400).json({ error: "Enter a valid withdrawal amount" }); return;
     }
-    if (!isFlowPayPayoutQueueAvailable()) {
+    if (!await isFlowPayPayoutQueueReady()) {
       res.status(503).json({ error: "Payout processing is temporarily unavailable. Please try again when the worker is healthy." }); return;
     }
 
@@ -265,8 +265,18 @@ router.post("/organizations/:orgId/finance/settlements",
         return configured;
       });
 
-      await scheduleFlowPayPayout(settlement.id);
-      res.status(201).json(formatSettlement(settlement));
+      try {
+        await scheduleFlowPayPayout(settlement.id);
+        res.status(201).json(formatSettlement(settlement));
+      } catch (dispatchError) {
+        const reason = dispatchError instanceof Error ? dispatchError.message : "Could not queue FlowPay payout";
+        const [recoverable] = await db.update(settlementsTable).set({
+          providerPayoutStatus: "dispatch_failed",
+          payoutFailureReason: reason.slice(0, 500),
+        }).where(eq(settlementsTable.id, settlement.id)).returning();
+        req.log.error({ err: dispatchError, settlementId: settlement.id }, "Settlement payout dispatch failed; worker recovery will retry it");
+        res.status(202).json(formatSettlement(recoverable));
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not create withdrawal request";
       res.status(400).json({ error: message });
@@ -506,7 +516,7 @@ router.post("/admin/finance/platform-withdrawals", async (req, res): Promise<voi
   const currency = normalizeCurrency(req.body?.currency);
   if (!Number.isInteger(payoutDestinationId) || payoutDestinationId <= 0) { res.status(400).json({ error: "Choose a saved platform payout recipient" }); return; }
   if (!Number.isFinite(amount) || amount <= 0 || Math.round(amount * 100) !== amount * 100) { res.status(400).json({ error: "Enter a valid amount with at most two decimal places" }); return; }
-  if (!isFlowPayPayoutQueueAvailable()) { res.status(503).json({ error: "Platform payout processing is temporarily unavailable. Check Redis and the worker, then retry." }); return; }
+  if (!await isFlowPayPayoutQueueReady()) { res.status(503).json({ error: "Platform payout processing is temporarily unavailable. Check Redis and the worker, then retry." }); return; }
   try {
     const [destination] = await db.select().from(platformPayoutDestinationsTable).where(and(
       eq(platformPayoutDestinationsTable.id, payoutDestinationId), eq(platformPayoutDestinationsTable.provider, "flowpay"),

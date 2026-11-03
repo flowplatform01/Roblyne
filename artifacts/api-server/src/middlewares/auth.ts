@@ -5,6 +5,15 @@ declare module "express-session" {
     userId: number;
     electionInviteVerifications?: Record<string, number>;
     eventInviteVerifications?: Record<string, number>;
+    oauthTransaction?: {
+      provider: "google" | "microsoft" | "linkedin" | "discord";
+      state: string;
+      nonce: string;
+      codeVerifier: string;
+      returnTo: string;
+      mode: "signin" | "link";
+      createdAt: number;
+    };
   }
 }
 

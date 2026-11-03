@@ -62,6 +62,7 @@ Add these build-time variables:
 ```text
 NODE_VERSION=22.12.0
 VITE_API_URL=<the HTTPS public URL of roblyne-api, for example https://roblyne-api.onrender.com>
+PUBLIC_WEB_URL=<the exact public URL of this static site, for example https://roblyne-web.onrender.com>
 ```
 
 Add a Render rewrite rule:
@@ -83,7 +84,7 @@ CORS_ALLOWED_ORIGINS=https://roblyne-web.onrender.com
 PUBLIC_WEB_URL=https://roblyne-web.onrender.com
 ```
 
-`PUBLIC_WEB_URL` is not a browser setting. The API uses it to redirect public share links and produce resource-specific Open Graph previews for campaigns, events, elections, candidates, and organization profiles. Save and redeploy API. Then open the static frontend, register your account, and sign in. The browser communicates directly with the public API URL embedded as `VITE_API_URL`.
+`PUBLIC_WEB_URL` is not a browser setting. The API uses it for OAuth redirects, share links, and resource-specific Open Graph previews. The static build uses both `PUBLIC_WEB_URL` and `VITE_API_URL` to generate crawlable public pages, `sitemap.xml`, and `robots.txt`; it contacts the API at build time, so deploy the API first. Save and redeploy API, then deploy the static frontend. The browser communicates directly with the public API URL embedded as `VITE_API_URL`.
 
 ## 4. Make your first platform administrator
 
@@ -97,6 +98,21 @@ PUBLIC_WEB_URL=https://roblyne-web.onrender.com
 You can use Render `onrender.com` URLs for deployment and health-check testing, but not for reliable browser login when the static site and API are separate services. They cannot reliably share the session cookie because Render subdomains are cross-site to each other in browsers. Before inviting real users, buy one domain and use `app.<your-domain>` for the static site and `api.<your-domain>` for the API.
 
 When you later buy a domain, follow the **Domains and Cloudflare** section in `ROBLYNE_DEPLOYMENT_RUNBOOK.md`: add `app.<your-domain>` to the static site and `api.<your-domain>` to the API in Render first, then create DNS-only Cloudflare CNAME records to the corresponding Render hostnames. After Render verifies TLS, rebuild the static site with the API custom URL and redeploy the API with the frontend custom URL in `CORS_ALLOWED_ORIGINS`.
+
+For the current production setup sequence, Cloudflare cache boundaries, and custom-domain verification, use `docs/operations/ROBLYNE_OPERATIONAL_SETUP_GUIDE.md`. Do not enable social sign-in until the public frontend and API origins are both final.
+
+## Social sign-in and password recovery
+
+Google, Microsoft, LinkedIn, and Discord buttons are disabled unless each provider has its complete client ID and secret configuration on the API. They also require valid HTTPS `PUBLIC_WEB_URL` and `PUBLIC_API_URL`; startup rejects partial configuration instead of exposing a broken button. Register exactly:
+
+```text
+https://<your-api-host>/api/auth/oauth/google/callback
+https://<your-api-host>/api/auth/oauth/microsoft/callback
+https://<your-api-host>/api/auth/oauth/linkedin/callback
+https://<your-api-host>/api/auth/oauth/discord/callback
+```
+
+Microsoft additionally requires `MICROSOFT_OAUTH_TENANT`; LinkedIn requires its OpenID Connect product; Discord requires the `identify` and `email` scopes. Password reset email is available only when `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` are set on the API. Keep `LOCAL_EMAIL_OTP_DEBUG` absent in production. Use `docs/operations/ROBLYNE_OPERATIONAL_SETUP_GUIDE.md` for the current setup contract.
 
 ## 6. Add Redis and the worker
 
