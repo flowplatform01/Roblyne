@@ -2,7 +2,13 @@ import { createHash, randomBytes, verify, createPublicKey } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import { and, eq, lte } from "drizzle-orm";
 import { db, legalAcceptancesTable, organizationsTable, socialIdentitiesTable, usersTable } from "@workspace/db";
-import { currentLegalDocumentsWithDefaults, legalDocumentTypes } from "../lib/default-legal-documents";
+import {
+  legalDocumentTypes,
+  publishedLegalDocumentsWithDefaults,
+  unpublishedDocumentTypes,
+  unacceptedDocumentTypes,
+  type PublishedLegalDocument,
+} from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
 const MAX_TRANSACTION_AGE_MS = 10 * 60 * 1000;
@@ -55,6 +61,21 @@ function env(name: string): string | null {
   return process.env[name]?.trim() || null;
 }
 
+/**
+ * OAuth client identifiers are opaque strings issued by the provider. Operators
+ * sometimes paste a full console URL into the environment instead of the bare
+ * identifier, which is sent verbatim as `client_id` and makes the provider
+ * answer "Error 401: invalid_client". Strip any accidental scheme, host and
+ * path so only the issued identifier leaves the server.
+ */
+function oauthClientId(name: string): string | null {
+  const raw = env(name);
+  if (!raw) return null;
+  const withoutScheme = raw.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+  const segments = withoutScheme.split(/[/\\?#]/).map((segment) => segment.trim()).filter(Boolean);
+  return segments.length ? segments[segments.length - 1]! : null;
+}
+
 function publicWebOrigin(): string | null {
   return parseOrigin(process.env.PUBLIC_WEB_URL);
 }
@@ -80,7 +101,7 @@ function microsoftTenant(): string | null {
 
 const providerConfigs: Record<Provider, ProviderConfig> = {
   google: {
-    clientId: () => env("GOOGLE_OAUTH_CLIENT_ID"),
+    clientId: () => oauthClientId("GOOGLE_OAUTH_CLIENT_ID"),
     clientSecret: () => env("GOOGLE_OAUTH_CLIENT_SECRET"),
     authorizationEndpoint: () => "https://accounts.google.com/o/oauth2/v2/auth",
     tokenEndpoint: () => "https://oauth2.googleapis.com/token",
@@ -92,7 +113,7 @@ const providerConfigs: Record<Provider, ProviderConfig> = {
     issuerValid: (claims) => claims.iss === "https://accounts.google.com" || claims.iss === "accounts.google.com",
   },
   microsoft: {
-    clientId: () => env("MICROSOFT_OAUTH_CLIENT_ID"),
+    clientId: () => oauthClientId("MICROSOFT_OAUTH_CLIENT_ID"),
     clientSecret: () => env("MICROSOFT_OAUTH_CLIENT_SECRET"),
     authorizationEndpoint: () => `https://login.microsoftonline.com/${microsoftTenant()}/oauth2/v2.0/authorize`,
     tokenEndpoint: () => `https://login.microsoftonline.com/${microsoftTenant()}/oauth2/v2.0/token`,
@@ -105,7 +126,7 @@ const providerConfigs: Record<Provider, ProviderConfig> = {
     issuerValid: (claims) => Boolean(claims.tid && claims.iss === `https://login.microsoftonline.com/${claims.tid}/v2.0`),
   },
   linkedin: {
-    clientId: () => env("LINKEDIN_OAUTH_CLIENT_ID"),
+    clientId: () => oauthClientId("LINKEDIN_OAUTH_CLIENT_ID"),
     clientSecret: () => env("LINKEDIN_OAUTH_CLIENT_SECRET"),
     authorizationEndpoint: () => "https://www.linkedin.com/oauth/v2/authorization",
     tokenEndpoint: () => "https://www.linkedin.com/oauth/v2/accessToken",
@@ -117,7 +138,7 @@ const providerConfigs: Record<Provider, ProviderConfig> = {
     issuerValid: (claims) => claims.iss === "https://www.linkedin.com",
   },
   discord: {
-    clientId: () => env("DISCORD_OAUTH_CLIENT_ID"),
+    clientId: () => oauthClientId("DISCORD_OAUTH_CLIENT_ID"),
     clientSecret: () => env("DISCORD_OAUTH_CLIENT_SECRET"),
     authorizationEndpoint: () => "https://discord.com/oauth2/authorize",
     tokenEndpoint: () => "https://discord.com/api/oauth2/token",
@@ -137,8 +158,8 @@ function configured(provider: Provider): boolean {
   return Boolean(config.clientId() && config.clientSecret() && publicWebOrigin() && publicApiOrigin() && (provider !== "microsoft" || microsoftTenant()));
 }
 
-async function requiredLegalDocumentsArePublished(): Promise<boolean> {
-  return (await currentLegalDocumentsWithDefaults()).length === legalDocumentTypes.length;
+function requiredLegalDocumentsArePublished(documents: readonly PublishedLegalDocument[]): boolean {
+  return unpublishedDocumentTypes(documents).length === 0;
 }
 
 function parseLegalDocumentIds(value: unknown): number[] {
@@ -147,8 +168,8 @@ function parseLegalDocumentIds(value: unknown): number[] {
   return [...new Set(ids)].slice(0, legalDocumentTypes.length);
 }
 
-function acceptsCurrentLegalDocuments(documentIds: number[], documents: Array<{ id: number; documentType: string }>): boolean {
-  return documents.length === legalDocumentTypes.length && documents.every((document) => documentIds.includes(document.id));
+function acceptsCurrentLegalDocuments(documentIds: number[], documents: readonly PublishedLegalDocument[]): boolean {
+  return unacceptedDocumentTypes(documents, documentIds).length === 0;
 }
 
 function randomUrlSafe(bytes = 32): string {
@@ -354,20 +375,21 @@ router.get("/auth/oauth/:provider/callback", async (req, res): Promise<void> => 
     }
     const [emailUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
     if (emailUser) return redirectToWeb(res, "/login", `${provider}_account_link_required`);
-    const currentLegalDocumentsForSignup = await currentLegalDocumentsWithDefaults();
-    if (!await requiredLegalDocumentsArePublished()) {
+    const currentLegalDocumentsForSignup = await publishedLegalDocumentsWithDefaults();
+    if (!requiredLegalDocumentsArePublished(currentLegalDocumentsForSignup)) {
       return redirectToWeb(res, "/login", "registration_legal_documents_unavailable");
     }
     if (!acceptsCurrentLegalDocuments(transaction.legalDocumentIds, currentLegalDocumentsForSignup)) {
       return redirectToWeb(res, "/register", "social_legal_acceptance_required");
     }
+    const acceptedLegalDocuments = currentLegalDocumentsForSignup.filter((document) => transaction.legalDocumentIds.includes(document.id));
     const user = await db.transaction(async (tx) => {
       const [created] = await tx.insert(usersTable).values({ email, name: name.slice(0, 100), avatarUrl, passwordHash: null }).returning();
       const workspace = `${created.name.slice(0, 80) || "My"}'s workspace`;
       const slug = `${workspace.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace"}-${randomBytes(4).toString("hex")}`;
       await tx.insert(organizationsTable).values({ name: workspace, slug, ownerId: created.id });
       await tx.insert(socialIdentitiesTable).values({ userId: created.id, provider, providerSubject: subject, email });
-      await tx.insert(legalAcceptancesTable).values(currentLegalDocumentsForSignup.map((document) => ({
+      await tx.insert(legalAcceptancesTable).values(acceptedLegalDocuments.map((document) => ({
         userId: created.id,
         legalDocumentId: document.id,
         documentType: document.documentType,

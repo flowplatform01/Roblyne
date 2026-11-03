@@ -4,17 +4,35 @@ import { db, legalDocumentsTable } from "@workspace/db";
 export const legalDocumentTypes = ["terms", "privacy"] as const;
 export type LegalDocumentType = (typeof legalDocumentTypes)[number];
 
+export const legalDocumentLanguages = ["en", "fr"] as const;
+export type LegalDocumentLanguage = (typeof legalDocumentLanguages)[number];
+export const defaultLegalLanguage: LegalDocumentLanguage = "en";
+
 const MINIMUM_USABLE_CONTENT_LENGTH = 20;
+
+export type PublishedLegalDocument = typeof legalDocumentsTable.$inferSelect;
 
 type DefaultLegalDocument = {
   documentType: LegalDocumentType;
+  language: LegalDocumentLanguage;
   title: string;
   content: string;
 };
 
+export function normalizeLegalLanguage(value: unknown): LegalDocumentLanguage | null {
+  if (typeof value !== "string") return null;
+  const primary = value.trim().toLowerCase().split(/[-_]/)[0];
+  return (legalDocumentLanguages as readonly string[]).includes(primary) ? primary as LegalDocumentLanguage : null;
+}
+
+function documentKey(documentType: string, language: string): string {
+  return `${documentType}:${language}`;
+}
+
 export const defaultLegalDocuments: readonly DefaultLegalDocument[] = [
   {
     documentType: "terms",
+    language: "en",
     title: "ROBLYNE Terms of Service",
     content: `ROBLYNE TERMS OF SERVICE
 
@@ -54,6 +72,7 @@ ROBLYNE may update these Terms when the Service, law or risk profile changes. Ma
   },
   {
     documentType: "privacy",
+    language: "en",
     title: "ROBLYNE Privacy Policy",
     content: `ROBLYNE PRIVACY POLICY
 
@@ -88,33 +107,181 @@ Third-party providers may collect or process information under their own terms a
 9. CHANGES AND CONTACT
 We may update this Policy to reflect changes in the Service, law or our practices. Material changes may require renewed acceptance when indicated in the Service. Privacy questions, requests and complaints should be sent through the platform support contact published by the Platform Operator. Before launch, the Platform Operator must complete this section with its legal name, physical or electronic privacy contact, and jurisdiction-specific complaint information.`,
   },
+  {
+    documentType: "terms",
+    language: "fr",
+    title: "Conditions d'utilisation de ROBLYNE",
+    content: `CONDITIONS D'UTILISATION DE ROBLYNE
+
+Date d'entrée en vigueur : la date de première publication de cette version dans ROBLYNE.
+
+1. À PROPOS DE CES CONDITIONS
+Les présentes Conditions régissent l'accès à ROBLYNE et son utilisation, y compris ses sites web, applications, élections, votes, inscriptions à des événements, campagnes, collectes de fonds, paiements et fonctions de gestion d'organisation (le « Service »). En créant un compte, en créant ou en rejoignant une organisation, ou en utilisant le Service, vous acceptez ces Conditions. Si vous utilisez le Service pour une organisation, vous confirmez être habilité à engager cette organisation.
+
+Ces Conditions initiales sont des conditions de démarrage opérationnelles. L'Exploitant de la plateforme doit faire confirmer sa dénomination légale, ses coordonnées, ainsi que ses clauses de droit applicable et de règlement des litiges par un conseil juridique qualifié avant de s'y fier pour une juridiction particulière ou un usage réglementé.
+
+2. COMPTES ET ORGANISATIONS
+Vous devez fournir des informations de compte exactes, garder vos identifiants confidentiels et signaler rapidement toute utilisation non autorisée suspectée. Vous êtes responsable de l'activité effectuée via votre compte dans la mesure permise par la loi. Les propriétaires et administrateurs d'organisation sont responsables du choix des membres, des rôles, des paramètres, des règles d'événement, de l'éligibilité des élections, des conditions de campagne et des communications de leur organisation.
+
+3. ÉLECTIONS, ÉVÉNEMENTS ET CAMPAGNES
+ROBLYNE fournit aux organisations des outils pour créer et administrer des élections, des expériences de vote, des événements, des inscriptions, des campagnes, des pétitions, des sondages, des candidatures et des collectes. L'organisation qui crée une ressource est responsable de son objet, de ses règles, de son éligibilité, de ses notifications, de ses archives, de ses prix, de leur exécution, de son accessibilité et du respect de la loi applicable. ROBLYNE ne certifie pas un résultat d'élection, ne vérifie pas l'identité de chaque participant et ne garantit pas qu'un processus donné satisfait une exigence légale, constitutionnelle, réglementaire, syndicale, d'entreprise ou académique. Les organisateurs doivent déterminer eux-mêmes si le Service convient à leur cas d'usage.
+
+4. PAIEMENTS, FRAIS ET RETRAITS
+Certaines campagnes et certains événements peuvent accepter des paiements, et les organisations éligibles peuvent demander des retraits. Le traitement des paiements, les vérifications d'identité, les destinations de versement et les délais de règlement peuvent impliquer des prestataires tiers, notamment FlowPay. Les frais applicables, les montants, les conditions d'éligibilité et l'état des transactions sont affichés dans le Service lorsqu'ils sont disponibles. Les organisateurs sont responsables de l'exactitude de l'objet présenté aux participants, des biens, services, avantages ou remboursements promis, ainsi que de toutes les taxes, déclarations et obligations légales liées aux fonds reçus. Un retrait peut être retardé, refusé, annulé ou faire l'objet d'une enquête lorsque la vérification, la prévention de la fraude, les règles du prestataire, les litiges, la loi ou les présentes Conditions l'exigent. ROBLYNE n'est pas une banque, un transmetteur de fonds ni un conseiller en investissement, sauf mention écrite expresse contraire.
+
+5. UTILISATION ACCEPTABLE
+Vous ne devez pas utiliser le Service pour enfreindre la loi ; usurper l'identité d'une personne ou d'une organisation ; soumettre de fausses informations d'élection, d'événement, de campagne ou de paiement ; perturber un vote ou des inscriptions ; solliciter des paiements illégaux ; diffuser des logiciels malveillants ; contourner les contrôles de sécurité ; extraire le Service sans autorisation ; porter atteinte à des droits ; harceler, discriminer ou tromper autrui ; ni utiliser le Service à des fins frauduleuses, abusives ou préjudiciables. Vous ne devez utiliser que des contenus et des données que vous avez le droit d'utiliser.
+
+6. CONTENUS ET PROPRIÉTÉ INTELLECTUELLE
+Vous conservez la propriété des contenus que vous soumettez, notamment les informations d'organisation, les détails d'événement, les supports de campagne et les images. Vous accordez à ROBLYNE les droits limités nécessaires pour héberger, traiter, afficher et transmettre ces contenus afin d'exploiter et d'améliorer le Service. Il vous appartient d'obtenir les autorisations relatives aux données des participants, aux images, aux noms, aux marques et aux autres éléments que vous soumettez. ROBLYNE ainsi que ses logiciels, son identité de marque et ses supports de service restent protégés par les lois applicables en matière de propriété intellectuelle.
+
+7. CONFIDENTIALITÉ ET TIERS
+Notre collecte et notre utilisation des informations personnelles sont décrites dans la Politique de confidentialité de ROBLYNE. Les organisations peuvent avoir leurs propres obligations de confidentialité envers les participants et restent responsables des notifications et instructions qu'elles fournissent. Le Service peut s'appuyer sur des services tiers d'hébergement, de messagerie, de stockage, de paiement, d'identité, d'analyse et autres. Leurs services et conditions peuvent s'appliquer en plus des présentes Conditions.
+
+8. SUSPENSION ET RÉSILIATION
+ROBLYNE peut enquêter, limiter, suspendre ou résilier l'accès lorsqu'il est raisonnablement nécessaire de protéger les utilisateurs, les organisations, le Service, l'intégrité des paiements, la conformité légale ou la sécurité, y compris en cas de violation présumée des présentes Conditions. Vous pouvez cesser d'utiliser le Service à tout moment. La fin de l'accès ne supprime pas les obligations qui, par leur nature, subsistent, notamment les obligations de paiement, de litige, de conservation des archives, de propriété intellectuelle et les obligations légales.
+
+9. AVERTISSEMENTS ET RESPONSABILITÉ
+Le Service est fourni « en l'état de disponibilité ». Dans toute la mesure permise par la loi, ROBLYNE ne garantit pas une disponibilité ininterrompue, un fonctionnement sans erreur, la validité juridique du processus d'un organisateur, un résultat de vote, la conduite des participants, la performance d'un prestataire de paiement ou le succès d'une collecte de fonds. Aucune disposition des présentes Conditions n'exclut une responsabilité qui ne peut légalement être exclue. Toute responsabilité résiduelle doit être déterminée selon le droit applicable à l'Exploitant de la plateforme et à la relation utilisateur concernée.
+
+10. MODIFICATIONS, LITIGES ET CONTACT
+ROBLYNE peut mettre à jour ces Conditions lorsque le Service, la loi ou le profil de risque évolue. Les modifications importantes peuvent exiger une nouvelle acceptation lorsque le Service l'indique. Les questions, réclamations et litiges doivent d'abord être adressés au contact d'assistance publié par l'Exploitant de la plateforme. L'Exploitant de la plateforme doit compléter cette section avec le droit applicable, l'instance de règlement des litiges et le contact juridique formel applicables à sa juridiction de lancement avant de considérer ces Conditions comme définitives.`,
+  },
+  {
+    documentType: "privacy",
+    language: "fr",
+    title: "Politique de confidentialité de ROBLYNE",
+    content: `POLITIQUE DE CONFIDENTIALITÉ DE ROBLYNE
+
+Date d'entrée en vigueur : la date de première publication de cette version dans ROBLYNE.
+
+1. OBJET ET AVIS IMPORTANT
+La présente Politique de confidentialité explique comment ROBLYNE traite les informations personnelles lorsque des personnes utilisent le Service pour créer des comptes, gérer des organisations, organiser des élections, s'inscrire à des événements, participer à des campagnes, effectuer des paiements ou demander des retraits. Pour une ressource d'organisation donnée, cette organisation peut déterminer pourquoi les informations des participants sont collectées et comment elles sont utilisées. L'Exploitant de la plateforme et chaque organisation doivent déterminer leurs rôles et obligations légaux respectifs pour leur juridiction.
+
+Ces clauses initiales constituent une politique de démarrage opérationnelle. L'Exploitant de la plateforme doit faire confirmer l'entité juridique, le contact vie privée, les bases légales, les durées de conservation, les garanties de transfert international et les mentions propres à chaque juridiction par un conseil juridique qualifié avant de s'y fier pour un lancement particulier.
+
+2. INFORMATIONS QUE NOUS COLLECTONS
+Nous pouvons collecter des informations de compte et de profil telles que le nom, l'adresse e-mail, l'empreinte du mot de passe et l'avatar ; des informations d'organisation et d'administration ; des détails d'inscription et de présence à un événement ; des soumissions de campagne ; des données d'éligibilité et de participation à une élection ; des informations sur les candidats ; des échanges avec l'assistance ; des informations sur l'appareil, le navigateur, l'adresse IP, les journaux et la sécurité ; ainsi que des informations de transaction, de paiement, de destination de versement ou de vérification qui nous sont fournies ou le sont à nos prestataires de paiement. Les données de vote sont traitées pour exploiter l'élection concernée et doivent être configurées par les organisateurs avec des contrôles d'accès et des notifications appropriés.
+
+3. COMMENT NOUS UTILISONS LES INFORMATIONS
+Nous utilisons les informations pour fournir, sécuriser, personnaliser et prendre en charge le Service ; authentifier les comptes ; créer et gérer des organisations ; administrer les élections, les événements et les campagnes ; traiter les inscriptions, les paiements, les règlements et les retraits ; prévenir la fraude et les abus ; communiquer les avis importants de service, de sécurité et juridiques ; respecter les obligations légales ; et améliorer la fiabilité et la facilité d'utilisation. Nous n'utilisons que les informations raisonnablement nécessaires à ces finalités et conformément aux paramètres, instructions et autorisations applicables.
+
+4. QUAND NOUS PARTAGEONS DES INFORMATIONS
+Nous pouvons partager des informations avec l'organisation concernée et ses administrateurs autorisés ; les prestataires qui hébergent, sécurisent, envoient des e-mails, stockent ou prennent en charge le Service ; les prestataires de paiement et de versement tels que FlowPay ; les conseils professionnels ; ainsi que les autorités ou d'autres parties lorsque la loi l'exige, pour faire valoir des droits ou pour protéger les utilisateurs et le Service. Nous ne vendons pas d'informations personnelles contre de l'argent. Le partage avec une organisation est nécessaire pour l'élection, l'événement ou la campagne qu'un participant choisit de rejoindre.
+
+5. SÉCURITÉ ET CONSERVATION DES DONNÉES
+Nous appliquons des mesures techniques et organisationnelles raisonnables destinées à protéger les informations, notamment des contrôles d'accès, un transport chiffré et une surveillance de sécurité. Aucun système en ligne ne peut garantir une sécurité absolue. Nous conservons les informations aussi longtemps que nécessaire pour fournir le Service, respecter les instructions des organisateurs, résoudre les litiges, prévenir les abus, satisfaire les obligations comptables et légales et faire appliquer les accords. Les organisateurs doivent utiliser les paramètres du Service et leurs propres procédures pour éviter de conserver les informations des participants plus longtemps que nécessaire.
+
+6. VOS CHOIX ET VOS DROITS
+Selon la loi applicable, vous pouvez disposer de droits d'accès, de rectification, d'effacement, de limitation ou d'opposition à certains traitements de vos informations personnelles, de réception d'informations portables, de retrait du consentement lorsque le traitement repose sur le consentement, ou de réclamation auprès d'une autorité de contrôle. Les titulaires de compte peuvent mettre à jour certaines informations de profil dans le Service. Pour les informations contrôlées par une organisation, contactez d'abord cette organisation. Pour les informations traitées par ROBLYNE, utilisez le contact d'assistance publié par l'Exploitant de la plateforme. Nous pouvons avoir besoin de vérifier une demande avant d'y donner suite.
+
+7. UTILISATION INTERNATIONALE, COOKIES ET ENFANTS
+Les informations peuvent être traitées dans les pays où ROBLYNE ou ses prestataires opèrent. L'Exploitant de la plateforme doit mettre en œuvre les garanties de transfert exigées par la loi applicable. Le Service utilise des technologies essentielles de session et de sécurité et peut recourir à un stockage limité nécessaire aux préférences et au fonctionnement. Les organisations ne doivent pas utiliser le Service pour collecter des informations concernant des enfants sans disposer de l'autorité, des notifications et des garanties exigées par la loi applicable.
+
+8. SERVICES TIERS
+Les prestataires tiers peuvent collecter ou traiter des informations selon leurs propres conditions et politiques de confidentialité, notamment les fournisseurs d'identité utilisés pour la connexion sociale, les prestataires de paiement, les prestataires de messagerie et les prestataires de stockage ou d'hébergement. Consultez leurs politiques lorsque vous utilisez ces services. ROBLYNE n'est pas responsable des pratiques de confidentialité de tiers en dehors du Service.
+
+9. MODIFICATIONS ET CONTACT
+Nous pouvons mettre à jour la présente Politique pour refléter des changements dans le Service, la loi ou nos pratiques. Les modifications importantes peuvent exiger une nouvelle acceptation lorsque le Service l'indique. Les questions, demandes et réclamations relatives à la vie privée doivent être adressées au contact d'assistance publié par l'Exploitant de la plateforme. Avant le lancement, l'Exploitant de la plateforme doit compléter cette section avec sa dénomination légale, un contact vie privée physique ou électronique et les informations de réclamation propres à sa juridiction.`,
+  },
 ];
 
-export function missingDefaultLegalDocuments(current: Iterable<{ documentType: string }>): readonly DefaultLegalDocument[] {
-  const availableTypes = new Set(Array.from(current, (document) => document.documentType));
-  return defaultLegalDocuments.filter((document) => !availableTypes.has(document.documentType));
+export function missingDefaultLegalDocuments(current: Iterable<{ documentType: string; language: string }>): readonly DefaultLegalDocument[] {
+  const available = new Set(Array.from(current, (document) => documentKey(document.documentType, document.language)));
+  return defaultLegalDocuments.filter((document) => !available.has(documentKey(document.documentType, document.language)));
 }
 
-function hasUsableContent(document: typeof legalDocumentsTable.$inferSelect): boolean {
+function hasUsableContent(document: PublishedLegalDocument): boolean {
   return document.content.trim().length >= MINIMUM_USABLE_CONTENT_LENGTH;
 }
 
-export async function currentLegalDocuments() {
+function isLegalDocumentType(value: string): value is LegalDocumentType {
+  return legalDocumentTypes.includes(value as LegalDocumentType);
+}
+
+/** Newest usable published version of every (document type, language) pair. */
+export async function publishedLegalDocuments(): Promise<PublishedLegalDocument[]> {
   const documents = await db.select().from(legalDocumentsTable).where(and(
     eq(legalDocumentsTable.status, "published"),
     lte(legalDocumentsTable.effectiveAt, new Date()),
   )).orderBy(desc(legalDocumentsTable.version));
-  const current = new Map<LegalDocumentType, typeof documents[number]>();
+  const latest = new Map<string, PublishedLegalDocument>();
   for (const document of documents) {
-    if (legalDocumentTypes.includes(document.documentType as LegalDocumentType) && !current.has(document.documentType as LegalDocumentType) && hasUsableContent(document)) {
-      current.set(document.documentType as LegalDocumentType, document);
-    }
+    if (!isLegalDocumentType(document.documentType) || !hasUsableContent(document)) continue;
+    const key = documentKey(document.documentType, document.language);
+    if (!latest.has(key)) latest.set(key, document);
   }
-  return legalDocumentTypes.map((documentType) => current.get(documentType)).filter((document): document is typeof documents[number] => Boolean(document));
+  return [...latest.values()];
+}
+
+export type ResolvedLegalDocument = {
+  document: PublishedLegalDocument;
+  language: LegalDocumentLanguage;
+  languageFallback: boolean;
+};
+
+export function resolveLegalDocument(
+  documents: readonly PublishedLegalDocument[],
+  documentType: LegalDocumentType,
+  language: LegalDocumentLanguage,
+): ResolvedLegalDocument | null {
+  const candidates = documents.filter((document) => document.documentType === documentType);
+  if (!candidates.length) return null;
+  const preferred = candidates.find((document) => document.language === language);
+  if (preferred) return { document: preferred, language, languageFallback: false };
+  const fallback = candidates.find((document) => document.language === defaultLegalLanguage) ?? candidates[0];
+  return {
+    document: fallback,
+    language: normalizeLegalLanguage(fallback.language) ?? defaultLegalLanguage,
+    languageFallback: true,
+  };
+}
+
+/** The single current document of each type, in the requested language or a clearly flagged fallback. */
+export async function resolvedLegalDocuments(language: LegalDocumentLanguage = defaultLegalLanguage): Promise<ResolvedLegalDocument[]> {
+  const documents = await publishedLegalDocuments();
+  return legalDocumentTypes
+    .map((documentType) => resolveLegalDocument(documents, documentType, language))
+    .filter((resolved): resolved is ResolvedLegalDocument => Boolean(resolved));
+}
+
+export function publishedDocumentTypes(documents: readonly PublishedLegalDocument[]): Set<LegalDocumentType> {
+  return new Set(documents.map((document) => document.documentType).filter(isLegalDocumentType));
+}
+
+/** Document types with no published version in any language. Registration stays closed for these. */
+export function unpublishedDocumentTypes(documents: readonly PublishedLegalDocument[]): LegalDocumentType[] {
+  const published = publishedDocumentTypes(documents);
+  return legalDocumentTypes.filter((documentType) => !published.has(documentType));
+}
+
+/**
+ * Document types the account still has to accept. Accepting the current version of any language
+ * satisfies the type; an earlier acceptance only stays valid while no current version requires
+ * renewed acceptance.
+ */
+export function unacceptedDocumentTypes(
+  documents: readonly PublishedLegalDocument[],
+  acceptedDocumentIds: Iterable<number>,
+  acceptedDocumentTypes: Iterable<string> = [],
+): LegalDocumentType[] {
+  const acceptedIds = new Set(acceptedDocumentIds);
+  const acceptedTypes = new Set(acceptedDocumentTypes);
+  const currentByType = new Map<LegalDocumentType, PublishedLegalDocument[]>();
+  for (const document of documents) {
+    if (!isLegalDocumentType(document.documentType)) continue;
+    currentByType.set(document.documentType, [...(currentByType.get(document.documentType) ?? []), document]);
+  }
+  return legalDocumentTypes.filter((documentType) => {
+    const current = currentByType.get(documentType);
+    if (!current?.length) return false;
+    if (current.some((document) => acceptedIds.has(document.id))) return false;
+    return !(acceptedTypes.has(documentType) && !current.some((document) => document.requiresReacceptance));
+  });
 }
 
 export async function ensureDefaultLegalDocuments(): Promise<void> {
-  const current = await currentLegalDocuments();
+  const current = await publishedLegalDocuments();
   const missingDefaults = missingDefaultLegalDocuments(current);
   if (!missingDefaults.length) return;
 
@@ -122,7 +289,10 @@ export async function ensureDefaultLegalDocuments(): Promise<void> {
     for (const document of missingDefaults) {
       const [latest] = await tx.select({ version: legalDocumentsTable.version })
         .from(legalDocumentsTable)
-        .where(eq(legalDocumentsTable.documentType, document.documentType))
+        .where(and(
+          eq(legalDocumentsTable.documentType, document.documentType),
+          eq(legalDocumentsTable.language, document.language),
+        ))
         .orderBy(desc(legalDocumentsTable.version))
         .limit(1);
       const version = (latest?.version ?? 0) + 1;
@@ -139,9 +309,9 @@ export async function ensureDefaultLegalDocuments(): Promise<void> {
   });
 }
 
-export async function currentLegalDocumentsWithDefaults() {
-  const current = await currentLegalDocuments();
-  if (current.length === legalDocumentTypes.length) return current;
+export async function publishedLegalDocumentsWithDefaults(): Promise<PublishedLegalDocument[]> {
+  const current = await publishedLegalDocuments();
+  if (!missingDefaultLegalDocuments(current).length) return current;
   await ensureDefaultLegalDocuments();
-  return currentLegalDocuments();
+  return publishedLegalDocuments();
 }

@@ -4,6 +4,7 @@ import { usersTable } from "./users";
 export const legalDocumentsTable = pgTable("legal_documents", {
   id: serial("id").primaryKey(),
   documentType: text("document_type").notNull(),
+  language: text("language").notNull().default("en"),
   title: text("title").notNull(),
   content: text("content").notNull(),
   version: integer("version").notNull(),
@@ -15,7 +16,7 @@ export const legalDocumentsTable = pgTable("legal_documents", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  typeVersionUnique: uniqueIndex("legal_documents_type_version_uq").on(table.documentType, table.version),
+  typeLanguageVersionUnique: uniqueIndex("legal_documents_type_language_version_uq").on(table.documentType, table.language, table.version),
   publicLookupIdx: index("legal_documents_public_lookup_idx").on(table.documentType, table.status, table.effectiveAt),
 }));
 

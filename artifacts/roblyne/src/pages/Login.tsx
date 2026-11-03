@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
 import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
 import { SocialLogin } from "@/components/auth/SocialLogin";
@@ -38,11 +38,11 @@ export default function Login() {
   const returnPath = getSafeAuthReturnPath();
   const authError = new URLSearchParams(window.location.search).get("authError");
   const socialError = authError?.endsWith("_account_link_required")
-    ? "This email already has a ROBLYNE account. Sign in with your password, then contact support to link the provider."
+    ? t("auth.socialAccountLinkRequired")
     : authError?.endsWith("_cancelled")
-      ? "Social sign-in was cancelled."
+      ? t("auth.socialCancelled")
       : authError
-        ? "Social sign-in could not be completed. Please try again."
+        ? t("auth.socialFailed")
         : null;
   const loginSchema = z.object({
     email: z.string().email(t("auth.emailValidation")),
@@ -100,7 +100,11 @@ export default function Login() {
         <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
           {isSessionUnavailable && (
             <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
-              We could not restore your session. You can sign in below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
+              <Trans
+                i18nKey="auth.sessionRestoreFailed"
+                values={{ action: t("auth.sessionActionSignIn") }}
+                components={{ retry: <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2" /> }}
+              />
             </div>
           )}
           {socialError && (

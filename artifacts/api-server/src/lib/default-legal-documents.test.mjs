@@ -6,27 +6,49 @@ process.env.DATABASE_URL ??= "postgres://roblyne_test:roblyne_test@127.0.0.1:543
 const { closeDatabasePool } = await import("@workspace/db");
 const {
   defaultLegalDocuments,
-  legalDocumentTypes,
   missingDefaultLegalDocuments,
 } = await import("./default-legal-documents.ts");
 
-test("ships complete initial Terms and Privacy documents", () => {
-  assert.deepEqual(defaultLegalDocuments.map((document) => document.documentType), [...legalDocumentTypes]);
+function key(document) {
+  return `${document.documentType}:${document.language}`;
+}
+
+test("ships complete initial Terms and Privacy documents in English and French", () => {
+  assert.deepEqual(defaultLegalDocuments.map(key), ["terms:en", "privacy:en", "terms:fr", "privacy:fr"]);
   for (const document of defaultLegalDocuments) {
     assert.ok(document.title.length >= 12);
     assert.ok(document.content.length >= 2_000);
-    assert.match(document.content, /qualified legal counsel/i);
   }
-  assert.match(defaultLegalDocuments[0].content, /PAYMENTS, FEES AND WITHDRAWALS/);
-  assert.match(defaultLegalDocuments[0].content, /ELECTIONS, EVENTS AND CAMPAIGNS/);
-  assert.match(defaultLegalDocuments[1].content, /INFORMATION WE COLLECT/);
-  assert.match(defaultLegalDocuments[1].content, /YOUR CHOICES AND RIGHTS/);
+
+  const english = defaultLegalDocuments.filter((document) => document.language === "en");
+  const french = defaultLegalDocuments.filter((document) => document.language === "fr");
+  for (const document of english) assert.match(document.content, /qualified legal counsel/i);
+  for (const document of french) assert.match(document.content, /conseil juridique qualifié/i);
+
+  const englishTerms = english.find((document) => document.documentType === "terms");
+  const englishPrivacy = english.find((document) => document.documentType === "privacy");
+  assert.match(englishTerms.content, /PAYMENTS, FEES AND WITHDRAWALS/);
+  assert.match(englishTerms.content, /ELECTIONS, EVENTS AND CAMPAIGNS/);
+  assert.match(englishPrivacy.content, /INFORMATION WE COLLECT/);
+  assert.match(englishPrivacy.content, /YOUR CHOICES AND RIGHTS/);
+
+  const frenchTerms = french.find((document) => document.documentType === "terms");
+  const frenchPrivacy = french.find((document) => document.documentType === "privacy");
+  assert.match(frenchTerms.content, /PAIEMENTS, FRAIS ET RETRAITS/);
+  assert.match(frenchTerms.content, /ÉLECTIONS, ÉVÉNEMENTS ET CAMPAGNES/);
+  assert.match(frenchPrivacy.content, /INFORMATIONS QUE NOUS COLLECTONS/);
+  assert.match(frenchPrivacy.content, /VOS CHOIX ET VOS DROITS/);
 });
 
-test("only seeds a document type that has no usable published policy", () => {
-  assert.deepEqual(missingDefaultLegalDocuments([]).map((document) => document.documentType), ["terms", "privacy"]);
-  assert.deepEqual(missingDefaultLegalDocuments([{ documentType: "terms" }]).map((document) => document.documentType), ["privacy"]);
-  assert.deepEqual(missingDefaultLegalDocuments([{ documentType: "terms" }, { documentType: "privacy" }]), []);
+test("only seeds a document type and language that has no usable published policy", () => {
+  assert.deepEqual(missingDefaultLegalDocuments([]).map(key), ["terms:en", "privacy:en", "terms:fr", "privacy:fr"]);
+  assert.deepEqual(missingDefaultLegalDocuments([{ documentType: "terms", language: "en" }]).map(key), ["privacy:en", "terms:fr", "privacy:fr"]);
+  assert.deepEqual(missingDefaultLegalDocuments([
+    { documentType: "terms", language: "en" },
+    { documentType: "privacy", language: "en" },
+    { documentType: "terms", language: "fr" },
+    { documentType: "privacy", language: "fr" },
+  ]), []);
 });
 
 test.after(async () => {

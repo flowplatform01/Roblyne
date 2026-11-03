@@ -23,14 +23,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Loader2, ArrowRight } from "lucide-react";
 import { EvenumAuthMark } from "@/components/branding/EvenumLogo";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { AuthLoadingShell } from "@/components/loading/LoadingStates";
 import { getSafeAuthReturnPath } from "@/lib/auth-redirect";
 import { SocialLogin } from "@/components/auth/SocialLogin";
 import { Checkbox } from "@/components/ui/checkbox";
 import { apiUrl } from "@/lib/api-url";
+import { currentLegalLanguage } from "@/i18n";
 
-type LegalRequirement = { id: number; documentType: "terms" | "privacy"; title: string; version: number };
+type LegalRequirement = { id: number; documentType: "terms" | "privacy"; title: string; version: number; languageFallback?: boolean };
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -38,7 +39,7 @@ export default function Register() {
   const registerMutation = useRegister();
   const { isAuthenticated, isLoading: isAuthLoading, isSessionUnavailable, retrySession } = useAuth();
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
   const authError = new URLSearchParams(window.location.search).get("authError");
   const [legalRequirements, setLegalRequirements] = React.useState<LegalRequirement[]>([]);
@@ -67,7 +68,7 @@ export default function Register() {
 
   React.useEffect(() => {
     const controller = new AbortController();
-    void fetch(apiUrl("/api/legal/requirements"), { signal: controller.signal })
+    void fetch(apiUrl(`/api/legal/requirements?lang=${currentLegalLanguage()}`), { signal: controller.signal })
       .then((response) => response.ok ? response.json() : { documents: [] })
       .then((body: { documents?: LegalRequirement[]; missingDocumentTypes?: string[] }) => {
         setLegalRequirements(Array.isArray(body.documents) ? body.documents : []);
@@ -75,14 +76,14 @@ export default function Register() {
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, []);
+  }, [i18n.language]);
 
   function onSubmit(values: z.infer<typeof registerSchema>) {
     if (legalRequirements.some((document) => !acceptedLegalDocumentIds.includes(document.id))) {
       toast({
         variant: "destructive",
-        title: "Review the legal documents",
-        description: "Accept the current Terms of Service and Privacy Policy to create an account.",
+        title: t("auth.legalReviewTitle"),
+        description: t("auth.legalReviewDescription"),
       });
       return;
     }
@@ -122,12 +123,16 @@ export default function Register() {
         <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
           {isSessionUnavailable && (
             <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
-              We could not restore your session. You can create an account below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
+              <Trans
+                i18nKey="auth.sessionRestoreFailed"
+                values={{ action: t("auth.sessionActionRegister") }}
+                components={{ retry: <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2" /> }}
+              />
             </div>
           )}
           {authError === "social_legal_acceptance_required" && (
             <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
-              Review and accept the current Terms of Service and Privacy Policy before creating an account with social sign-in.
+              {t("auth.legalSocialAcceptanceRequired")}
             </div>
           )}
           <div className="mb-10 text-center">
@@ -170,15 +175,22 @@ export default function Register() {
                               onCheckedChange={(value) => setAcceptedLegalDocumentIds((current) => value
                                 ? [...new Set([...current, document.id])]
                                 : current.filter((id) => id !== document.id))}
-                              aria-label={`Accept ${document.title}`}
+                              aria-label={t("auth.acceptDocumentAria", { title: document.title })}
                               className="mt-0.5"
                             />
                             <span>
-                              I have read and accept the <a href={`/legal/${document.documentType}`} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2">{document.title}</a> (version {document.version}).
+                              <Trans
+                                i18nKey="auth.legalAcceptance"
+                                values={{ title: document.title }}
+                                components={{ legalLink: <a href={`/legal/${document.documentType}`} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2" /> }}
+                              />
                             </span>
                           </label>
                         );
                       })}
+                      {legalRequirements.some((document) => document.languageFallback) && (
+                        <p className="text-xs text-muted-foreground">{t("auth.legalFallbackNotice")}</p>
+                      )}
                     </div>
                   )}
                   <FormField
@@ -217,7 +229,7 @@ export default function Register() {
                       </FormItem>
                     )}
                   />
-                  {missingLegalDocumentTypes.length > 0 && <p role="alert" className="text-sm text-muted-foreground">New account registration will open after ROBLYNE publishes its required legal documents.</p>}
+                  {missingLegalDocumentTypes.length > 0 && <p role="status" className="text-sm text-muted-foreground">{t("auth.registrationLegalUnavailable")}</p>}
                   <Button type="submit" className="w-full h-14 text-lg font-medium mt-4 shadow-md hover:shadow-lg transition-all" disabled={registerMutation.isPending || missingLegalDocumentTypes.length > 0}>
                      {registerMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : t("auth.createAccountButton")}
                     {!registerMutation.isPending && <ArrowRight className="ml-2 h-5 w-5" />}

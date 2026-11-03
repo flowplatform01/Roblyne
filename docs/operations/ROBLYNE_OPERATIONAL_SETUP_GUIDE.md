@@ -58,7 +58,7 @@ Set values only in the service listed below. A static-site variable is compiled 
 | `FLOWPAY_API_BASE_URL`, `FLOWPAY_CLIENT_ID`, `FLOWPAY_PUBLIC_KEY`, `FLOWPAY_SECRET_KEY`, `FLOWPAY_WEBHOOK_SECRET` | API and worker | Yes in production | Current generic FlowPay configuration. Both services must use identical values. |
 | `FLOWPAY_PROVIDER`, `FLOWPAY_TIMEOUT_MS` | API and worker | Optional | Provider defaults to `FAPSHI`; timeout is bounded and defaults to `15000` ms. |
 | `FLOWPAY_ENVIRONMENT` | Local API / worker | Optional locally | Selects sandbox behavior outside production. Production always resolves to production credentials. |
-| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | API only | Optional pair | Enables Google button only when both are present. Callback: `https://<api-origin>/api/auth/oauth/google/callback`. |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | API only | Optional pair | Enables Google button only when both are present. `GOOGLE_OAUTH_CLIENT_ID` must be the bare client ID (`<number>-<hash>.apps.googleusercontent.com`) with no `https://` prefix or host; a prefixed value is passed to Google verbatim and fails with `401 invalid_client`. Use a **Web application** OAuth client and register the callback below as an authorized redirect URI. Callback: `https://<api-origin>/api/auth/oauth/google/callback`. |
 | `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_TENANT` | API only | Optional set | All three enable Microsoft. Callback: `https://<api-origin>/api/auth/oauth/microsoft/callback`. |
 | `LINKEDIN_OAUTH_CLIENT_ID`, `LINKEDIN_OAUTH_CLIENT_SECRET` | API only | Optional pair | Enables LinkedIn. The LinkedIn OpenID Connect product is also required. Callback: `https://<api-origin>/api/auth/oauth/linkedin/callback`. |
 | `DISCORD_OAUTH_CLIENT_ID`, `DISCORD_OAUTH_CLIENT_SECRET` | API only | Optional pair | Enables Discord. Discord must return a verified email and grant `identify` and `email`. Callback: `https://<api-origin>/api/auth/oauth/discord/callback`. |
@@ -151,12 +151,12 @@ Set `DATABASE_URL`, `REDIS_URL`, and the same `FLOWPAY_*` values as the API. The
 
 ## Legal publication before launch
 
-1. On API startup, ROBLYNE creates and publishes its built-in version 1 Terms of Service and Privacy Policy only when the database has no usable published document of that type. This occurs after database migration and needs no manual seed command.
+1. On API startup, ROBLYNE creates and publishes its built-in initial Terms of Service and Privacy Policy only when the database has no usable published document for that document type **and language**. Documents are stored per language (`en`, `fr`); seeding occurs after database migration and needs no manual seed command.
 2. The initial documents cover accounts, organizations, elections, events, campaigns, payments, withdrawals, privacy, third-party services, suspension and user rights. They are operational defaults, **not legal advice or a claim of legal review**.
 3. Before launch, have qualified legal counsel confirm or replace the operator identity, support/privacy contact, governing law, dispute forum, lawful bases, retention periods and jurisdiction-specific disclosures.
-4. Sign in as the platform administrator, go to **Admin → Legal**, and create a reviewed new draft for each replacement. Publishing archives the prior version; it never edits or overwrites a previously accepted version.
-5. Confirm `/legal/terms` and `/legal/privacy` render the intended published content. A customized published document takes precedence over the built-in default and is not replaced by startup seeding.
-6. Register a password account and a new social-login account. Both flows must display current documents, require acceptance before account creation, and record document type, version and acceptance timestamp. If a material revision is published, enable re-acceptance before publishing it.
+4. Sign in as the platform administrator, go to **Admin → Legal**, and create a reviewed new draft for each replacement. Choose the document language (EN or FR) when creating a document; the language is fixed for the life of that document. Publishing archives the prior version of the same type and language; it never edits or overwrites a previously accepted version.
+5. Confirm `/legal/terms` and `/legal/privacy` render the intended published content in the selected interface language (English UI shows the English document, French UI shows the French document). When the reader's language has no published version, the other language is shown with a clearly identified fallback notice — never an empty page or a mislabeled language. A customized published document takes precedence over the built-in default and is not replaced by startup seeding.
+6. Register a password account and a new social-login account in each language. Both flows must display current documents, require acceptance before account creation, and record document type, version and acceptance timestamp. If a material revision is published, enable re-acceptance before publishing it.
 
 ## Monitoring
 

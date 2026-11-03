@@ -1,9 +1,18 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db, legalAcceptancesTable, legalDocumentsTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
-import { currentLegalDocumentsWithDefaults, legalDocumentTypes } from "../lib/default-legal-documents";
+import {
+  defaultLegalLanguage,
+  legalDocumentTypes,
+  normalizeLegalLanguage,
+  publishedLegalDocumentsWithDefaults,
+  resolveLegalDocument,
+  unacceptedDocumentTypes,
+  unpublishedDocumentTypes,
+  type LegalDocumentLanguage,
+} from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
 const legalTypes = legalDocumentTypes;
@@ -13,10 +22,15 @@ function isLegalType(value: unknown): value is LegalType {
   return typeof value === "string" && legalTypes.includes(value as LegalType);
 }
 
+function requestedLanguage(value: unknown): LegalDocumentLanguage {
+  return normalizeLegalLanguage(value) ?? defaultLegalLanguage;
+}
+
 function formatDocument(document: typeof legalDocumentsTable.$inferSelect) {
   return {
     id: document.id,
     documentType: document.documentType,
+    language: document.language,
     title: document.title,
     content: document.content,
     version: document.version,
@@ -29,17 +43,17 @@ function formatDocument(document: typeof legalDocumentsTable.$inferSelect) {
   };
 }
 
-async function currentDocuments() {
-  return currentLegalDocumentsWithDefaults();
-}
-
-router.get("/legal/requirements", async (_req, res): Promise<void> => {
-  const current = await currentDocuments();
-  const latest = new Map<string, typeof current[number]>();
-  for (const document of current) if (!latest.has(document.documentType)) latest.set(document.documentType, document);
-  const documents = legalTypes.map((documentType) => latest.get(documentType)).filter(Boolean).map(formatDocument);
-  const missingDocumentTypes = legalTypes.filter((documentType) => !latest.has(documentType));
-  res.json({ documents, missingDocumentTypes });
+router.get("/legal/requirements", async (req, res): Promise<void> => {
+  const language = requestedLanguage(req.query.lang);
+  const documents = await publishedLegalDocumentsWithDefaults();
+  const resolved = legalTypes
+    .map((documentType) => resolveLegalDocument(documents, documentType, language))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  res.json({
+    requestedLanguage: language,
+    documents: resolved.map((entry) => ({ ...formatDocument(entry.document), languageFallback: entry.languageFallback })),
+    missingDocumentTypes: unpublishedDocumentTypes(documents),
+  });
 });
 
 router.get("/legal/:documentType", async (req, res): Promise<void> => {
@@ -47,38 +61,41 @@ router.get("/legal/:documentType", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Legal document not found" });
     return;
   }
-  const [document] = (await currentDocuments()).filter((entry) => entry.documentType === req.params.documentType);
-  if (!document) {
+  const language = requestedLanguage(req.query.lang);
+  const documents = await publishedLegalDocumentsWithDefaults();
+  const resolved = resolveLegalDocument(documents, req.params.documentType, language);
+  if (!resolved) {
     res.status(404).json({ error: "This legal document has not been published" });
     return;
   }
-  res.json(formatDocument(document));
+  res.json({
+    ...formatDocument(resolved.document),
+    requestedLanguage: language,
+    languageFallback: resolved.languageFallback,
+  });
 });
 
 router.get("/auth/legal-status", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId;
   if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const current = await currentDocuments();
-  const latest = new Map<string, typeof current[number]>();
-  for (const document of current) if (!latest.has(document.documentType)) latest.set(document.documentType, document);
-  const documents = [...latest.values()];
-  if (!documents.length) {
-    res.json({ required: false, documents: [] });
-    return;
-  }
+  const language = requestedLanguage(req.query.lang);
+  const documents = await publishedLegalDocumentsWithDefaults();
   const accepted = await db.select({
     legalDocumentId: legalAcceptancesTable.legalDocumentId,
     documentType: legalAcceptancesTable.documentType,
   })
     .from(legalAcceptancesTable)
     .where(eq(legalAcceptancesTable.userId, userId));
-  const acceptedIds = new Set(accepted.map((row) => row.legalDocumentId));
-  const acceptedTypes = new Set(accepted.map((row) => row.documentType));
-  const outstanding = documents.filter((document) => (
-    !acceptedTypes.has(document.documentType)
-    || (document.requiresReacceptance && !acceptedIds.has(document.id))
-  ));
-  res.json({ required: outstanding.length > 0, documents: outstanding.map(formatDocument) });
+  const acceptedIds = accepted.map((row) => row.legalDocumentId);
+  const acceptedTypes = accepted.map((row) => row.documentType);
+  const outstanding = unacceptedDocumentTypes(documents, acceptedIds, acceptedTypes)
+    .map((documentType) => resolveLegalDocument(documents, documentType, language))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+  res.json({
+    requestedLanguage: language,
+    required: outstanding.length > 0,
+    documents: outstanding.map((entry) => ({ ...formatDocument(entry.document), languageFallback: entry.languageFallback })),
+  });
 });
 
 router.post("/auth/legal-acceptances", requireAuth, async (req, res): Promise<void> => {
@@ -89,15 +106,18 @@ router.post("/auth/legal-acceptances", requireAuth, async (req, res): Promise<vo
     res.status(400).json({ error: "Select each required legal document" });
     return;
   }
-  const documents = await currentDocuments();
-  const latest = new Map<string, typeof documents[number]>();
-  for (const document of documents) if (!latest.has(document.documentType)) latest.set(document.documentType, document);
-  const required = [...latest.values()];
-  if (required.some((document) => !documentIds.includes(document.id))) {
+  const documents = await publishedLegalDocumentsWithDefaults();
+  const acceptedIds = new Set(documentIds);
+  const missing = legalTypes.filter((documentType) => {
+    const current = documents.filter((document) => document.documentType === documentType);
+    return current.length > 0 && !current.some((document) => acceptedIds.has(document.id));
+  });
+  if (missing.length > 0) {
     res.status(400).json({ error: "Accept each current legal document" });
     return;
   }
-  await db.insert(legalAcceptancesTable).values(required.map((document) => ({
+  const acceptedDocuments = documents.filter((document) => acceptedIds.has(document.id));
+  await db.insert(legalAcceptancesTable).values(acceptedDocuments.map((document) => ({
     userId,
     legalDocumentId: document.id,
     documentType: document.documentType,
@@ -110,20 +130,23 @@ router.use("/admin/legal-documents", requirePlatformAdmin);
 
 router.get("/admin/legal-documents", async (_req, res): Promise<void> => {
   const documents = await db.select().from(legalDocumentsTable)
-    .orderBy(asc(legalDocumentsTable.documentType), desc(legalDocumentsTable.version));
+    .orderBy(asc(legalDocumentsTable.documentType), asc(legalDocumentsTable.language), desc(legalDocumentsTable.version));
   res.json(documents.map(formatDocument));
 });
 
 router.post("/admin/legal-documents", async (req, res): Promise<void> => {
   const { documentType, title, content, requiresReacceptance = false } = req.body ?? {};
+  const language = normalizeLegalLanguage(req.body?.language) ?? defaultLegalLanguage;
   if (!isLegalType(documentType) || typeof title !== "string" || title.trim().length < 3 || typeof content !== "string") {
-    res.status(400).json({ error: "Provide a document type, title, and draft content" });
+    res.status(400).json({ error: "Provide a document type, language, title, and draft content" });
     return;
   }
   const [{ nextVersion }] = await db.select({ nextVersion: sql<number>`COALESCE(MAX(${legalDocumentsTable.version}), 0) + 1` })
-    .from(legalDocumentsTable).where(eq(legalDocumentsTable.documentType, documentType));
+    .from(legalDocumentsTable)
+    .where(and(eq(legalDocumentsTable.documentType, documentType), eq(legalDocumentsTable.language, language)));
   const [created] = await db.insert(legalDocumentsTable).values({
     documentType,
+    language,
     title: title.trim().slice(0, 180),
     content: content.slice(0, 100_000),
     version: Number(nextVersion),
@@ -175,6 +198,7 @@ router.post("/admin/legal-documents/:id/publish", async (req, res): Promise<void
     if (draft.content.trim().length < 20) return { type: "content" as const };
     await tx.update(legalDocumentsTable).set({ status: "archived", updatedAt: new Date() }).where(and(
       eq(legalDocumentsTable.documentType, draft.documentType),
+      eq(legalDocumentsTable.language, draft.language),
       eq(legalDocumentsTable.status, "published"),
     ));
     const [published] = await tx.update(legalDocumentsTable).set({

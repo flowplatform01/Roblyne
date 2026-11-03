@@ -1,10 +1,15 @@
 import { Router, type IRouter, type Request } from "express";
 import bcrypt from "bcryptjs";
-import { and, eq, lte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
-import { db, legalAcceptancesTable, legalDocumentsTable, organizationsTable, usersTable } from "@workspace/db";
+import { db, legalAcceptancesTable, organizationsTable, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
-import { ensureDefaultLegalDocuments } from "../lib/default-legal-documents";
+import {
+  ensureDefaultLegalDocuments,
+  publishedLegalDocuments,
+  unacceptedDocumentTypes,
+  unpublishedDocumentTypes,
+} from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
 
@@ -49,22 +54,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   let user;
   try {
     user = await db.transaction(async (tx) => {
-      const publishedDocuments = await tx.select().from(legalDocumentsTable).where(and(
-        eq(legalDocumentsTable.status, "published"),
-        lte(legalDocumentsTable.effectiveAt, new Date()),
-      ));
-      const requiredByType = new Map<string, typeof publishedDocuments[number]>();
-      for (const document of publishedDocuments) {
-        const current = requiredByType.get(document.documentType);
-        if (!current || document.version > current.version) requiredByType.set(document.documentType, document);
-      }
-      const requiredDocuments = [...requiredByType.values()];
-      if (!["terms", "privacy"].every((documentType) => requiredByType.has(documentType))) {
+      const publishedDocuments = await publishedLegalDocuments();
+      if (unpublishedDocumentTypes(publishedDocuments).length > 0) {
         throw new Error("Registration is temporarily unavailable while the required legal documents are being published");
       }
-      if (requiredDocuments.some((document) => !legalDocumentIds.includes(document.id))) {
+      if (unacceptedDocumentTypes(publishedDocuments, legalDocumentIds).length > 0) {
         throw new Error("Accept the current Terms of Service and Privacy Policy before creating an account");
       }
+      const acceptedDocuments = publishedDocuments.filter((document) => legalDocumentIds.includes(document.id));
       const [createdUser] = await tx.insert(usersTable).values({ email, passwordHash, name }).returning();
       const workspaceName = `${name.trim().slice(0, 80) || "My"}'s workspace`;
       const slugBase = workspaceName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
@@ -73,8 +70,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         slug: `${slugBase}-${randomUUID().slice(0, 8)}`,
         ownerId: createdUser.id,
       });
-      if (requiredDocuments.length) {
-        await tx.insert(legalAcceptancesTable).values(requiredDocuments.map((document) => ({
+      if (acceptedDocuments.length) {
+        await tx.insert(legalAcceptancesTable).values(acceptedDocuments.map((document) => ({
           userId: createdUser.id,
           legalDocumentId: document.id,
           documentType: document.documentType,

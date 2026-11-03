@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FaDiscord, FaGoogle, FaLinkedin, FaMicrosoft } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { apiUrl } from "@/lib/api-url";
@@ -20,6 +21,7 @@ const providerDetails: Record<Provider, { label: string; icon: typeof FaGoogle; 
 };
 
 export function SocialLogin({ returnTo, legalDocumentIds = [], requiresLegalAcceptance = false }: SocialLoginProps) {
+  const { t } = useTranslation();
   const [providers, setProviders] = useState<Providers>({});
 
   useEffect(() => {
@@ -60,12 +62,12 @@ export function SocialLogin({ returnTo, legalDocumentIds = [], requiresLegalAcce
               onClick={() => startProvider(provider)}
             >
               <Icon aria-hidden="true" className={`size-5 shrink-0 ${details.className}`} />
-              <span>Continue with {details.label}</span>
+              <span>{t("auth.continueWith", { provider: details.label })}</span>
             </Button>
           );
         })}
       </div>
-      {requiresLegalAcceptance && !hasRequiredAcceptance && <p className="mt-3 text-center text-sm text-muted-foreground">Accept the Terms of Service and Privacy Policy to continue with social sign-in.</p>}
+      {requiresLegalAcceptance && !hasRequiredAcceptance && <p className="mt-3 text-center text-sm text-muted-foreground">{t("auth.socialAcceptanceRequired")}</p>}
     </div>
   );
 }

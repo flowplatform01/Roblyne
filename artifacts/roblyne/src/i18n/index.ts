@@ -32,4 +32,13 @@ if (typeof document !== "undefined") {
   });
 }
 
+/**
+ * The language legal documents are requested in. Falls back to the interface
+ * language so a reader always sees the version matching what they selected,
+ * with the API responsible for flagging any cross-language fallback.
+ */
+export function currentLegalLanguage(): "en" | "fr" {
+  return i18n.language.startsWith("fr") ? "fr" : "en";
+}
+
 export default i18n;
