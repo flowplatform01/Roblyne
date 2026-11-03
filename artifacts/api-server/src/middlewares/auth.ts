@@ -12,6 +12,7 @@ declare module "express-session" {
       codeVerifier: string;
       returnTo: string;
       mode: "signin" | "link";
+      legalDocumentIds: number[];
       createdAt: number;
     };
   }

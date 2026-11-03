@@ -47,14 +47,19 @@ try {
   }
 
   const campaignHtml = await readFile("artifacts/roblyne/dist/public/campaigns/7/participate/index.html", "utf8");
+  const homeHtml = await readFile("artifacts/roblyne/dist/public/index.html", "utf8");
   const sitemap = await readFile("artifacts/roblyne/dist/public/sitemap.xml", "utf8");
   const robots = await readFile("artifacts/roblyne/dist/public/robots.txt", "utf8");
 
   assert.match(campaignHtml, /Clean Water Fund \| ROBLYNE/);
   assert.match(campaignHtml, /https:\/\/www\.roblyne\.test\/campaigns\/7\/participate/);
   assert.match(campaignHtml, /https:\/\/media\.example\.com\/water\.jpg/);
+  assert.match(campaignHtml, /<meta name="robots" content="index,follow,max-image-preview:large"/);
+  assert.match(homeHtml, /<title>Online Elections, Events and Campaigns \| ROBLYNE<\/title>/);
+  assert.doesNotMatch(homeHtml, /ROBLYNE - Organized Participation \| ROBLYNE/);
   assert.match(sitemap, /https:\/\/www\.roblyne\.test\/campaigns\/7\/participate/);
   assert.match(robots, /Disallow: \/dashboard/);
+  assert.match(robots, /Disallow: \/elections\/new/);
   console.log("PASS generated SEO documents include resource metadata and private-route exclusions");
 } finally {
   await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

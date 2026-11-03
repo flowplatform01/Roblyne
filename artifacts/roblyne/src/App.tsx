@@ -6,6 +6,7 @@ import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LegalAcceptanceGate } from '@/components/auth/LegalAcceptanceGate';
 import { RouteLoadingShell } from '@/components/loading/LoadingStates';
+import { RouteSeoPolicy } from '@/components/seo/RouteSeoPolicy';
 import { ThemeProvider } from 'next-themes';
 
 /**
@@ -158,6 +159,7 @@ function App() {
           <TooltipProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
               <LegalAcceptanceGate>
+                <RouteSeoPolicy />
                 <Router />
               </LegalAcceptanceGate>
             </WouterRouter>

@@ -40,8 +40,9 @@ export default function Register() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const returnPath = getSafeAuthReturnPath();
+  const authError = new URLSearchParams(window.location.search).get("authError");
   const [legalRequirements, setLegalRequirements] = React.useState<LegalRequirement[]>([]);
-  const [missingLegalDocumentTypes, setMissingLegalDocumentTypes] = React.useState<string[]>([]);
+  const [missingLegalDocumentTypes, setMissingLegalDocumentTypes] = React.useState<string[]>(["terms", "privacy"]);
   const [acceptedLegalDocumentIds, setAcceptedLegalDocumentIds] = React.useState<number[]>([]);
   const registerSchema = z.object({
     name: z.string().min(1, t("auth.nameRequired")),
@@ -122,6 +123,11 @@ export default function Register() {
           {isSessionUnavailable && (
             <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
               We could not restore your session. You can create an account below or <button type="button" onClick={retrySession} className="font-medium text-primary underline underline-offset-2">try again</button>.
+            </div>
+          )}
+          {authError === "social_legal_acceptance_required" && (
+            <div role="alert" className="mb-6 rounded-sm border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">
+              Review and accept the current Terms of Service and Privacy Policy before creating an account with social sign-in.
             </div>
           )}
           <div className="mb-10 text-center">
@@ -218,7 +224,7 @@ export default function Register() {
                   </Button>
                 </form>
               </Form>
-              {missingLegalDocumentTypes.length === 0 && <SocialLogin returnTo={returnPath ?? "/dashboard"} />}
+              {missingLegalDocumentTypes.length === 0 && <SocialLogin returnTo={returnPath ?? "/dashboard"} legalDocumentIds={acceptedLegalDocumentIds} requiresLegalAcceptance />}
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 py-6 bg-muted/10">
               <p className="text-base text-muted-foreground font-light">

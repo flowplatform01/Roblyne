@@ -4,6 +4,7 @@ import { sweepExpiredLifecycles } from "./lib/lifecycle";
 import { registerMaintenanceSchedule, closeQueues, queueInfrastructureStatus } from "./lib/jobs";
 import { closeRedis } from "./lib/redis";
 import { validateApiStartupConfig } from "./lib/startup-config";
+import { ensureDefaultLegalDocuments } from "./lib/default-legal-documents";
 import { closeDatabasePool } from "@workspace/db";
 
 import path from "node:path";
@@ -31,18 +32,27 @@ if (Number.isNaN(port) || port <= 0) {
 
 validateApiStartupConfig();
 
-const server = app.listen(port, "0.0.0.0", (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
+let server: ReturnType<typeof app.listen> | undefined;
+
+void ensureDefaultLegalDocuments()
+  .then(() => {
+    server = app.listen(port, "0.0.0.0", (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
+
+      logger.info({ port }, "Server listening");
+    });
+
+    server.headersTimeout = 15_000;
+    server.requestTimeout = 60_000;
+    server.keepAliveTimeout = 65_000;
+  })
+  .catch((error) => {
+    logger.fatal({ err: error }, "Unable to initialize required legal documents");
     process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-});
-
-server.headersTimeout = 15_000;
-server.requestTimeout = 60_000;
-server.keepAliveTimeout = 65_000;
+  });
 
 function shouldRunInProcessLifecycleFallback(): boolean {
   const redisUrl = process.env.REDIS_URL?.trim();
@@ -78,7 +88,7 @@ void (async () => {
 
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, "Shutting down API server");
-  await new Promise<void>((resolve) => server.close(() => resolve()));
+  if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
   await closeQueues();
   await closeRedis();
   await closeDatabasePool();

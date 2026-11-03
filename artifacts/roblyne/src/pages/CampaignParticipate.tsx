@@ -85,6 +85,7 @@ export default function CampaignParticipate() {
     description: campaign.description || `Participate in ${campaign.title} — join the campaign on ROBLYNE.`,
     image: (campaign as any).heroImageUrl || campaign.coverImageUrl || null,
     url: publicUrl,
+    robots: "index,follow,max-image-preview:large",
   } : null);
 
   const handleFieldChange = (id: string, value: any) => {

@@ -268,6 +268,7 @@ export default function EventRegister() {
     description: event.description || `Register for ${event.title} — secure your spot on ROBLYNE.`,
     image: (event as any).heroImageUrl || event.coverImageUrl || null,
     url: publicUrl,
+    robots: "index,follow,max-image-preview:large",
   } : null);
 
   const handleRegister = (e: React.FormEvent) => {

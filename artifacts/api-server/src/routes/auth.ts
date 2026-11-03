@@ -4,6 +4,7 @@ import { and, eq, lte } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db, legalAcceptancesTable, legalDocumentsTable, organizationsTable, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody } from "@workspace/api-zod";
+import { ensureDefaultLegalDocuments } from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const { password, name, legalDocumentIds } = parsed.data;
   const email = parsed.data.email.trim().toLowerCase();
+
+  await ensureDefaultLegalDocuments();
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {

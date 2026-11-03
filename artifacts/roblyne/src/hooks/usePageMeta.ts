@@ -8,6 +8,7 @@ interface PageMetaOptions {
   type?: string;
   /** Canonical URL — defaults to window.location.href */
   url?: string;
+  robots?: string;
 }
 
 const DEFAULT_TITLE = "ROBLYNE — Organized Participation";
@@ -59,7 +60,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
 
     prevRef.current = options;
 
-    const { title, description, image, type = "website", url } = options;
+    const { title, description, image, type = "website", url, robots = "index,follow,max-image-preview:large" } = options;
     const canonicalUrl = url ?? window.location.href;
     const fullTitle = title.endsWith("ROBLYNE")
       ? title
@@ -86,6 +87,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
     setMeta("name", "twitter:title", fullTitle);
     setMeta("name", "twitter:description", description);
     setMeta("name", "description", description);
+    setMeta("name", "robots", robots);
 
     // Canonical link
     let canonical = document.querySelector(
@@ -97,7 +99,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
       document.head.appendChild(canonical);
     }
     canonical.href = canonicalUrl;
-  }, [options?.title, options?.description, options?.image, options?.type, options?.url]);
+  }, [options?.title, options?.description, options?.image, options?.type, options?.url, options?.robots]);
 
   // Reset to defaults on unmount
   useEffect(() => {
@@ -110,6 +112,7 @@ export function usePageMeta(options: PageMetaOptions | null): void {
       setMeta("name", "twitter:title", DEFAULT_TITLE);
       setMeta("name", "twitter:description", DEFAULT_DESC);
       setMeta("name", "twitter:card", "summary_large_image");
+      setMeta("name", "robots", "noindex,nofollow,noarchive");
       removeMeta("property", "og:image");
       removeMeta("name", "twitter:image");
       removeMeta("property", "og:url");

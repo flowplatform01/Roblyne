@@ -32,6 +32,7 @@ export default function CandidateProfile() {
     image: candidate.photoUrl || null,
     type: "profile",
     url: publicUrl,
+    robots: "index,follow,max-image-preview:large",
   } : null);
 
   if (isCandidateLoading || isElectionLoading) {

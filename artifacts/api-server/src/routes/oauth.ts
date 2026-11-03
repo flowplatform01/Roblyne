@@ -1,7 +1,8 @@
 import { createHash, randomBytes, verify, createPublicKey } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import { and, eq, lte } from "drizzle-orm";
-import { db, legalDocumentsTable, organizationsTable, socialIdentitiesTable, usersTable } from "@workspace/db";
+import { db, legalAcceptancesTable, organizationsTable, socialIdentitiesTable, usersTable } from "@workspace/db";
+import { currentLegalDocumentsWithDefaults, legalDocumentTypes } from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
 const MAX_TRANSACTION_AGE_MS = 10 * 60 * 1000;
@@ -137,11 +138,17 @@ function configured(provider: Provider): boolean {
 }
 
 async function requiredLegalDocumentsArePublished(): Promise<boolean> {
-  const documents = await db.select({ documentType: legalDocumentsTable.documentType })
-    .from(legalDocumentsTable)
-    .where(and(eq(legalDocumentsTable.status, "published"), lte(legalDocumentsTable.effectiveAt, new Date())));
-  const types = new Set(documents.map((document) => document.documentType));
-  return types.has("terms") && types.has("privacy");
+  return (await currentLegalDocumentsWithDefaults()).length === legalDocumentTypes.length;
+}
+
+function parseLegalDocumentIds(value: unknown): number[] {
+  const raw = typeof value === "string" ? value.split(",") : Array.isArray(value) ? value : [];
+  const ids = raw.map((entry) => Number(entry)).filter((entry) => Number.isInteger(entry) && entry > 0);
+  return [...new Set(ids)].slice(0, legalDocumentTypes.length);
+}
+
+function acceptsCurrentLegalDocuments(documentIds: number[], documents: Array<{ id: number; documentType: string }>): boolean {
+  return documents.length === legalDocumentTypes.length && documents.every((document) => documentIds.includes(document.id));
 }
 
 function randomUrlSafe(bytes = 32): string {
@@ -260,7 +267,16 @@ router.get("/auth/oauth/:provider/start", (req, res): void => {
   const nonce = randomUrlSafe();
   const codeVerifier = randomUrlSafe(48);
   const mode = req.session.userId ? "link" : "signin";
-  req.session.oauthTransaction = { provider, state, nonce, codeVerifier, returnTo: safeReturnTo(req.query.returnTo), mode, createdAt: Date.now() };
+  req.session.oauthTransaction = {
+    provider,
+    state,
+    nonce,
+    codeVerifier,
+    returnTo: safeReturnTo(req.query.returnTo),
+    mode,
+    legalDocumentIds: parseLegalDocumentIds(req.query.legalDocumentIds),
+    createdAt: Date.now(),
+  };
   const params = new URLSearchParams({
     client_id: config.clientId()!,
     redirect_uri: `${apiOrigin}/api/auth/oauth/${provider}/callback`,
@@ -338,8 +354,12 @@ router.get("/auth/oauth/:provider/callback", async (req, res): Promise<void> => 
     }
     const [emailUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
     if (emailUser) return redirectToWeb(res, "/login", `${provider}_account_link_required`);
+    const currentLegalDocumentsForSignup = await currentLegalDocumentsWithDefaults();
     if (!await requiredLegalDocumentsArePublished()) {
       return redirectToWeb(res, "/login", "registration_legal_documents_unavailable");
+    }
+    if (!acceptsCurrentLegalDocuments(transaction.legalDocumentIds, currentLegalDocumentsForSignup)) {
+      return redirectToWeb(res, "/register", "social_legal_acceptance_required");
     }
     const user = await db.transaction(async (tx) => {
       const [created] = await tx.insert(usersTable).values({ email, name: name.slice(0, 100), avatarUrl, passwordHash: null }).returning();
@@ -347,6 +367,12 @@ router.get("/auth/oauth/:provider/callback", async (req, res): Promise<void> => 
       const slug = `${workspace.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace"}-${randomBytes(4).toString("hex")}`;
       await tx.insert(organizationsTable).values({ name: workspace, slug, ownerId: created.id });
       await tx.insert(socialIdentitiesTable).values({ userId: created.id, provider, providerSubject: subject, email });
+      await tx.insert(legalAcceptancesTable).values(currentLegalDocumentsForSignup.map((document) => ({
+        userId: created.id,
+        legalDocumentId: document.id,
+        documentType: document.documentType,
+        documentVersion: document.version,
+      })));
       return created;
     });
     await establishSession(req, user.id);

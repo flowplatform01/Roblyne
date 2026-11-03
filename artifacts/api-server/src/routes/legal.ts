@@ -3,9 +3,10 @@ import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
 import { db, legalAcceptancesTable, legalDocumentsTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
 import { requirePlatformAdmin } from "../middlewares/platformAdmin";
+import { currentLegalDocumentsWithDefaults, legalDocumentTypes } from "../lib/default-legal-documents";
 
 const router: IRouter = Router();
-const legalTypes = ["terms", "privacy"] as const;
+const legalTypes = legalDocumentTypes;
 type LegalType = (typeof legalTypes)[number];
 
 function isLegalType(value: unknown): value is LegalType {
@@ -29,10 +30,7 @@ function formatDocument(document: typeof legalDocumentsTable.$inferSelect) {
 }
 
 async function currentDocuments() {
-  return db.select().from(legalDocumentsTable).where(and(
-    eq(legalDocumentsTable.status, "published"),
-    lte(legalDocumentsTable.effectiveAt, new Date()),
-  )).orderBy(asc(legalDocumentsTable.documentType), desc(legalDocumentsTable.version));
+  return currentLegalDocumentsWithDefaults();
 }
 
 router.get("/legal/requirements", async (_req, res): Promise<void> => {
@@ -49,11 +47,7 @@ router.get("/legal/:documentType", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Legal document not found" });
     return;
   }
-  const [document] = await db.select().from(legalDocumentsTable).where(and(
-    eq(legalDocumentsTable.documentType, req.params.documentType),
-    eq(legalDocumentsTable.status, "published"),
-    lte(legalDocumentsTable.effectiveAt, new Date()),
-  )).orderBy(desc(legalDocumentsTable.version)).limit(1);
+  const [document] = (await currentDocuments()).filter((entry) => entry.documentType === req.params.documentType);
   if (!document) {
     res.status(404).json({ error: "This legal document has not been published" });
     return;

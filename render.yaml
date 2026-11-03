@@ -105,6 +105,39 @@ services:
       - path: /organizations/*
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
+      - path: /dashboard*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /login*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /register*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /password-reset*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /settings*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /admin*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /organizations/new*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /elections/new*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /events/new*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /campaigns/new*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /dev-payment/*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
       - path: /sw.js
         name: Cache-Control
         value: no-cache, no-store, must-revalidate

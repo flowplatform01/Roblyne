@@ -106,6 +106,7 @@ export default function ElectionVote() {
     description: election.description || `Cast your vote in ${election.title}. Participate securely on ROBLYNE.`,
     image: (election as any).heroImageUrl || (election as any).coverImageUrl || null,
     url: `${window.location.origin}/elections/${electionId}/vote`,
+    robots: "index,follow,max-image-preview:large",
   } : null);
 
   // ── Wizard state ──────────────────────────────────────────────────────────

@@ -9,9 +9,15 @@ import { useDiscover, useSearch, DiscoveryItemType } from "@workspace/api-client
 import { ArrowRight, Vote, CalendarDays, Megaphone, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function Home() {
   const { t } = useTranslation();
+  usePageMeta({
+    title: "Online Elections, Events and Campaigns",
+    description: "ROBLYNE helps organizations run online elections, event registrations, and campaigns in one professional participation platform.",
+    url: `${window.location.origin}/`,
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 

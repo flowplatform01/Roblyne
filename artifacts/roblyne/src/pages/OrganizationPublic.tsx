@@ -27,6 +27,7 @@ export default function OrganizationPublic() {
     description: org.description || `${org.name} uses ROBLYNE to run elections, events, and campaigns. Explore their public profile.`,
     image: org.logoUrl || null,
     url: publicUrl,
+    robots: "index,follow,max-image-preview:large",
   } : null);
 
   if (isLoading) {
