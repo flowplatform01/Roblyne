@@ -14,7 +14,7 @@ R2 is the storage. The CDN custom domain is the public door to that storage. The
 
 If ROBLYNE has no domain in Cloudflare yet, keep the current R2 development URL as `S3_PUBLIC_BASE_URL`. It is sufficient for uploads and image display. Do **not** create Cloudflare Cache Rules for the `r2.dev` hostname: it is not your zone and cannot be managed as your custom domain.
 
-When you buy or connect a domain, replace only `S3_PUBLIC_BASE_URL` with the R2 custom domain. Existing image object keys stay the same, so previously stored images continue to use their saved URLs; configure the custom domain before the main launch whenever possible.
+When you buy or connect a domain, replace only `S3_PUBLIC_BASE_URL` with the R2 custom domain. Object keys stay the same, but each database row stores the **absolute** URL that was current when the file was uploaded, so rows written before the change still point at the old host. Retiring that old host then breaks those existing previews even though the objects are still in the bucket. ROBLYNE rewrites retired hosts to the configured `S3_PUBLIC_BASE_URL` on the API response path — see *Retiring a media host* below — and you should configure the custom domain before the main launch whenever possible.
 
 ## One-time R2 bucket setup
 
@@ -56,6 +56,20 @@ This permits a browser to upload an image to a URL already signed by ROBLYNE. It
 7. Upload one new profile or campaign image and verify its URL begins with `https://images.example.com/images/`.
 
 ROBLYNE writes each upload to a unique UUID object key and sets `Cache-Control: public, max-age=31536000, immutable`. That is safe because an uploaded object is never overwritten. Cloudflare can cache these image URLs aggressively.
+
+## Retiring a media host
+
+Every upload is stored with an absolute URL (`<S3_PUBLIC_BASE_URL>/<key>`) and that absolute URL is what gets written to the database. Changing `S3_PUBLIC_BASE_URL` therefore only affects **new** uploads; rows written earlier keep the old hostname. If that old hostname is then disabled — for example the temporary `r2.dev` development URL — every existing image and preview fails (`401`/`404`) even though the objects are still in the same bucket.
+
+ROBLYNE handles this at the API response boundary: `artifacts/api-server/src/lib/media-url.ts` rewrites retired hosts to the currently configured `S3_PUBLIC_BASE_URL` before the JSON response is sent. No stored rows, object keys, or files are changed.
+
+When you retire a media host:
+
+1. Add the full old base URL (no trailing slash) to `LEGACY_MEDIA_BASE_URLS` in `artifacts/api-server/src/lib/media-url.ts`.
+2. Redeploy the API (`roblyne-api`); the rewrite only exists in the deployed build.
+3. Confirm the live API (for example `GET https://api.roblyne.com/api/discover`) returns the new host in `coverImageUrl`, and that the image renders in the browser.
+
+Do not disable the old host before the API redeploy is live, or existing previews break for the duration.
 
 ## Cache Rules: exact safe rules
 

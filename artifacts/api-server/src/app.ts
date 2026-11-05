@@ -8,6 +8,7 @@ import pinoHttp from "pino-http";
 import { apiLimiter, authLimiter, flowPayWebhookLimiter, passwordResetLimiter, writeLimiter, searchLimiter } from "./middlewares/rateLimit";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { normalizeMediaUrlsInPlace, normalizeMediaUrlsInText } from "./lib/media-url";
 import { recordRequest } from "./lib/metrics";
 import { sessionCookieOptions } from "./lib/session-cookie";
 import {
@@ -148,6 +149,29 @@ app.use("/api/auth/password-reset/request", passwordResetLimiter);
 app.use("/api", writeLimiter);
 // Dedicated tighter limit on public search/discover to prevent scraping
 app.use(["/api/search", "/api/discover"], searchLimiter);
+// Media URLs are stored as absolute URLs, so rows uploaded before the public
+// media host changed still reference the retired host. Rewrite those legacy
+// hosts to the configured public base URL on the way out, without touching
+// stored data or object keys.
+app.use((_req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = ((body?: unknown) => {
+    if (body && typeof body === "object") {
+      normalizeMediaUrlsInPlace(body);
+    }
+    return originalJson(body);
+  }) as typeof res.json;
+
+  // Server-rendered HTML (public share pages) carries media URLs in meta tags and
+  // does not pass through res.json, so normalize string bodies as well.
+  const originalSend = res.send.bind(res);
+  res.send = ((body?: unknown) => {
+    const normalized = typeof body === "string" ? normalizeMediaUrlsInText(body) : body;
+    return originalSend(normalized as never);
+  }) as typeof res.send;
+  next();
+});
+
 app.use("/api", router);
 
 app.use((req, res, next) => {
