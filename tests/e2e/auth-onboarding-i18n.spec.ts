@@ -74,8 +74,11 @@ test("English registration localizes legal acceptance and drops internal version
   await page.goto("/register");
 
   await expect(page.getByRole("heading", { name: "Create an Account" })).toBeVisible(COLD_START);
-  await expect(page.getByText(/I have read and accept the/).first()).toBeVisible();
-  await expect(page.getByText("ROBLYNE Terms of Service")).toBeVisible();
+  await expect(page.getByText(/I agree to the/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "ROBLYNE Terms of Service" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "ROBLYNE Privacy Policy" })).toBeVisible();
+  await expect(page.getByRole("checkbox")).toHaveCount(1);
+  await expect(page.getByRole("checkbox")).toHaveAttribute("aria-label", "Accept ROBLYNE Terms of Service and ROBLYNE Privacy Policy");
   await expect(page.getByText(/version/i)).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
@@ -88,9 +91,11 @@ test("French registration localizes legal acceptance and drops internal version 
   await page.goto("/register");
 
   await expect(page.getByRole("heading", { name: "Créer un compte" })).toBeVisible(COLD_START);
-  await expect(page.getByText(/J'ai lu et j'accepte les/).first()).toBeVisible();
-  await expect(page.getByText("Conditions d'utilisation de ROBLYNE")).toBeVisible();
-  await expect(page.getByRole("checkbox").first()).toHaveAttribute("aria-label", "Accepter Conditions d'utilisation de ROBLYNE");
+  await expect(page.getByText(/J'accepte les/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Conditions d'utilisation de ROBLYNE" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Politique de confidentialité de ROBLYNE" })).toBeVisible();
+  await expect(page.getByRole("checkbox")).toHaveCount(1);
+  await expect(page.getByRole("checkbox")).toHaveAttribute("aria-label", "Accepter Conditions d'utilisation de ROBLYNE et Politique de confidentialité de ROBLYNE");
   await expect(page.getByText(/version/i)).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
 });
@@ -206,5 +211,52 @@ test.describe("mobile onboarding layout", () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `${path} overflows horizontally`).toBeLessThanOrEqual(1);
     }
+  });
+
+  test("registration form has simplified hierarchy, password visibility toggle and single checkbox", async ({ page, context }) => {
+    await installApiMocks(context, (url) => {
+      if (url.pathname === "/api/auth/providers") return { google: true };
+      if (url.pathname === "/api/legal/requirements") return requirementsFor("en");
+    });
+    await page.goto("/register");
+
+    const nameInput = page.getByPlaceholder("Jane Doe");
+    const emailInput = page.getByPlaceholder("name@example.com");
+    const passwordInput = page.getByPlaceholder("••••••••");
+    const checkbox = page.getByRole("checkbox");
+    const submitButton = page.getByRole("button", { name: "Create Account" });
+    const googleButton = page.getByRole("button", { name: "Continue with Google" });
+
+    // Verify presence and attributes
+    await expect(nameInput).toBeVisible(COLD_START);
+    await expect(nameInput).toHaveAttribute("autocomplete", "name");
+    await expect(emailInput).toBeVisible();
+    await expect(emailInput).toHaveAttribute("autocomplete", "email");
+    await expect(passwordInput).toBeVisible();
+    await expect(passwordInput).toHaveAttribute("autocomplete", "new-password");
+    await expect(passwordInput).toHaveAttribute("type", "password");
+
+    // Single consolidated checkbox
+    await expect(checkbox).toHaveCount(1);
+    await expect(checkbox).not.toBeChecked();
+
+    // Show/hide password toggle
+    const togglePassword = page.getByRole("button", { name: "Show password" });
+    await expect(togglePassword).toBeVisible();
+    await togglePassword.click();
+    await expect(passwordInput).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Hide password" }).click();
+    await expect(passwordInput).toHaveAttribute("type", "password");
+
+    // Social login is gated until single checkbox is checked
+    await expect(googleButton).toBeDisabled();
+    await checkbox.click();
+    await expect(checkbox).toBeChecked();
+    await expect(googleButton).toBeEnabled();
+
+    // Unchecking re-disables social login
+    await checkbox.click();
+    await expect(checkbox).not.toBeChecked();
+    await expect(googleButton).toBeDisabled();
   });
 });
